@@ -197,18 +197,14 @@ function App() {
               width: "100%",
               backgroundColor: "rgba(255,0,0,0.5)",
             }}
-          >
-            a
-          </div>
+          ></div>
           <div
             style={{
               height: "100vh",
               width: "100%",
               backgroundColor: "rgba(0,0,255,0.5)",
             }}
-          >
-            b
-          </div>
+          ></div>
         </Split>
       </div>
       <Map

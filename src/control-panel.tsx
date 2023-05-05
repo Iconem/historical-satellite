@@ -300,7 +300,7 @@ function ControlPanel(props) {
       (value, index) => sliderValToDate(index, minDate)
     )
       .filter(
-        (date, index) => index > 20 && index <= 50 && date.getMonth() == 0
+        (date, index) => index >= 0 && index <= 1000 && date.getMonth() >= 0
       ) // Test with only yearly downloads
       .map((date) => {
         const tmsUrl = planetBasemapUrl(date);
