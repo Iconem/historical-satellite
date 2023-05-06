@@ -329,15 +329,21 @@ function ControlPanel(props) {
           `REM ${dateTo_YYYY_MM(date)}: ${downloadUrl}\n` +
           `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
             tmsUrl
-          )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>" ${
+          )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>" %DOWNLOAD_FOLDER%\\${
             date_YYYY_MM + "_gdal.tif"
           }`
         );
       });
+    const center = mapRef?.current?.getMap()?.getCenter();
+    const zoom = mapRef?.current?.getMap()?.getZoom();
     const gdal_commands =
-      "REM GDAL COMMANDS to retrieve without TiTiler\nREM ---\n\n" +
+      "REM GDAL COMMANDS to retrieve Planet Monthly Basemaps (without TiTiler)\n" +
+      `REM https://historical-satellite.iconem.com/#${zoom}/${center?.lng}/${center?.lat} \n` +
+      `REM https://www.google.fr/maps/@${center?.lat},${center?.lng},${zoom}z/data=!3m2!1e3!4b1 \n` +
+      "REM ---\n\n" +
+      `set DOWNLOAD_FOLDER=planet-monthly-${center?.lng}-${center?.lat}-${zoom}\n` +
+      "set BASEMAP_WIDTH=4096\n" +
       `for /f "delims=" %%i in ('dir /b/od/t:c C:\\PROGRA~1\\QGIS*') do set QGIS="C:\\PROGRA~1\\%%i"\n` +
-      "set BASEMAP_WIDTH=4096\n\n" +
       gdalTranslateCmds.join("\n");
     aDiv.href =
       "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
