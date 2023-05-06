@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 
 import "./App.css";
 import Map, { type MapRef, Source, Layer } from "react-map-gl";
@@ -112,6 +112,28 @@ function App() {
   const onRightMoveStart = useCallback(() => setActiveMap("right"), []);
   const onMove = useCallback((evt: any) => setViewState(evt.viewState), []);
 
+  const leftMapboxMapStyle = useMemo(() => {
+    return leftSelectedTms == BasemapsIds.Mapbox
+      ? "mapbox://styles/mapbox/satellite-streets-v12"
+      : // : // : "mapbox://styles/mapbox/streets-v12"
+        { version: 8, sources: {}, layers: [] };
+  }, [leftSelectedTms]);
+  const rightMapboxMapStyle = useMemo(() => {
+    return rightSelectedTms == BasemapsIds.Mapbox
+      ? "mapbox://styles/mapbox/satellite-streets-v12"
+      : // : // : "mapbox://styles/mapbox/streets-v12"
+        { version: 8, sources: {}, layers: [] };
+  }, [rightSelectedTms]);
+  // {
+  //   `mapbox://styles/mapbox/${basemapStyle}`;
+  // }
+  // mapStyle={
+  //   leftSelectedTms == BasemapsIds.Mapbox
+  //     ? "mapbox://styles/mapbox/satellite-streets-v12"
+  //     : // : "mapbox://styles/mapbox/streets-v12"
+  //       { version: 8, sources: {}, layers: [] }
+  // } // "mapbox://styles/mapbox/dark-v9"
+
   /*
   const width = typeof window === "undefined" ? 100 : window.innerWidth;
   const leftMapPadding = useMemo(() => {
@@ -195,14 +217,16 @@ function App() {
             style={{
               height: "100vh",
               width: "100%",
-              backgroundColor: "rgba(255,0,0,0.5)",
+              backgroundColor: "#001624",
+              // backgroundColor: "rgba(255,0,0,0.5)",
             }}
           ></div>
           <div
             style={{
               height: "100vh",
               width: "100%",
-              backgroundColor: "rgba(0,0,255,0.5)",
+              backgroundColor: "#00262F",
+              // backgroundColor: "rgba(0,0,255,0.5)",
             }}
           ></div>
         </Split>
@@ -216,7 +240,13 @@ function App() {
         onMove={activeMap === "left" ? onMove : () => ({})}
         style={LeftMapStyle}
         hash={true}
-        mapStyle={`mapbox://styles/mapbox/${basemapStyle}`}
+        mapStyle={leftMapboxMapStyle}
+        // mapStyle={
+        //   leftSelectedTms == BasemapsIds.Mapbox
+        //     ? "mapbox://styles/mapbox/satellite-streets-v12"
+        //     : // : "mapbox://styles/mapbox/streets-v12"
+        //       { version: 8, sources: {}, layers: [] }
+        // } // "mapbox://styles/mapbox/dark-v9"
         mapboxAccessToken={MAPBOX_TOKEN}
         renderWorldCopies={false}
         dragRotate={false}
@@ -293,7 +323,13 @@ function App() {
         onMoveStart={onRightMoveStart}
         onMove={activeMap === "right" ? onMove : () => ({})}
         style={RightMapStyle}
-        mapStyle="mapbox://styles/mapbox/satellite-streets-v12" // "mapbox://styles/mapbox/dark-v9"
+        mapStyle={rightMapboxMapStyle}
+        // mapStyle="mapbox://styles/mapbox/satellite-streets-v12" // "mapbox://styles/mapbox/dark-v9"
+        // mapStyle={
+        //   rightSelectedTms == BasemapsIds.Mapbox
+        //     ? "mapbox://styles/mapbox/satellite-streets-v12"
+        //     : { version: 8, sources: {}, layers: [] }
+        // } // "mapbox://styles/mapbox/dark-v9"
         mapboxAccessToken={MAPBOX_TOKEN}
         ref={rightMapRef}
         onClick={() => setActiveMap("right")}
@@ -350,8 +386,13 @@ function App() {
           width: "25px",
           height: "25px",
           top: "10px",
-          left: activeMap == "left" ? `${splitPanelSizesPercent[0] / 2}%` : "",
-          right: activeMap == "left" ? "" : `${splitPanelSizesPercent[1] / 2}%`,
+          left:
+            activeMap == "left"
+              ? `${splitPanelSizesPercent[0] / 2}%`
+              : `${splitPanelSizesPercent[0] + splitPanelSizesPercent[1] / 2}%`,
+          transitionDuration: "250ms",
+          transitionProperty: "all",
+          // right: activeMap == "left" ? "" : `${splitPanelSizesPercent[1] / 2}%`,
           zIndex: "20",
         }}
       ></div>

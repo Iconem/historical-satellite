@@ -24,18 +24,20 @@ const planetBasemapUrl = (date: Date) => {
 // Typescript was not accepting computed strings in enums, so used open Mapbox api token for simplicity
 enum BasemapsIds {
   PlanetMonthly,
-  Google,
+  GoogleSat,
   Bing,
   Mapbox,
   ESRI,
   Heremaps,
-  OSM,
   Yandex,
   Apple,
+  GoogleHybrid,
+  OSM,
 }
 const basemapsTmsUrls: any = {
   [BasemapsIds.PlanetMonthly]: planetBasemapUrl(subMonths(new Date(), 2)),
-  [BasemapsIds.Google]: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+  [BasemapsIds.GoogleHybrid]:
+    "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
   [BasemapsIds.ESRI]:
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}.jpg",
   // "http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}.jpg",
@@ -48,6 +50,7 @@ const basemapsTmsUrls: any = {
   [BasemapsIds.Yandex]:
     "https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU",
   [BasemapsIds.OSM]: "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  [BasemapsIds.GoogleSat]: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
   // [BasemapsIds.Bing]: "http://t0.tiles.virtualearth.net/tiles/h{quadkey}.jpeg?g=854&amp;mkt=en-US&amp;token=Atq2nTytWfkqXjxxCDSsSPeT3PXjAl_ODeu3bnJRN44i3HKXs2DDCmQPA5u0M9z1", // bing uses quadkey
   // "Bing Sat"= "http://t0.tiles.virtualearth.net/tiles/a{q}.jpeg?g=854&amp;mkt=en-US&amp;token=Atq2nTytWfkqXjxxCDSsSPeT3PXjAl_ODeu3bnJRN44i3HKXs2DDCmQPA5u0M9z1",
   // "Google sat"= "https://mts1.google.com/vt/lyrs=s@186112443&amp;hl=en&amp;src=app&amp;s=Galile&amp;rlbl=1&amp;gl=AR&amp;key=AIzaSyARVMxmX0A7aRszJUjE33fSLQFMXAiMlxk&amp;z={Z}&amp;x={X}&amp;y={Y}",

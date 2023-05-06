@@ -250,8 +250,8 @@ function titilerCropUrl(bounds: LngLatBounds, tmsUrl: string) {
   )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>`;
   //
   return (
-    // "https://titiler.xyz/cog/crop/" +
-    "https://app.iconem.com/titiler/cog/crop/" +
+    "https://titiler.xyz/cog/crop/" +
+    // "https://app.iconem.com/titiler/cog/crop/" +
     `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}` +
     ".tif" +
     `?url=${encodeURIComponent(wmsUrl)}` +
@@ -424,7 +424,7 @@ function ControlPanel(props) {
         style={{
           textAlign: "center",
           padding: "30px",
-          background: "white",
+          background: "#fffc", // "white",
           width: "100%",
           alignSelf: "flex-end",
           // margin: "0 30px",
@@ -508,19 +508,21 @@ function ControlPanel(props) {
             download=""
           />
         </>
-        <PlayableSlider
-          setTimelineDate={props.setTimelineDate}
-          playbackSpeedFPS={playbackSpeedFPS}
-          //
-          min={0}
-          max={monthsCount}
-          marks={marks}
-          // step={1}
-          //
-          value={dateToSliderVal(props.timelineDate, minDate)}
-          onChange={handleSliderChange}
-          valueLabelFormat={valueLabelFormat}
-        />
+        {props.selectedTms == BasemapsIds.PlanetMonthly && (
+          <PlayableSlider
+            setTimelineDate={props.setTimelineDate}
+            playbackSpeedFPS={playbackSpeedFPS}
+            //
+            min={0}
+            max={monthsCount}
+            marks={marks}
+            // step={1}
+            //
+            value={dateToSliderVal(props.timelineDate, minDate)}
+            onChange={handleSliderChange}
+            valueLabelFormat={valueLabelFormat}
+          />
+        )}
         <Typography variant="body2">
           {" "}
           Useful:{" "}
