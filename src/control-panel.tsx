@@ -566,6 +566,11 @@ function ControlPanel(props) {
             BBBike MapCompare
           </Link>
           {" | "}
+          <Link href={`https://github.com/iconem/historical-satellite/`}>
+            GitHub repo
+          </Link>
+          {" | Made by "}
+          <Link href={`https://iconem.com`}>Iconem</Link>
         </Typography>
         {/* <div
           style={{
