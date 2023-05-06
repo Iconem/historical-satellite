@@ -552,7 +552,20 @@ function ControlPanel(props) {
             },10,latLng&t=0.03&ps=50&bt=19840101&et=20201231&startDwell=0&endDwell=0`}
           >
             Google Timelapse
-          </Link>{" "}
+          </Link>
+          {" | "}
+          <Link href={`https://qms.nextgis.com/#`}>NextGIS QMS</Link>
+          {" | "}
+          <Link
+            href={`https://mc.bbbike.org/mc/?lon=${
+              bounds?.getCenter()?.lon
+            }&lat=${
+              bounds?.getCenter()?.lat
+            }&zoom=10&num=4&mt0=mapnik-german&mt1=cyclemap&mt2=bing-hybrid`}
+          >
+            BBBike MapCompare
+          </Link>
+          {" | "}
         </Typography>
         {/* <div
           style={{

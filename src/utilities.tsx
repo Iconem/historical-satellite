@@ -34,6 +34,10 @@ enum BasemapsIds {
   GoogleHybrid,
   OSM,
 }
+
+// Could find other TMS tile urls on NextGis QMS
+// https://qms.nextgis.com/
+// Which is what QuickMapServices Qgis plugin uses
 const basemapsTmsUrls: any = {
   [BasemapsIds.PlanetMonthly]: planetBasemapUrl(subMonths(new Date(), 2)),
   [BasemapsIds.GoogleHybrid]:
@@ -45,7 +49,9 @@ const basemapsTmsUrls: any = {
     "https://t.ssl.ak.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=13578&n=z&prx=1", // bing uses quadkey
   [BasemapsIds.Mapbox]: `https://api.mapbox.com/v4/mapbox.satellite//{z}/{x}/{y}.webp?sku=101OD9Bs4ngtD&access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA`,
   [BasemapsIds.Heremaps]:
-    "http://1.aerial.maps.cit.api.here.com/maptile/2.1/maptile/newest/satellite.day/{z}/{x}/{y}/256/png8?app_id=eAdkWGYRoc4RfxVo0Z4B&app_code=TrLJuXVK62IQk0vuXFzaig&lg=eng", // api key from qms
+    "https://2.aerial.maps.ls.hereapi.com/maptile/2.1/maptile/newest/satellite.day/{z}/{x}/{y}/256/png8?app_id=eAdkWGYRoc4RfxVo0Z4B&app_code=TrLJuXVK62IQk0vuXFzaig&lg=eng",
+  // 'https://2.aerial.maps.ls.hereapi.com/maptile/2.1/maptile/newest/satellite.day/5/15/12/256/png8?apiKey={YOUR_API_KEY}',
+  // "http://1.aerial.maps.cit.api.here.com/maptile/2.1/maptile/newest/satellite.day/{z}/{x}/{y}/256/png8?app_id=eAdkWGYRoc4RfxVo0Z4B&app_code=TrLJuXVK62IQk0vuXFzaig&lg=eng", // api key from qms
   // [BasemapsIds.Apple]: "https://sat-cdn1.apple-mapkit.com/tile?style=7&size=1&scale=1&z={z}&x={x}&y={y}&v=9431&accessKey=1683306701_8122033819977440435_%2F_m%2F7Yr2z8iJgCTZiqebq%2FqV4P%2FT9jhTh5lYjhJ%2FyA4IQ%3D", // api key from browser
   [BasemapsIds.Yandex]:
     "https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU",
