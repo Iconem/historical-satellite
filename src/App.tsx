@@ -7,7 +7,7 @@ import ControlPanel, { type Mode } from "./control-panel";
 import { subMonths } from "date-fns";
 import Split from "react-split";
 
-import { planetBasemapUrl, BasemapsIds, basemapsTmsUrls } from "./utilities";
+import { planetBasemapUrl, BasemapsIds, basemapsTmsSources } from "./utilities";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -32,10 +32,12 @@ function App() {
   const [splitPanelSizesPercent, setSplitPanelSizesPercent] = useState([
     75, 25,
   ]);
+  const hash = window.location.hash;
+  const hashed_viewstate = hash.substring(1).split("/");
   const [viewState, setViewState] = useState({
-    longitude: 20,
-    latitude: 20,
-    zoom: 3.5,
+    zoom: hashed_viewstate[0],
+    latitude: hashed_viewstate[1],
+    longitude: hashed_viewstate[2],
     pitch: 0,
   });
 
@@ -43,7 +45,7 @@ function App() {
     BasemapsIds.PlanetMonthly
   );
   const [rightSelectedTms, setRightSelectedTms] = useState<BasemapsIds>(
-    BasemapsIds.Google
+    BasemapsIds.GoogleHybrid
   );
   // End of state variables
   function resizeMaps() {
@@ -196,9 +198,9 @@ function App() {
           sizes={splitPanelSizesPercent}
           minSize={100}
           expandToMin={false}
-          gutterSize={10}
+          gutterSize={30}
           gutterAlign="center"
-          snapOffset={30}
+          snapOffset={50}
           dragInterval={1}
           direction="horizontal"
           cursor="col-resize"
@@ -290,7 +292,8 @@ function App() {
             id="tms-source"
             scheme="xyz"
             type="raster"
-            tiles={[basemapsTmsUrls[leftSelectedTms]]}
+            tiles={[basemapsTmsSources[leftSelectedTms].url]}
+            maxzoom={basemapsTmsSources[leftSelectedTms].maxzoom || 20}
             tileSize={256}
             key={leftSelectedTms}
           >
@@ -353,7 +356,8 @@ function App() {
             id="tms-source"
             scheme="xyz"
             type="raster"
-            tiles={[basemapsTmsUrls[rightSelectedTms]]}
+            tiles={[basemapsTmsSources[rightSelectedTms].url]}
+            maxzoom={basemapsTmsSources[rightSelectedTms].maxzoom || 20}
             tileSize={256}
             key={rightSelectedTms}
           >

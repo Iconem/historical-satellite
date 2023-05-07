@@ -50,7 +50,7 @@ import {
   planetBasemapUrl,
   dateTo_YYYY_MM,
   BasemapsIds,
-  basemapsTmsUrls,
+  basemapsTmsSources,
 } from "./utilities";
 
 // Set min/max dates for planet monthly basemaps on component mount
@@ -335,15 +335,18 @@ function ControlPanel(props) {
         );
       });
     const center = mapRef?.current?.getMap()?.getCenter();
+    const degrees_decimals = 4; // 4 decimals ~11m precision / 5 decimals ~1m precision
+    const center_lng = center?.lng?.toFixed(degrees_decimals);
+    const center_lat = center?.lat?.toFixed(degrees_decimals);
     const zoom = mapRef?.current?.getMap()?.getZoom();
     const gdal_commands =
       "REM GDAL COMMANDS to retrieve Planet Monthly Basemaps (without TiTiler)\n" +
-      `REM https://historical-satellite.iconem.com/#${zoom}/${center?.lng}/${center?.lat} \n` +
-      `REM https://www.google.fr/maps/@${center?.lat},${center?.lng},${zoom}z/data=!3m2!1e3!4b1 \n` +
+      `REM https://historical-satellite.iconem.com/#${zoom}/${center_lng}/${center_lat} \n` +
+      `REM https://www.google.fr/maps/@${center_lat},${center_lng},${zoom}z/data=!3m2!1e3!4b1 \n` +
       "REM ---\n\n" +
-      `set DOWNLOAD_FOLDER=planet-monthly-${center?.lng}-${center?.lat}-${zoom}\n` +
-      "set BASEMAP_WIDTH=4096\n" +
-      `for /f "delims=" %%i in ('dir /b/od/t:c C:\\PROGRA~1\\QGIS*') do set QGIS="C:\\PROGRA~1\\%%i"\n` +
+      `set DOWNLOAD_FOLDER=planet-monthly-${center_lng}-${center_lat}-${zoom}\n` +
+      "set BASEMAP_WIDTH=4096\n\n" +
+      `for /f "delims=" %%i in ('dir /b/od/t:c C:\\PROGRA~1\\QGIS*') do set QGIS="C:\\PROGRA~1\\%%i"\n\n` +
       gdalTranslateCmds.join("\n");
     aDiv.href =
       "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
@@ -460,7 +463,7 @@ function ControlPanel(props) {
             label="Basemap"
             onChange={handleBasemapChange}
           >
-            {Object.entries(basemapsTmsUrls).map(([key, value]) => (
+            {Object.entries(basemapsTmsSources).map(([key, value]) => (
               <MenuItem value={key} key={key}>
                 {BasemapsIds[key]}
               </MenuItem>
