@@ -74,17 +74,17 @@ function PlayableControls(props: any) {
   };
   const handleBackStep = () => {
     // setTimelineDate should be replaced by setSliderValue or similar
-    props.setTimelineDate(function (v: Date) {
-      if (isAfter(v, props.minDate)) {
-        return subMonths(v, 1);
-      }
-    });
+    // props.setTimelineDate(function (v: Date) {
+    //   if (isAfter(subMonths(new Date(v), 1), props.minDate)) {
+    //     return subMonths(new Date(v), 1);
+    //   }
+    // });
   };
   const handleNextStep = () => {
     // setTimelineDate should be replaced by setSliderValue or similar
     props.setTimelineDate(function (v: Date) {
-      if (isBefore(v, props.maxDate)) {
-        return addMonths(v, 1);
+      if (isBefore(addMonths(new Date(v), 2), props.maxDate)) {
+        return addMonths(new Date(v), 1);
       }
     });
   };
@@ -128,7 +128,7 @@ function PlayableControls(props: any) {
   return (
     <>
       <Button onClick={handleBackStep}>
-        <Tooltip title={"handleBackStep"}>
+        <Tooltip title={"Previous Month"}>
           <strong>
             {" "}
             <FontAwesomeIcon icon={faBackwardStep} />{" "}
@@ -136,7 +136,7 @@ function PlayableControls(props: any) {
         </Tooltip>
       </Button>
       <Button onClick={handleBack}>
-        <Tooltip title={"handleBack"}>
+        <Tooltip title={"Play Back Animation"}>
           <strong>
             {" "}
             <FontAwesomeIcon icon={faBackward} />{" "}
@@ -144,7 +144,7 @@ function PlayableControls(props: any) {
         </Tooltip>
       </Button>
       <Button onClick={handleStop}>
-        <Tooltip title={"handleStop"}>
+        <Tooltip title={"Play/Pause Animation"}>
           <strong>
             {" "}
             {isRunning ? (
@@ -158,7 +158,7 @@ function PlayableControls(props: any) {
         </Tooltip>
       </Button>
       <Button onClick={handleNext}>
-        <Tooltip title={"handleNext"}>
+        <Tooltip title={"Play Animation"}>
           <strong>
             {" "}
             <FontAwesomeIcon icon={faForward} />{" "}
@@ -166,7 +166,7 @@ function PlayableControls(props: any) {
         </Tooltip>
       </Button>
       <Button onClick={handleNextStep}>
-        <Tooltip title={"handleNextStep"}>
+        <Tooltip title={"Next Month"}>
           <strong>
             {" "}
             <FontAwesomeIcon icon={faForwardStep} />{" "}

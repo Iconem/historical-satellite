@@ -119,6 +119,9 @@ function App() {
 
   // const mapBounds = leftMapRef?.current?.getMap()?.getBounds();
 
+  // TODO: on playback, rightmap Moves so fires setActiveMap('right') on play, which is unwanted since it prevents further play
+  // const onLeftMoveStart = useCallback(() => console.log("left"), []);
+  // const onRightMoveStart = useCallback(() => console.log("right"), []);
   const onLeftMoveStart = useCallback(() => setActiveMap("left"), []);
   const onRightMoveStart = useCallback(() => setActiveMap("right"), []);
   const onMove = useCallback((evt: any) => setViewState(evt.viewState), []);
@@ -357,6 +360,7 @@ function App() {
             id="planetbasemap-source"
             scheme="xyz"
             type="raster"
+            // tiles={[]}
             tiles={[planetBasemapUrl(leftTimelineDate)]}
             tileSize={256}
             key={"planetBasemap"}
@@ -414,6 +418,7 @@ function App() {
             scheme="xyz"
             type="raster"
             tiles={[planetBasemapUrl(rightTimelineDate)]}
+            // tiles={[]}
             tileSize={256}
             // key={basemap_date_str}
             key={"planetBasemap"}
