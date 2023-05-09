@@ -113,46 +113,55 @@ function ControlPanel(props) {
     const mapRef = props.mapRef;
     const bounds = mapRef?.current?.getMap()?.getBounds();
     // Loop through each monthly basemap and download
-    const gdalTranslateCmds = Array.from(
-      { length: monthsCount },
-      (value, index) => sliderValToDate(index, minDate)
-    )
-      .filter(
-        (date, index) => index >= 0 && index <= 1000 && date.getMonth() >= 0
-      ) // Test with only yearly downloads
-      .map((date) => {
-        const tmsUrl = planetBasemapUrl(date);
-        const downloadUrl = titilerCropUrl(bounds, tmsUrl);
-        const date_YYYY_MM = formatDate(date);
-        console.log("downloading", aDiv.href, "to", aDiv.download);
-        // METHOD 1 WILL SIMPLY OPEN IMAGE IN NEW TAB
-        // aDiv.href = downloadUrl;
-        // aDiv.download = date_YYYY_MM + '_titiler.tif';
-        // aDiv.click();
-        // The download link won't work for cross-origin requests unless the other server sends a Content-Disposition: attachment header with the response. For security reasons.
 
-        // TRYING METHOD 2
-        // https://medium.com/charisol-community/downloading-resources-in-html5-a-download-may-not-work-as-expected-bf63546e2baa
-        // Also potentially useful: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
-        if (exportFramesMode)
-          fetch(downloadUrl)
-            .then((response) => response.blob())
-            .then((blob) => {
-              const blobURL = URL.createObjectURL(blob);
-              aDiv.href = blobURL;
-              aDiv.download = date_YYYY_MM + "_titiler.tif";
-              aDiv.click();
-            });
+    const filteredDates =
+      props.selectedTms == BasemapsIds.PlanetMonthly
+        ? Array.from({ length: monthsCount }, (value, index) =>
+            sliderValToDate(index, minDate)
+          ).filter(
+            // Test with only yearly downloads
+            (date, index) => index >= 0 && index <= 1000 && date.getMonth() >= 0
+          )
+        : [false];
 
-        return (
-          `REM ${date_YYYY_MM}: ${downloadUrl}\n` +
-          `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
-            tmsUrl
-          )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>" %DOWNLOAD_FOLDER%\\${
-            date_YYYY_MM + "_gdal.tif"
-          }`
-        );
-      });
+    const gdalTranslateCmds = filteredDates.map((date) => {
+      const tmsUrl =
+        props.selectedTms == BasemapsIds.PlanetMonthly
+          ? planetBasemapUrl(date)
+          : basemapsTmsSources[props.selectedTms].url;
+      const downloadUrl = titilerCropUrl(bounds, tmsUrl);
+      const date_YYYY_MM = date
+        ? formatDate(date)
+        : BasemapsIds[props.selectedTms];
+      console.log("downloading", aDiv.href, "to", aDiv.download);
+      // METHOD 1 WILL SIMPLY OPEN IMAGE IN NEW TAB
+      // aDiv.href = downloadUrl;
+      // aDiv.download = date_YYYY_MM + '_titiler.tif';
+      // aDiv.click();
+      // The download link won't work for cross-origin requests unless the other server sends a Content-Disposition: attachment header with the response. For security reasons.
+
+      // TRYING METHOD 2
+      // https://medium.com/charisol-community/downloading-resources-in-html5-a-download-may-not-work-as-expected-bf63546e2baa
+      // Also potentially useful: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
+      if (exportFramesMode)
+        fetch(downloadUrl)
+          .then((response) => response.blob())
+          .then((blob) => {
+            const blobURL = URL.createObjectURL(blob);
+            aDiv.href = blobURL;
+            aDiv.download = date_YYYY_MM + "_titiler.tif";
+            aDiv.click();
+          });
+
+      return (
+        `REM ${date_YYYY_MM}: ${downloadUrl}\n` +
+        `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
+          tmsUrl
+        )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>" %DOWNLOAD_FOLDER%\\${
+          date_YYYY_MM + "_gdal.tif"
+        }`
+      );
+    });
 
     // Write gdal_translate command to batch script with indices to original location of cropped version
     const center = mapRef?.current?.getMap()?.getCenter();
@@ -160,7 +169,10 @@ function ControlPanel(props) {
     const center_lng = center?.lng?.toFixed(degrees_decimals);
     const center_lat = center?.lat?.toFixed(degrees_decimals);
     const zoom = mapRef?.current?.getMap()?.getZoom();
-    const foldername = `planet-monthly-${center_lng}-${center_lat}-${zoom}`;
+    const foldername =
+      props.selectedTms == BasemapsIds.PlanetMonthly
+        ? `planet-monthly-${center_lng}-${center_lat}-${zoom}`
+        : BasemapsIds[props.selectedTms];
     const gdal_commands =
       "REM GDAL COMMANDS to retrieve Planet Monthly Basemaps (without TiTiler)\n" +
       `REM https://historical-satellite.iconem.com/#${zoom}/${center_lng}/${center_lat} \n` +
@@ -232,37 +244,45 @@ function ControlPanel(props) {
             ))}
             {/* <MenuItem value={''}>Mapbox</MenuItem> */}
           </Select>
-        </FormControl>{" "}
-        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="fr">
-          <DatePicker
-            slotProps={{
-              textField: { size: "small", style: { width: "130px" } },
-            }}
-            views={["year", "month"]}
-            label="Basemap Date"
-            format="YYYY/MM"
-            minDate={dayjs(minDate)}
-            maxDate={dayjs(maxDate)}
-            value={dayjs(props.timelineDate)}
-            onChange={(newValue) => props.setTimelineDate(new Date(newValue))}
-          />
-        </LocalizationProvider>{" "}
-        <TextField
-          style={{ width: "60px" }}
-          size={"small"}
-          id="outlined-number"
-          label="FPS"
-          type="number"
-          value={`${playbackSpeedFPS}`}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-            setPlaybackSpeedFPS(parseFloat(event.target.value));
-          }}
-          InputLabelProps={{
-            shrink: true,
-          }}
-        />{" "}
+        </FormControl>
+        {props.selectedTms == BasemapsIds.PlanetMonthly && (
+          <>
+            {" "}
+            <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="fr">
+              <DatePicker
+                slotProps={{
+                  textField: { size: "small", style: { width: "130px" } },
+                }}
+                views={["year", "month"]}
+                label="Basemap Date"
+                format="YYYY/MM"
+                minDate={dayjs(minDate)}
+                maxDate={dayjs(maxDate)}
+                value={dayjs(props.timelineDate)}
+                onChange={(newValue) =>
+                  props.setTimelineDate(new Date(newValue))
+                }
+              />
+            </LocalizationProvider>{" "}
+            <TextField
+              style={{ width: "60px" }}
+              size={"small"}
+              id="outlined-number"
+              label="FPS"
+              type="number"
+              value={`${playbackSpeedFPS}`}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                setPlaybackSpeedFPS(parseFloat(event.target.value));
+              }}
+              InputLabelProps={{
+                shrink: true,
+              }}
+            />
+          </>
+        )}{" "}
         <>
           <ExportSplitButton handleClick={handleExportButtonClick} />
+
           <a
             id="downloadFramesDiv"
             style={{ display: "none" }}
