@@ -31,6 +31,8 @@ import {
   subMonths,
   isBefore,
   isAfter,
+  eachYearOfInterval,
+  format,
 } from "date-fns";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -48,15 +50,14 @@ import {
   dateToSliderVal,
   formatDate,
   planetBasemapUrl,
-  dateTo_YYYY_MM,
   BasemapsIds,
   basemapsTmsSources,
 } from "./utilities";
 
 // Set min/max dates for planet monthly basemaps on component mount
 const minDate = new Date("2016-01-01T00:00:00.000");
-const maxDate = new Date();
-const monthsCount = differenceInMonths(maxDate, minDate) - 1;
+const maxDate = subMonths(new Date(), 1);
+const monthsCount = differenceInMonths(maxDate, minDate);
 
 // Helper functions to convert between date for date-picker and slider-value
 
@@ -65,14 +66,13 @@ function valueLabelFormat(value: number) {
 }
 
 // Set custom slider marks for each beginning of year
-const marks = Array.from({ length: monthsCount }, (_, index) =>
-  sliderValToDate(index, minDate)
-)
-  .filter((date) => date.getMonth() == 0)
-  .map((date) => ({
-    value: dateToSliderVal(date, minDate),
-    label: formatDate(date),
-  }));
+const marks = eachYearOfInterval({
+  start: minDate,
+  end: maxDate,
+}).map((date: Date) => ({
+  value: dateToSliderVal(date, minDate),
+  label: formatDate(date),
+}));
 
 // Component which is a playable slider, a Slider with PlayableControls
 // TODO: remove setTimelineDate
@@ -367,7 +367,7 @@ function ControlPanel(props) {
       .map((date) => {
         const tmsUrl = planetBasemapUrl(date);
         const downloadUrl = titilerCropUrl(bounds, tmsUrl);
-        const date_YYYY_MM = dateTo_YYYY_MM(date);
+        const date_YYYY_MM = formatDate(date);
         console.log("downloading", aDiv.href, "to", aDiv.download);
         // METHOD 1 WILL SIMPLY OPEN IMAGE IN NEW TAB
         // aDiv.href = downloadUrl;
@@ -388,7 +388,7 @@ function ControlPanel(props) {
           });
 
         return (
-          `REM ${dateTo_YYYY_MM(date)}: ${downloadUrl}\n` +
+          `REM ${date_YYYY_MM}: ${downloadUrl}\n` +
           `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
             tmsUrl
           )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>" %DOWNLOAD_FOLDER%\\${

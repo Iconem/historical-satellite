@@ -1,13 +1,13 @@
-import { differenceInMonths, addMonths, subMonths } from "date-fns";
+import { differenceInMonths, addMonths, subMonths, format } from "date-fns";
 
 // Conversion between slider value and datepicker date
 function sliderValToDate(val: number, minDate: Date) {
-  return addMonths(new Date(minDate), val);
+  return addMonths(minDate, val);
 }
 function dateToSliderVal(date: Date, minDate: Date) {
   return differenceInMonths(date, minDate);
 }
-const formatDate = (date: Date) => date.toISOString().substring(0, 7);
+const formatDate = (date: Date) => format(date, "yyyy-MM");
 
 // PlanetMonthly URLS
 const PLANET_BASEMAP_API_KEY = import.meta.env.VITE_PLANET_BASEMAP_API_KEY;
@@ -15,9 +15,11 @@ const PLANET_BASEMAP_API_KEY = import.meta.env.VITE_PLANET_BASEMAP_API_KEY;
 const dateTo_YYYY_MM = (date: Date) =>
   `${date.getFullYear()}_${(date.getMonth() + 1).toString().padStart(2, "0")}`;
 const planetBasemapUrl = (date: Date) => {
-  const basemap_date_str = dateTo_YYYY_MM(date);
   // basemap_date_str = "2019_01";
-  return `https://tiles.planet.com/basemaps/v1/planet-tiles/global_monthly_${basemap_date_str}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${PLANET_BASEMAP_API_KEY}`;
+  return `https://tiles.planet.com/basemaps/v1/planet-tiles/global_monthly_${format(
+    date,
+    "yyyy_MM"
+  )}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${PLANET_BASEMAP_API_KEY}`;
 };
 
 // const basemapsTmsUrls = {
@@ -90,7 +92,6 @@ export {
   dateToSliderVal,
   formatDate,
   planetBasemapUrl,
-  dateTo_YYYY_MM,
   BasemapsIds,
   basemapsTmsSources,
 };
