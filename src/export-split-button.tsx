@@ -68,6 +68,7 @@ function ExportSplitButton(props: any) {
           aria-haspopup="menu"
           onClick={() => props.handleClick(exportFramesMode)}
           variant="contained"
+          disableElevation
         >
           <FontAwesomeIcon icon={faDownload} />
         </Button>
