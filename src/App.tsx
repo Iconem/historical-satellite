@@ -33,7 +33,13 @@ function App() {
     75, 25,
   ]);
   const hash = window.location.hash;
-  const hashed_viewstate = hash.substring(1).split("/");
+  let hashed_viewstate = hash
+    .substring(1)
+    .split("/")
+    .map((x) => parseFloat(x));
+  if (hashed_viewstate.length !== 3) {
+    hashed_viewstate = [3.0, 20.0, 20.0];
+  }
   const [viewState, setViewState] = useState({
     zoom: hashed_viewstate[0],
     latitude: hashed_viewstate[1],
@@ -169,6 +175,13 @@ function App() {
   }, [width, splitScreenMode, splitPanelSizesPercent]);
   */
 
+  const sharedMapsProps = {
+    viewState,
+    mapboxAccessToken: MAPBOX_TOKEN,
+    renderWorldCopies: false,
+    dragRotate: false,
+  };
+
   return (
     <>
       <style>
@@ -234,27 +247,18 @@ function App() {
         </Split>
       </div>
       <Map
-        // Either use this controlled state
+        {...sharedMapsProps}
+        hash={true}
+        // Left/Right Maps Sync
         id="left-map"
-        {...viewState}
-        // padding={leftMapPadding}
+        ref={leftMapRef}
+        onClick={() => setActiveMap("left")}
         onMoveStart={onLeftMoveStart}
         onMove={activeMap === "left" ? onMove : () => ({})}
         style={LeftMapStyle}
-        hash={true}
         mapStyle={leftMapboxMapStyle}
-        // mapStyle={
-        //   leftSelectedTms == BasemapsIds.Mapbox
-        //     ? "mapbox://styles/mapbox/satellite-streets-v12"
-        //     : // : "mapbox://styles/mapbox/streets-v12"
-        //       { version: 8, sources: {}, layers: [] }
-        // } // "mapbox://styles/mapbox/dark-v9"
-        mapboxAccessToken={MAPBOX_TOKEN}
-        renderWorldCopies={false}
-        dragRotate={false}
+
         // projection={"naturalEarth"} // globe mercator naturalEarth equalEarth  // TODO: eventually make projection controllable
-        ref={leftMapRef}
-        onClick={() => setActiveMap("left")}
       >
         <GeocoderControl
           mapboxAccessToken={MAPBOX_TOKEN}
@@ -320,22 +324,15 @@ function App() {
       </Map>
 
       <Map
+        {...sharedMapsProps}
+        // Left/Right Maps Sync
         id="right-map"
-        {...viewState}
-        // padding={rightMapPadding}
+        ref={rightMapRef}
+        onClick={() => setActiveMap("right")}
         onMoveStart={onRightMoveStart}
         onMove={activeMap === "right" ? onMove : () => ({})}
         style={RightMapStyle}
         mapStyle={rightMapboxMapStyle}
-        // mapStyle="mapbox://styles/mapbox/satellite-streets-v12" // "mapbox://styles/mapbox/dark-v9"
-        // mapStyle={
-        //   rightSelectedTms == BasemapsIds.Mapbox
-        //     ? "mapbox://styles/mapbox/satellite-streets-v12"
-        //     : { version: 8, sources: {}, layers: [] }
-        // } // "mapbox://styles/mapbox/dark-v9"
-        mapboxAccessToken={MAPBOX_TOKEN}
-        ref={rightMapRef}
-        onClick={() => setActiveMap("right")}
       >
         {rightSelectedTms == BasemapsIds.Mapbox ? (
           <></>

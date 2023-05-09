@@ -239,6 +239,68 @@ export type Mode = "side-by-side" | "split-screen";
 // Download merged/cropped version of the TMS tiled using TiTiler
 // See this post: https://github.com/developmentseed/titiler/discussions/640
 // https://titiler.xyz/cog/crop/-110,-70,110,70.png?url=%3CGDAL_WMS%3E%3CService%20name%3D%27TMS%27%3E%3CServerUrl%3Ehttp%3A%2F%2Fmt.google.com%2Fvt%2Flyrs%3Dy%26amp%3Bx%3D%24%7Bx%7D%26amp%3By%3D%24%7By%7D%26amp%3Bz%3D%24%7Bz%7D%3C%2FServerUrl%3E%3C%2FService%3E%3CDataWindow%3E%3CUpperLeftX%3E-20037508.34%3C%2FUpperLeftX%3E%3CUpperLeftY%3E20037508.34%3C%2FUpperLeftY%3E%3CLowerRightX%3E20037508.34%3C%2FLowerRightX%3E%3CLowerRightY%3E-20037508.34%3C%2FLowerRightY%3E%3CTileLevel%3E18%3C%2FTileLevel%3E%3CTileCountX%3E1%3C%2FTileCountX%3E%3CTileCountY%3E1%3C%2FTileCountY%3E%3CYOrigin%3Etop%3C%2FYOrigin%3E%3C%2FDataWindow%3E%3CProjection%3EEPSG%3A3857%3C%2FProjection%3E%3CBlockSizeX%3E256%3C%2FBlockSizeX%3E%3CBlockSizeY%3E256%3C%2FBlockSizeY%3E%3CBandsCount%3E3%3C%2FBandsCount%3E%3CCache%20%2F%3E%3C%2FGDAL_WMS%3E
+function LinksSection(props: { mapRef: any }) {
+  const bounds = props.mapRef?.current?.getMap()?.getBounds();
+  const zoom = props.mapRef?.current?.getMap()?.getZoom();
+  const center = props.mapRef?.current?.getMap()?.getCenter();
+
+  return (
+    <Typography variant="body2">
+      {" "}
+      Useful:{" "}
+      <Link
+        href="https://google.com/intl/fr/earth/versions/#earth-pro"
+        target={"_blank"}
+      >
+        Google Earth Pro Desktop
+      </Link>
+      {" (with Historical imagery or "}
+      <Link
+        href={`https://earth.google.com/web/@${center?.lat},${center?.lng},0a,${
+          ((38000 * 4096) / Math.pow(2, zoom)) *
+          Math.cos((center?.lat * Math.PI) / 180)
+        }d,35y,0h,0t,0r`}
+        target={"_blank"}
+      >
+        Web
+      </Link>
+      {") | ESRI "}
+      <Link
+        href={`https://livingatlas.arcgis.com/wayback/#active=37890&ext=${bounds?.getWest()},${bounds?.getSouth()},${bounds?.getEast()},${bounds?.getNorth()}`}
+        target={"_blank"}
+      >
+        Imagery Wayback Machine
+      </Link>
+      {" | and "}
+      <Link
+        href={`https://earthengine.google.com/timelapse#v=${center?.lat},${center?.lng},${zoom},latLng&t=0.03&ps=50&bt=19840101&et=20201231&startDwell=0&endDwell=0`}
+        target={"_blank"}
+      >
+        Google Timelapse
+      </Link>
+      {" | "}
+      <Link href={`https://qms.nextgis.com/#`}>NextGIS QMS</Link>
+      {" | "}
+      <Link
+        href={`https://mc.bbbike.org/mc/?lon=${center?.lon}&lat=${center?.lat}&zoom=${zoom}&num=4&mt0=mapnik-german&mt1=cyclemap&mt2=bing-hybrid`}
+        target={"_blank"}
+      >
+        BBBike MapCompare
+      </Link>
+      {" | "}
+      <Link
+        href={`https://github.com/iconem/historical-satellite/`}
+        target={"_blank"}
+      >
+        GitHub repo
+      </Link>
+      {" | Made by "}
+      <Link href={`https://iconem.com`} target={"_blank"}>
+        Iconem
+      </Link>
+    </Typography>
+  );
+}
 
 const escapeTmsUrl = (url: string) =>
   url.replace("{x}", "${x}").replace("{y}", "${y}").replace("{z}", "${z}");
@@ -408,8 +470,6 @@ function ControlPanel(props) {
   const handleBasemapChange = (event: SelectChangeEvent) => {
     props.setSelectedTms(event.target.value as string);
   };
-  const bounds = props.mapRef?.current?.getMap()?.getBounds();
-
   return (
     <div
       style={{
@@ -532,66 +592,7 @@ function ControlPanel(props) {
             valueLabelFormat={valueLabelFormat}
           />
         )}
-        <Typography variant="body2">
-          {" "}
-          Useful:{" "}
-          <Link href="https://google.com/intl/fr/earth/versions/#earth-pro">
-            Google Earth Pro Desktop
-          </Link>
-          {" (with Historical imagery or "}
-          <Link
-            href={`https://earth.google.com/web/@${bounds?.getCenter()?.lat},${
-              bounds?.getCenter()?.lng
-            },2120.14317151a,89404.62057254d,35y,0h,0t,0r`}
-          >
-            Web
-          </Link>
-          {") | ESRI "}
-          <Link
-            href={`https://livingatlas.arcgis.com/wayback/#active=37890&ext=${bounds?.getWest()},${bounds?.getSouth()},${bounds?.getEast()},${bounds?.getNorth()}`}
-          >
-            Imagery Wayback Machine
-          </Link>
-          {" | and "}
-          <Link
-            href={`https://earthengine.google.com/timelapse#v=${
-              bounds?.getCenter()?.lat
-            },${
-              bounds?.getCenter()?.lng
-            },10,latLng&t=0.03&ps=50&bt=19840101&et=20201231&startDwell=0&endDwell=0`}
-          >
-            Google Timelapse
-          </Link>
-          {" | "}
-          <Link href={`https://qms.nextgis.com/#`}>NextGIS QMS</Link>
-          {" | "}
-          <Link
-            href={`https://mc.bbbike.org/mc/?lon=${
-              bounds?.getCenter()?.lon
-            }&lat=${
-              bounds?.getCenter()?.lat
-            }&zoom=10&num=4&mt0=mapnik-german&mt1=cyclemap&mt2=bing-hybrid`}
-          >
-            BBBike MapCompare
-          </Link>
-          {" | "}
-          <Link href={`https://github.com/iconem/historical-satellite/`}>
-            GitHub repo
-          </Link>
-          {" | Made by "}
-          <Link href={`https://iconem.com`}>Iconem</Link>
-        </Typography>
-        {/* <div
-          style={{
-            backgroundColor: "red",
-            position: "absolute",
-            width: "50px",
-            height: "50px",
-            bottom: 0,
-            left: props.activeMap == "left" ? 0 : "",
-            right: props.activeMap == "left" ? "" : 0,
-          }}
-        ></div> */}
+        <LinksSection mapRef={props.mapRef} />
       </div>
     </div>
   );
