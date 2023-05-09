@@ -282,7 +282,7 @@ function LinksSection(props: { mapRef: any }) {
       <Link href={`https://qms.nextgis.com/#`}>NextGIS QMS</Link>
       {" | "}
       <Link
-        href={`https://mc.bbbike.org/mc/?lon=${center?.lon}&lat=${center?.lat}&zoom=${zoom}&num=4&mt0=mapnik-german&mt1=cyclemap&mt2=bing-hybrid`}
+        href={`https://mc.bbbike.org/mc/?lon=${center?.lng}&lat=${center?.lat}&zoom=${zoom}&num=4&mt0=mapnik-german&mt1=cyclemap&mt2=bing-hybrid`}
         target={"_blank"}
       >
         BBBike MapCompare
