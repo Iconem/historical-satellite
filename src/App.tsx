@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import "./App.css";
 import Map, { type MapRef, Source, Layer } from "react-map-gl";
 import GeocoderControl from "./geocoder-control";
-import ControlPanel, { type SplitMode } from "./control-panel";
+import ControlPanel, { type MapSplitMode } from "./control-panel";
 import { subMonths } from "date-fns";
 import Split from "react-split";
 
@@ -88,7 +88,7 @@ function App() {
   // It is set to the map that received user input last ('movestart')
   const [activeMap, setActiveMap] = useState<"left" | "right">("left");
   const [splitScreenMode, setSplitScreenMode] =
-    useState<SplitMode>("split-screen");
+    useState<MapSplitMode>("split-screen");
   const LeftMapStyle: React.CSSProperties = {
     position: "absolute",
     top: 0,
@@ -187,7 +187,7 @@ function App() {
 
   const handleSplitScreenChange = (
     event: React.MouseEvent<HTMLElement>,
-    splitScreenMode: SplitMode
+    splitScreenMode: MapSplitMode
   ) => {
     if (splitScreenMode !== null) {
       setSplitScreenMode(splitScreenMode);

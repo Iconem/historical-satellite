@@ -1,5 +1,12 @@
-import { differenceInMonths, addMonths, subMonths, format } from "date-fns";
+import {
+  differenceInMonths,
+  addMonths,
+  subMonths,
+  format,
+  eachYearOfInterval,
+} from "date-fns";
 
+// Helper functions to convert between date for date-picker and slider-value
 // Conversion between slider value and datepicker date
 function sliderValToDate(val: number, minDate: Date) {
   return addMonths(minDate, val);
@@ -12,8 +19,6 @@ const formatDate = (date: Date) => format(date, "yyyy-MM");
 // PlanetMonthly URLS
 const PLANET_BASEMAP_API_KEY = import.meta.env.VITE_PLANET_BASEMAP_API_KEY;
 
-const dateTo_YYYY_MM = (date: Date) =>
-  `${date.getFullYear()}_${(date.getMonth() + 1).toString().padStart(2, "0")}`;
 const planetBasemapUrl = (date: Date) => {
   // basemap_date_str = "2019_01";
   return `https://tiles.planet.com/basemaps/v1/planet-tiles/global_monthly_${format(
@@ -21,6 +26,16 @@ const planetBasemapUrl = (date: Date) => {
     "yyyy_MM"
   )}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${PLANET_BASEMAP_API_KEY}`;
 };
+
+// Set custom slider marks for each beginning of year
+const getSliderMarks = (minDate: Date, maxDate: Date) =>
+  eachYearOfInterval({
+    start: minDate,
+    end: maxDate,
+  }).map((date: Date) => ({
+    value: dateToSliderVal(date, minDate),
+    label: formatDate(date),
+  }));
 
 // const basemapsTmsUrls = {
 // Typescript was not accepting computed strings in enums, so used open Mapbox api token for simplicity
@@ -94,4 +109,5 @@ export {
   planetBasemapUrl,
   BasemapsIds,
   basemapsTmsSources,
+  getSliderMarks,
 };

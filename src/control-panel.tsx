@@ -3,11 +3,12 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 
-// import { type LngLatBounds, type LngLat } from "react-map-gl";
 import { LngLatBounds } from "mapbox-gl";
 // import Slider from "@mui/material/Slider";
 // import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 // import PropTypes from 'prop-types'
+
+import LinksSection from "./links-section";
 
 import {
   Slider,
@@ -20,12 +21,6 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  Link,
-  Typography,
-  Switch,
-  FormControlLabel,
-  ToggleButton,
-  ToggleButtonGroup,
 
   // ButtonGroup
   ButtonGroup,
@@ -41,8 +36,6 @@ import {
   subMonths,
   isBefore,
   isAfter,
-  eachYearOfInterval,
-  format,
 } from "date-fns";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -62,130 +55,26 @@ import {
   planetBasemapUrl,
   BasemapsIds,
   basemapsTmsSources,
+  getSliderMarks,
 } from "./utilities";
-
-const splitButtonOptions = ["All Frames", "Script only"];
-
-// Material UI MUI SplitButton
-// https://mui.com/material-ui/react-button-group/
-function SplitButton(props: any) {
-  const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLDivElement>(null);
-  const [selectedIndex, setSelectedIndex] = useState(1);
-
-  // const handleClick = () => {
-  //   console.info(`You clicked ${splitButtonOptions[selectedIndex]}`);
-  // };
-
-  const handleMenuItemClick = (
-    event: React.MouseEvent<HTMLLIElement, MouseEvent>,
-    index: number
-  ) => {
-    setSelectedIndex(index);
-    setOpen(false);
-  };
-
-  const handleToggle = () => {
-    setOpen((prevOpen) => !prevOpen);
-  };
-
-  const handleClose = (event: Event) => {
-    if (
-      anchorRef.current &&
-      anchorRef.current.contains(event.target as HTMLElement)
-    ) {
-      return;
-    }
-
-    setOpen(false);
-  };
-  const exportFramesMode = selectedIndex == 0;
-
-  return (
-    <Fragment>
-      <ButtonGroup
-        // variant="contained"
-        ref={anchorRef}
-        aria-label="split button"
-        variant="outlined"
-      >
-        <Button onClick={handleToggle}>
-          {splitButtonOptions[selectedIndex]}
-        </Button>
-        <Button
-          size="small"
-          aria-controls={open ? "split-button-menu" : undefined}
-          aria-expanded={open ? "true" : undefined}
-          aria-label="select merge strategy"
-          aria-haspopup="menu"
-          onClick={() => props.handleClick(exportFramesMode)}
-          // variant="outlined"
-        >
-          <FontAwesomeIcon icon={faDownload} />
-        </Button>
-      </ButtonGroup>
-      <Popper
-        sx={{
-          zIndex: 1,
-        }}
-        open={open}
-        anchorEl={anchorRef.current}
-        role={undefined}
-        transition
-        disablePortal
-      >
-        {({ TransitionProps, placement }) => (
-          <Grow
-            {...TransitionProps}
-            style={{
-              transformOrigin:
-                placement === "bottom" ? "center top" : "center bottom",
-            }}
-          >
-            <Paper>
-              <ClickAwayListener onClickAway={handleClose}>
-                <MenuList id="split-button-menu" autoFocusItem>
-                  {splitButtonOptions.map((option, index) => (
-                    <MenuItem
-                      key={option}
-                      selected={index === selectedIndex}
-                      onClick={(event) => handleMenuItemClick(event, index)}
-                    >
-                      {option}
-                    </MenuItem>
-                  ))}
-                </MenuList>
-              </ClickAwayListener>
-            </Paper>
-          </Grow>
-        )}
-      </Popper>
-    </Fragment>
-  );
-}
 
 // Set min/max dates for planet monthly basemaps on component mount
 const minDate = new Date("2016-01-01T00:00:00.000");
 const maxDate = subMonths(new Date(), 1);
 const monthsCount = differenceInMonths(maxDate, minDate);
-
-// Helper functions to convert between date for date-picker and slider-value
+const marks = getSliderMarks(minDate, maxDate);
 
 function valueLabelFormat(value: number) {
   return `${formatDate(sliderValToDate(value, minDate))}`;
 }
 
-// Set custom slider marks for each beginning of year
-const marks = eachYearOfInterval({
-  start: minDate,
-  end: maxDate,
-}).map((date: Date) => ({
-  value: dateToSliderVal(date, minDate),
-  label: formatDate(date),
-}));
+const splitButtonOptions = ["All Frames", "Script only"];
+export type MapSplitMode = "side-by-side" | "split-screen";
 
+// -------------------------------------------
+// Component: PlayableSlider
+// -------------------------------------------
 // Component which is a playable slider, a Slider with PlayableControls
-// TODO: remove setTimelineDate
 function PlayableSlider(props: any) {
   return (
     <>
@@ -216,8 +105,13 @@ function PlayableSlider(props: any) {
     </>
   );
 }
+
+// -------------------------------------------
+// Component: PlayableControls
+// -------------------------------------------
 // Component for PlayableControls, based on this S/O post + customized
 // https://stackoverflow.com/questions/66983676/control-the-material-ui-slider-with-a-play-and-stop-buttons-in-react-js
+// TODO setTimelineDate should be replaced by setSliderValue or similar
 function PlayableControls(props: any) {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const directionRef = useRef<"back" | "forward">("back");
@@ -340,77 +234,113 @@ function PlayableControls(props: any) {
   );
 }
 
-// TODO: integrate unknown TMS servers via NextGis QMS:
+// -------------------------------------------
+// Component: ExportSplitButton
+// -------------------------------------------
+// Material UI MUI SplitButton
+// https://mui.com/material-ui/react-button-group/
+function ExportSplitButton(props: any) {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [selectedIndex, setSelectedIndex] = useState(1);
+
+  // const handleClick = () => {
+  //   console.info(`You clicked ${splitButtonOptions[selectedIndex]}`);
+  // };
+
+  const handleMenuItemClick = (
+    event: React.MouseEvent<HTMLLIElement, MouseEvent>,
+    index: number
+  ) => {
+    setSelectedIndex(index);
+    setOpen(false);
+  };
+
+  const handleToggle = () => {
+    setOpen((prevOpen) => !prevOpen);
+  };
+
+  const handleClose = (event: Event) => {
+    if (
+      anchorRef.current &&
+      anchorRef.current.contains(event.target as HTMLElement)
+    ) {
+      return;
+    }
+
+    setOpen(false);
+  };
+  const exportFramesMode = selectedIndex == 0;
+
+  return (
+    <Fragment>
+      <ButtonGroup ref={anchorRef} aria-label="split button" variant="outlined">
+        <Button onClick={handleToggle}>
+          {splitButtonOptions[selectedIndex]}
+        </Button>
+        <Button
+          size="small"
+          aria-controls={open ? "split-button-menu" : undefined}
+          aria-expanded={open ? "true" : undefined}
+          aria-label="select merge strategy"
+          aria-haspopup="menu"
+          onClick={() => props.handleClick(exportFramesMode)}
+          variant="contained"
+        >
+          <FontAwesomeIcon icon={faDownload} />
+        </Button>
+      </ButtonGroup>
+      <Popper
+        sx={{
+          zIndex: 1,
+        }}
+        open={open}
+        anchorEl={anchorRef.current}
+        role={undefined}
+        transition
+        disablePortal
+      >
+        {({ TransitionProps, placement }) => (
+          <Grow
+            {...TransitionProps}
+            style={{
+              transformOrigin:
+                placement === "bottom" ? "center top" : "center bottom",
+            }}
+          >
+            <Paper>
+              <ClickAwayListener onClickAway={handleClose}>
+                <MenuList id="split-button-menu" autoFocusItem>
+                  {splitButtonOptions.map((option, index) => (
+                    <MenuItem
+                      key={option}
+                      selected={index === selectedIndex}
+                      onClick={(event) => handleMenuItemClick(event, index)}
+                    >
+                      {option}
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </ClickAwayListener>
+            </Paper>
+          </Grow>
+        )}
+      </Popper>
+    </Fragment>
+  );
+}
+
+// Could integrate unknown TMS servers via NextGis QMS, but not needed since all major ones already there
 // https://docs.nextgis.com/qms_srv_dev/doc/api.html
 // https://qms.nextgis.com/api/v1/geoservices/?type=tms&search=satellite&limit=50&offset=0&submitter=&ordering=name
 
-export type SplitMode = "side-by-side" | "split-screen";
-
-// Download merged/cropped version of the TMS tiled using TiTiler
-// See this post: https://github.com/developmentseed/titiler/discussions/640
+// -----------------------------------------------------
+// Get TiTiler Crop url from params (bounds and tmsUrl)
+// -----------------------------------------------------
+// Download merged/cropped version of the TMS tiled using the TiTiler /cog/crop endpoint
+// Uses the gdal mini-driver WMS/TMS xml string representation
+// See this discussion: https://github.com/developmentseed/titiler/discussions/640
 // https://titiler.xyz/cog/crop/-110,-70,110,70.png?url=%3CGDAL_WMS%3E%3CService%20name%3D%27TMS%27%3E%3CServerUrl%3Ehttp%3A%2F%2Fmt.google.com%2Fvt%2Flyrs%3Dy%26amp%3Bx%3D%24%7Bx%7D%26amp%3By%3D%24%7By%7D%26amp%3Bz%3D%24%7Bz%7D%3C%2FServerUrl%3E%3C%2FService%3E%3CDataWindow%3E%3CUpperLeftX%3E-20037508.34%3C%2FUpperLeftX%3E%3CUpperLeftY%3E20037508.34%3C%2FUpperLeftY%3E%3CLowerRightX%3E20037508.34%3C%2FLowerRightX%3E%3CLowerRightY%3E-20037508.34%3C%2FLowerRightY%3E%3CTileLevel%3E18%3C%2FTileLevel%3E%3CTileCountX%3E1%3C%2FTileCountX%3E%3CTileCountY%3E1%3C%2FTileCountY%3E%3CYOrigin%3Etop%3C%2FYOrigin%3E%3C%2FDataWindow%3E%3CProjection%3EEPSG%3A3857%3C%2FProjection%3E%3CBlockSizeX%3E256%3C%2FBlockSizeX%3E%3CBlockSizeY%3E256%3C%2FBlockSizeY%3E%3CBandsCount%3E3%3C%2FBandsCount%3E%3CCache%20%2F%3E%3C%2FGDAL_WMS%3E
-function LinksSection(props: { mapRef: any }) {
-  const bounds = props.mapRef?.current?.getMap()?.getBounds();
-  const zoom = props.mapRef?.current?.getMap()?.getZoom();
-  const center = props.mapRef?.current?.getMap()?.getCenter();
-
-  return (
-    <Typography variant="body2">
-      {" "}
-      Useful:{" "}
-      <Link
-        href="https://google.com/intl/fr/earth/versions/#earth-pro"
-        target={"_blank"}
-      >
-        Google Earth Pro Desktop
-      </Link>
-      {" (with Historical imagery or "}
-      <Link
-        href={`https://earth.google.com/web/@${center?.lat},${center?.lng},0a,${
-          ((38000 * 4096) / Math.pow(2, zoom)) *
-          Math.cos((center?.lat * Math.PI) / 180)
-        }d,35y,0h,0t,0r`}
-        target={"_blank"}
-      >
-        Web
-      </Link>
-      {") | ESRI "}
-      <Link
-        href={`https://livingatlas.arcgis.com/wayback/#active=37890&ext=${bounds?.getWest()},${bounds?.getSouth()},${bounds?.getEast()},${bounds?.getNorth()}`}
-        target={"_blank"}
-      >
-        Imagery Wayback Machine
-      </Link>
-      {" | and "}
-      <Link
-        href={`https://earthengine.google.com/timelapse#v=${center?.lat},${center?.lng},${zoom},latLng&t=0.03&ps=50&bt=19840101&et=20201231&startDwell=0&endDwell=0`}
-        target={"_blank"}
-      >
-        Google Timelapse
-      </Link>
-      {" | "}
-      <Link href={`https://qms.nextgis.com/#`}>NextGIS QMS</Link>
-      {" | "}
-      <Link
-        href={`https://mc.bbbike.org/mc/?lon=${center?.lng}&lat=${center?.lat}&zoom=${zoom}&num=4&mt0=mapnik-german&mt1=cyclemap&mt2=bing-hybrid`}
-        target={"_blank"}
-      >
-        BBBike MapCompare
-      </Link>
-      {" | "}
-      <Link
-        href={`https://github.com/iconem/historical-satellite/`}
-        target={"_blank"}
-      >
-        GitHub repo
-      </Link>
-      {" | Made by "}
-      <Link href={`https://iconem.com`} target={"_blank"}>
-        Iconem
-      </Link>
-    </Typography>
-  );
-}
 
 const escapeTmsUrl = (url: string) =>
   url.replace("{x}", "${x}").replace("{y}", "${y}").replace("{z}", "${z}");
@@ -431,6 +361,9 @@ function titilerCropUrl(bounds: LngLatBounds, tmsUrl: string) {
   );
 }
 
+// -----------------------------------------------------
+// Component: ControlPanel
+// ------------------------------------------------------
 function ControlPanel(props) {
   // ---------------------------
   // Slider control
@@ -439,11 +372,10 @@ function ControlPanel(props) {
   };
   // For slider play/pause loops
   const [playbackSpeedFPS, setPlaybackSpeedFPS] = useState<number>(2);
-  const [exportFramesMode, setExportFramesMode] = useState<boolean>(true);
 
-  // End of playback controls
-  // ---------------------------
-
+  const handleBasemapChange = (event: SelectChangeEvent) => {
+    props.setSelectedTms(event.target.value as string);
+  };
   // ------------------------------------------
   // HANDLE EXPORT SAVE TO DISK
   // -------------------------------------------
@@ -496,6 +428,8 @@ function ControlPanel(props) {
           }`
         );
       });
+
+    // Write gdal_translate command to batch script with indices to original location of cropped version
     const center = mapRef?.current?.getMap()?.getCenter();
     const degrees_decimals = 4; // 4 decimals ~11m precision / 5 decimals ~1m precision
     const center_lng = center?.lng?.toFixed(degrees_decimals);
@@ -516,74 +450,20 @@ function ControlPanel(props) {
       "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
     aDiv.download = "gdal_commands.bat";
 
-    // METHOD 1
     aDiv.click();
-
     // METHOD 2 TEST not working, since MDN says only supported in secure contexts (HTTPS)
-    // const handle = getHandle();
-    // save(handle, "encodeURIComponent(gdal_commands)");
-
+    // Other way using HTML Native Filesystem API
+    // https://stackoverflow.com/questions/34870711/download-a-file-at-different-location-using-html5/70001920#70001920
+    // https://developer.chrome.com/articles/file-system-access/#create-a-new-file
+    // For desktop only: https://caniuse.com/native-filesystem-api
     console.log(gdal_commands);
   }
 
-  const handleExportFramesModeChange = (
-    event: React.MouseEvent<HTMLElement>,
-    exportFramesMode: boolean
-  ) => {
-    setExportFramesMode(exportFramesMode);
-  };
-  // Other way using HTML Native Filesystem API
-  // https://stackoverflow.com/questions/34870711/download-a-file-at-different-location-using-html5/70001920#70001920
-  // https://developer.chrome.com/articles/file-system-access/#create-a-new-file
-  // For desktop only: https://caniuse.com/native-filesystem-api
-  /*
-  async function getHandle() {
-    // set some options, like the suggested file name and the file type.
-    const options = {
-      suggestedName: "Historicl-satellite-downloader.bat",
-      types: [
-        {
-          description: "Frames/Batch downloader",
-          accept: {
-            "text/plain": [".bat"],
-            "image/png": [".png"],
-            "image/tif": [".tif"],
-          },
-        },
-      ],
-    };
-    // prompt the user for the location to save the file.
-    const handle = await window.showSaveFilePicker(options);
-    return handle;
-  }
-
-  async function save(handle: any, text: string) {
-    // creates a writable, used to write data to the file.
-    const writable = await handle.createWritable();
-    // write a string to the writable.
-    await writable.write(text);
-    // close the writable and save all changes to disk. this will prompt the user for write permission to the file, if it's the first time.
-    await writable.close();
-  }
-
-  function handleExportButtonClick2() {
-    // calls the function to let the user pick a location.
-    const handle = getHandle();
-    // save data to this location as many times as you want. first time will ask the user for permission
-    save(handle, "hello");
-    save(handle, "Lorem ipsum...");
-  }
-  */
-
-  const handleBasemapChange = (event: SelectChangeEvent) => {
-    props.setSelectedTms(event.target.value as string);
-  };
   return (
     <div
       style={{
         position: "absolute",
         width: "100%",
-        // height: "25%",
         pointerEvents: "auto",
 
         bottom: 0,
@@ -601,13 +481,10 @@ function ControlPanel(props) {
         style={{
           textAlign: "center",
           padding: "30px",
-          background: "#fffc", // "white",
+          background: "#fffc",
           width: "100%",
           alignSelf: "flex-end",
-          // margin: "0 30px",
-          //   bottom: "30px",
           position: "relative",
-          //   height: "100%",
           height: "auto",
         }}
       >
@@ -660,14 +537,12 @@ function ControlPanel(props) {
           onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
             setPlaybackSpeedFPS(parseFloat(event.target.value));
           }}
-          // min={0.1}
-          // max={100}
           InputLabelProps={{
             shrink: true,
           }}
         />{" "}
         <>
-          <SplitButton handleClick={handleExportButtonClick} />
+          <ExportSplitButton handleClick={handleExportButtonClick} />
           <a
             id="downloadFramesDiv"
             style={{ display: "none" }}
@@ -683,7 +558,6 @@ function ControlPanel(props) {
             min={0}
             max={monthsCount}
             marks={marks}
-            // step={1}
             //
             value={dateToSliderVal(props.timelineDate, minDate)}
             onChange={handleSliderChange}
