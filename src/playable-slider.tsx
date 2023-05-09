@@ -75,16 +75,20 @@ function PlayableControls(props: any) {
   const handleBackStep = () => {
     // setTimelineDate should be replaced by setSliderValue or similar
     props.setTimelineDate(function (v: Date) {
-      if (isAfter(subMonths(new Date(v), 1), props.minDate)) {
-        return subMonths(new Date(v), 1);
+      if (isAfter(v, props.minDate)) {
+        return subMonths(v, 1);
+      } else {
+        return v;
       }
     });
   };
   const handleNextStep = () => {
     // setTimelineDate should be replaced by setSliderValue or similar
     props.setTimelineDate(function (v: Date) {
-      if (isBefore(addMonths(new Date(v), 2), props.maxDate)) {
-        return addMonths(new Date(v), 1);
+      if (isBefore(addMonths(v, 1), props.maxDate)) {
+        return addMonths(v, 1);
+      } else {
+        return v;
       }
     });
   };
