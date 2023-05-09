@@ -26,6 +26,14 @@ import {
   FormControlLabel,
   ToggleButton,
   ToggleButtonGroup,
+
+  // ButtonGroup
+  ButtonGroup,
+  ClickAwayListener,
+  Grow,
+  Paper,
+  Popper,
+  MenuList,
 } from "@mui/material";
 import {
   differenceInMonths,
@@ -55,6 +63,106 @@ import {
   BasemapsIds,
   basemapsTmsSources,
 } from "./utilities";
+
+const splitButtonOptions = ["All Frames", "Script only"];
+
+// Material UI MUI SplitButton
+// https://mui.com/material-ui/react-button-group/
+function SplitButton(props: any) {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [selectedIndex, setSelectedIndex] = useState(1);
+
+  // const handleClick = () => {
+  //   console.info(`You clicked ${splitButtonOptions[selectedIndex]}`);
+  // };
+
+  const handleMenuItemClick = (
+    event: React.MouseEvent<HTMLLIElement, MouseEvent>,
+    index: number
+  ) => {
+    setSelectedIndex(index);
+    setOpen(false);
+  };
+
+  const handleToggle = () => {
+    setOpen((prevOpen) => !prevOpen);
+  };
+
+  const handleClose = (event: Event) => {
+    if (
+      anchorRef.current &&
+      anchorRef.current.contains(event.target as HTMLElement)
+    ) {
+      return;
+    }
+
+    setOpen(false);
+  };
+  const exportFramesMode = selectedIndex == 0;
+
+  return (
+    <Fragment>
+      <ButtonGroup
+        // variant="contained"
+        ref={anchorRef}
+        aria-label="split button"
+        variant="outlined"
+      >
+        <Button onClick={handleToggle}>
+          {splitButtonOptions[selectedIndex]}
+        </Button>
+        <Button
+          size="small"
+          aria-controls={open ? "split-button-menu" : undefined}
+          aria-expanded={open ? "true" : undefined}
+          aria-label="select merge strategy"
+          aria-haspopup="menu"
+          onClick={() => props.handleClick(exportFramesMode)}
+          // variant="outlined"
+        >
+          <FontAwesomeIcon icon={faDownload} />
+        </Button>
+      </ButtonGroup>
+      <Popper
+        sx={{
+          zIndex: 1,
+        }}
+        open={open}
+        anchorEl={anchorRef.current}
+        role={undefined}
+        transition
+        disablePortal
+      >
+        {({ TransitionProps, placement }) => (
+          <Grow
+            {...TransitionProps}
+            style={{
+              transformOrigin:
+                placement === "bottom" ? "center top" : "center bottom",
+            }}
+          >
+            <Paper>
+              <ClickAwayListener onClickAway={handleClose}>
+                <MenuList id="split-button-menu" autoFocusItem>
+                  {splitButtonOptions.map((option, index) => (
+                    <MenuItem
+                      key={option}
+                      selected={index === selectedIndex}
+                      onClick={(event) => handleMenuItemClick(event, index)}
+                    >
+                      {option}
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </ClickAwayListener>
+            </Paper>
+          </Grow>
+        )}
+      </Popper>
+    </Fragment>
+  );
+}
 
 // Set min/max dates for planet monthly basemaps on component mount
 const minDate = new Date("2016-01-01T00:00:00.000");
@@ -322,6 +430,7 @@ function titilerCropUrl(bounds: LngLatBounds, tmsUrl: string) {
     "&max_size=1024&coord-crs=epsg:4326"
   );
 }
+
 function ControlPanel(props) {
   // ---------------------------
   // Slider control
@@ -340,7 +449,7 @@ function ControlPanel(props) {
   // -------------------------------------------
   // Define function in component to use mapRef
   // Inspiration for ui overlays (date, latlon, scale) https://github.com/doersino/earthacrosstime/tree/master
-  function handleExportButtonClick() {
+  function handleExportButtonClick(exportFramesMode: boolean = true) {
     const aDiv = document.getElementById(
       "downloadFramesDiv"
     ) as HTMLAnchorElement;
@@ -557,40 +666,8 @@ function ControlPanel(props) {
             shrink: true,
           }}
         />{" "}
-        <ToggleButtonGroup
-          size="small"
-          color="primary"
-          // exclusive
-          value={exportFramesMode}
-          onChange={handleExportFramesModeChange}
-        >
-          <Tooltip
-            title={"Downloads every Planet monthly frame (2016-01 - Present)"}
-          >
-            <ToggleButton
-              value={true}
-              variant="contained"
-              onClick={handleExportButtonClick}
-            >
-              <FontAwesomeIcon icon={faDownload} /> {"(All Frames)"}
-            </ToggleButton>
-          </Tooltip>
-          <Tooltip title={"Downloads only the downloader script"}>
-            <ToggleButton value={false}>
-              <FontAwesomeIcon icon={faDownload} /> {"(Script only)"}
-            </ToggleButton>
-          </Tooltip>
-        </ToggleButtonGroup>{" "}
         <>
-          {/* <Button variant="contained" onClick={handleExportButtonClick}>
-            <Tooltip title={"Export Planet monthly frames 2016-01-Present"}>
-              <strong>
-                {" "}
-                <FontAwesomeIcon icon={faDownload} />
-                {" Script only"}
-              </strong>
-            </Tooltip>
-          </Button> */}
+          <SplitButton handleClick={handleExportButtonClick} />
           <a
             id="downloadFramesDiv"
             style={{ display: "none" }}
