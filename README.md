@@ -18,3 +18,5 @@ Features:
 - Selector to choose raster source TMS url (via a TMS URL, or a planet monthly basemap)
 - downloads planet monthly basemaps frames from 2016-01 to present via TiTiler (merge/crop tiles automagically and export to geotiff)
 - Generate gdal_translate batch script to remove the burden from the browser (and Titiler middleware) to the user desktop client (prevents missing frames, allow larger downloads etc)
+
+![App Screenshot](screenshot.jpg)
