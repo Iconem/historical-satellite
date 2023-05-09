@@ -22,6 +22,10 @@ import {
   MenuItem,
   Link,
   Typography,
+  Switch,
+  FormControlLabel,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import {
   differenceInMonths,
@@ -326,6 +330,7 @@ function ControlPanel(props) {
   };
   // For slider play/pause loops
   const [playbackSpeedFPS, setPlaybackSpeedFPS] = useState<number>(2);
+  const [exportFramesMode, setExportFramesMode] = useState<boolean>(true);
 
   // End of playback controls
   // ---------------------------
@@ -363,14 +368,15 @@ function ControlPanel(props) {
         // TRYING METHOD 2
         // https://medium.com/charisol-community/downloading-resources-in-html5-a-download-may-not-work-as-expected-bf63546e2baa
         // Also potentially useful: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
-        fetch(downloadUrl)
-          .then((response) => response.blob())
-          .then((blob) => {
-            const blobURL = URL.createObjectURL(blob);
-            aDiv.href = blobURL;
-            aDiv.download = date_YYYY_MM + "_titiler.tif";
-            aDiv.click();
-          });
+        if (exportFramesMode)
+          fetch(downloadUrl)
+            .then((response) => response.blob())
+            .then((blob) => {
+              const blobURL = URL.createObjectURL(blob);
+              aDiv.href = blobURL;
+              aDiv.download = date_YYYY_MM + "_titiler.tif";
+              aDiv.click();
+            });
 
         return (
           `REM ${date_YYYY_MM}: ${downloadUrl}\n` +
@@ -409,6 +415,12 @@ function ControlPanel(props) {
     console.log(gdal_commands);
   }
 
+  const handleExportFramesModeChange = (
+    event: React.MouseEvent<HTMLElement>,
+    exportFramesMode: boolean
+  ) => {
+    setExportFramesMode(exportFramesMode);
+  };
   // Other way using HTML Native Filesystem API
   // https://stackoverflow.com/questions/34870711/download-a-file-at-different-location-using-html5/70001920#70001920
   // https://developer.chrome.com/articles/file-system-access/#create-a-new-file
@@ -543,6 +555,22 @@ function ControlPanel(props) {
             shrink: true,
           }}
         />{" "}
+        <Tooltip
+          title={
+            "Downloads every Planet monthly frame or only the downloader script (2016-01 - Present)"
+          }
+        >
+          <ToggleButtonGroup
+            size="small"
+            color="primary"
+            exclusive
+            value={exportFramesMode}
+            onChange={handleExportFramesModeChange}
+          >
+            <ToggleButton value={true}>All Frames</ToggleButton>
+            <ToggleButton value={false}>Script only</ToggleButton>
+          </ToggleButtonGroup>
+        </Tooltip>{" "}
         <>
           <Button variant="contained" onClick={handleExportButtonClick}>
             <Tooltip title={"Export Planet monthly frames 2016-01-Present"}>
@@ -558,7 +586,7 @@ function ControlPanel(props) {
             target="_blank"
             download=""
           />
-        </>
+        </>{" "}
         {props.selectedTms == BasemapsIds.PlanetMonthly && (
           <PlayableSlider
             setTimelineDate={props.setTimelineDate}
