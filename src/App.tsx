@@ -67,11 +67,13 @@ function App() {
     leftMapRef.current
       ?.getSource("planetbasemap-source")
       ?.setTiles([planetBasemapUrl(leftTimelineDate)]);
+    resizeMaps();
   }, [leftTimelineDate]);
   useEffect(() => {
     (rightMapRef.current?.getSource("planetbasemap-source") as any)?.setTiles([
       planetBasemapUrl(rightTimelineDate),
     ]);
+    resizeMaps();
   }, [rightTimelineDate]);
 
   // const minDate = new Date("2016-01-01T00:00:00.000");
@@ -87,11 +89,15 @@ function App() {
   // This state specifies which map to use as the source of truth
   // It is set to the map that received user input last ('movestart')
   const [activeMap, setActiveMap] = useState<"left" | "right">("left");
+  const [clickedMap, setClickedMap] = useState<"left" | "right">("left");
   const [splitScreenMode, setSplitScreenMode] =
     useState<MapSplitMode>("split-screen");
   const LeftMapStyle: React.CSSProperties = {
     position: "absolute",
     top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width:
       splitScreenMode === "split-screen"
         ? `100%`
@@ -101,6 +107,8 @@ function App() {
   const RightMapStyle: React.CSSProperties = {
     position: "absolute",
     top: 0,
+    right: 0,
+    bottom: 0,
     left:
       splitScreenMode === "split-screen" ? 0 : `${splitPanelSizesPercent[0]}%`,
     width:
@@ -186,6 +194,8 @@ function App() {
     mapboxAccessToken: MAPBOX_TOKEN,
     renderWorldCopies: false,
     dragRotate: false,
+    width: "100%",
+    height: "100%",
   };
 
   const handleSplitScreenChange = (
@@ -273,7 +283,7 @@ function App() {
           height: "25px",
           top: "10px",
           left:
-            activeMap == "left"
+            clickedMap == "left"
               ? `${splitPanelSizesPercent[0] / 2}%`
               : `${splitPanelSizesPercent[0] + splitPanelSizesPercent[1] / 2}%`,
           transitionDuration: "250ms",
@@ -328,7 +338,7 @@ function App() {
         // Left/Right Maps Sync
         id="left-map"
         ref={leftMapRef}
-        onClick={() => setActiveMap("left")}
+        onClick={() => setClickedMap("left")}
         onMoveStart={onLeftMoveStart}
         onMove={activeMap === "left" ? onMove : () => ({})}
         style={LeftMapStyle}
@@ -404,7 +414,7 @@ function App() {
         // Left/Right Maps Sync
         id="right-map"
         ref={rightMapRef}
-        onClick={() => setActiveMap("right")}
+        onClick={() => setClickedMap("right")}
         onMoveStart={onRightMoveStart}
         onMove={activeMap === "right" ? onMove : () => ({})}
         style={RightMapStyle}
@@ -441,20 +451,20 @@ function App() {
       </Map>
       <ControlPanel
         timelineDate={
-          activeMap == "left" ? leftTimelineDate : rightTimelineDate
+          clickedMap == "left" ? leftTimelineDate : rightTimelineDate
         }
         setTimelineDate={
-          activeMap == "left" ? setLeftTimelineDate : setRightTimelineDate
+          clickedMap == "left" ? setLeftTimelineDate : setRightTimelineDate
         }
-        selectedTms={activeMap == "left" ? leftSelectedTms : rightSelectedTms}
+        selectedTms={clickedMap == "left" ? leftSelectedTms : rightSelectedTms}
         setSelectedTms={
-          activeMap == "left" ? setLeftSelectedTms : setRightSelectedTms
+          clickedMap == "left" ? setLeftSelectedTms : setRightSelectedTms
         }
         splitScreenMode={splitScreenMode}
         setSplitScreenMode={setSplitScreenMode}
         setSplitPanelSizesPercent={setSplitPanelSizesPercent}
         mapRef={leftMapRef}
-        activeMap={activeMap}
+        clickedMap={clickedMap}
       />
     </>
   );
