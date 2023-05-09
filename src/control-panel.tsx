@@ -20,8 +20,6 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  ToggleButton,
-  ToggleButtonGroup,
   Link,
   Typography,
 } from "@mui/material";
@@ -234,7 +232,7 @@ function PlayableControls(props: any) {
 // https://docs.nextgis.com/qms_srv_dev/doc/api.html
 // https://qms.nextgis.com/api/v1/geoservices/?type=tms&search=satellite&limit=50&offset=0&submitter=&ordering=name
 
-export type Mode = "side-by-side" | "split-screen";
+export type SplitMode = "side-by-side" | "split-screen";
 
 // Download merged/cropped version of the TMS tiled using TiTiler
 // See this post: https://github.com/developmentseed/titiler/discussions/640
@@ -331,19 +329,6 @@ function ControlPanel(props) {
 
   // End of playback controls
   // ---------------------------
-
-  const handleSplitScreenChange = (
-    event: React.MouseEvent<HTMLElement>,
-    splitScreenMode: string
-  ) => {
-    if (splitScreenMode !== null) {
-      props.setSplitScreenMode(splitScreenMode);
-    }
-
-    if (splitScreenMode == "side-by-side") {
-      props.setSplitPanelSizesPercent([50, 50]);
-    }
-  };
 
   // ------------------------------------------
   // HANDLE EXPORT SAVE TO DISK
@@ -503,18 +488,10 @@ function ControlPanel(props) {
           height: "auto",
         }}
       >
-        <ToggleButtonGroup
-          color="primary"
-          value={props.splitScreenMode}
-          exclusive
-          onChange={handleSplitScreenChange}
-          aria-label="Platform"
+        <FormControl
+          sx={{ m: 0, minWidth: 200, textAlign: "left" }}
           size="small"
         >
-          <ToggleButton value="split-screen">Split</ToggleButton>
-          <ToggleButton value="side-by-side">Side</ToggleButton>
-        </ToggleButtonGroup>{" "}
-        <FormControl sx={{ m: 0, minWidth: 120 }} size="small">
           <InputLabel id="select-label">Basemap</InputLabel>
           <Select
             labelId="demo-select-small-label"
@@ -533,7 +510,9 @@ function ControlPanel(props) {
         </FormControl>{" "}
         <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="fr">
           <DatePicker
-            slotProps={{ textField: { size: "small" } }}
+            slotProps={{
+              textField: { size: "small", style: { width: "130px" } },
+            }}
             // label={'"year" and "month"'}
             views={["year", "month"]}
             // style={{ margin: "50px", width: "10px" }}
@@ -543,13 +522,16 @@ function ControlPanel(props) {
             maxDate={dayjs(maxDate)}
             value={dayjs(props.timelineDate)}
             onChange={(newValue) => props.setTimelineDate(new Date(newValue))}
+            // renderInput={(params) => (
+            //   <TextField {...params} sx={{ width: "10px" }} />
+            // )}
           />
         </LocalizationProvider>{" "}
         <TextField
-          style={{ width: "100px" }}
+          style={{ width: "60px" }}
           size={"small"}
           id="outlined-number"
-          label="Playback FPS"
+          label="FPS"
           type="number"
           value={`${playbackSpeedFPS}`}
           onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
@@ -563,7 +545,7 @@ function ControlPanel(props) {
         />{" "}
         <>
           <Button variant="contained" onClick={handleExportButtonClick}>
-            <Tooltip title={"Export monthly frames"}>
+            <Tooltip title={"Export Planet monthly frames 2016-01-Present"}>
               <strong>
                 {" "}
                 <FontAwesomeIcon icon={faDownload} />{" "}

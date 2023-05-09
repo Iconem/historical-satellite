@@ -3,9 +3,11 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import "./App.css";
 import Map, { type MapRef, Source, Layer } from "react-map-gl";
 import GeocoderControl from "./geocoder-control";
-import ControlPanel, { type Mode } from "./control-panel";
+import ControlPanel, { type SplitMode } from "./control-panel";
 import { subMonths } from "date-fns";
 import Split from "react-split";
+
+import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 
 import { planetBasemapUrl, BasemapsIds, basemapsTmsSources } from "./utilities";
 
@@ -85,7 +87,8 @@ function App() {
   // This state specifies which map to use as the source of truth
   // It is set to the map that received user input last ('movestart')
   const [activeMap, setActiveMap] = useState<"left" | "right">("left");
-  const [splitScreenMode, setSplitScreenMode] = useState<Mode>("split-screen");
+  const [splitScreenMode, setSplitScreenMode] =
+    useState<SplitMode>("split-screen");
   const LeftMapStyle: React.CSSProperties = {
     position: "absolute",
     top: 0,
@@ -182,6 +185,19 @@ function App() {
     dragRotate: false,
   };
 
+  const handleSplitScreenChange = (
+    event: React.MouseEvent<HTMLElement>,
+    splitScreenMode: SplitMode
+  ) => {
+    if (splitScreenMode !== null) {
+      setSplitScreenMode(splitScreenMode);
+    }
+
+    if (splitScreenMode == "side-by-side") {
+      setSplitPanelSizesPercent([50, 50]);
+    }
+  };
+
   return (
     <>
       <style>
@@ -206,6 +222,63 @@ function App() {
           }
         `}
       </style>
+      <ToggleButtonGroup
+        style={{
+          // textAlign: "center",
+          // padding: "30px",
+          background: "#fffc", // "white",
+          // width: "100%",
+          // alignSelf: "flex-end",
+          // margin: "0 30px",
+          //   bottom: "30px",
+          // position: "absolute",
+          //   height: "100%",
+          // height: "auto",
+
+          zIndex: 30,
+          position: "absolute",
+          width: "100px",
+          left: `calc(${splitPanelSizesPercent[0]}% - 50px)`,
+          top: "10px",
+        }}
+        color="primary"
+        value={splitScreenMode}
+        exclusive
+        onChange={handleSplitScreenChange}
+        aria-label="Platform"
+        size="small"
+      >
+        <ToggleButton
+          value="split-screen"
+          style={{ width: "50%", margin: "0" }}
+        >
+          Split
+        </ToggleButton>
+        <ToggleButton
+          value="side-by-side"
+          style={{ width: "50%", margin: "0" }}
+        >
+          Side
+        </ToggleButton>
+      </ToggleButtonGroup>{" "}
+      <div
+        style={{
+          backgroundColor: "rgba(255,255,255,0.8)",
+          position: "absolute",
+          borderRadius: "25px",
+          width: "25px",
+          height: "25px",
+          top: "10px",
+          left:
+            activeMap == "left"
+              ? `${splitPanelSizesPercent[0] / 2}%`
+              : `${splitPanelSizesPercent[0] + splitPanelSizesPercent[1] / 2}%`,
+          transitionDuration: "250ms",
+          transitionProperty: "all",
+          // right: activeMap == "left" ? "" : `${splitPanelSizesPercent[1] / 2}%`,
+          zIndex: "20",
+        }}
+      ></div>
       <div>
         <Split
           sizes={splitPanelSizesPercent}
@@ -218,7 +291,7 @@ function App() {
           direction="horizontal"
           cursor="col-resize"
           className="split"
-          style={{ height: "100vh" }}
+          style={{ height: "100vh", backgroundColor: "#001624" }}
           onDragEnd={function (sizes: number[]) {
             setSplitPanelSizesPercent(sizes);
             resizeMaps();
@@ -322,7 +395,6 @@ function App() {
         } */}
         {/* beforeId={"GROUP_"} */}
       </Map>
-
       <Map
         {...sharedMapsProps}
         // Left/Right Maps Sync
@@ -379,24 +451,6 @@ function App() {
         mapRef={leftMapRef}
         activeMap={activeMap}
       />
-      <div
-        style={{
-          backgroundColor: "rgba(255,255,255,0.8)",
-          position: "absolute",
-          borderRadius: "25px",
-          width: "25px",
-          height: "25px",
-          top: "10px",
-          left:
-            activeMap == "left"
-              ? `${splitPanelSizesPercent[0] / 2}%`
-              : `${splitPanelSizesPercent[0] + splitPanelSizesPercent[1] / 2}%`,
-          transitionDuration: "250ms",
-          transitionProperty: "all",
-          // right: activeMap == "left" ? "" : `${splitPanelSizesPercent[1] / 2}%`,
-          zIndex: "20",
-        }}
-      ></div>
     </>
   );
 }
