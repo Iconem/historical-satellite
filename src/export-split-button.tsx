@@ -56,8 +56,8 @@ function ExportSplitButton(props: any) {
 
   return (
     <Fragment>
-      <ButtonGroup ref={anchorRef} aria-label="split button" variant="outlined">
-        <Button onClick={handleToggle}>
+      <ButtonGroup aria-label="split button" variant="outlined">
+        <Button onClick={handleToggle} ref={anchorRef}>
           {splitButtonOptions[selectedIndex]}
         </Button>
         <Button
@@ -74,14 +74,12 @@ function ExportSplitButton(props: any) {
         </Button>
       </ButtonGroup>
       <Popper
-        sx={{
-          zIndex: 1,
-        }}
         open={open}
         anchorEl={anchorRef.current}
         role={undefined}
         transition
         disablePortal
+        placement={"top"}
       >
         {({ TransitionProps, placement }) => (
           <Grow

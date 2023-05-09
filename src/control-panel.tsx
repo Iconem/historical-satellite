@@ -208,7 +208,7 @@ function ControlPanel(props) {
         left: 0,
         boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
         outline: "none",
-        overflow: "auto",
+        overflow: "visible",
         display: "flex",
         flexDirection: "column",
         flex: 1,
