@@ -8,13 +8,12 @@ import { LngLatBounds } from "mapbox-gl";
 // import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 // import PropTypes from 'prop-types'
 
+import PlayableSlider from "./playable-slider";
 import LinksSection from "./links-section";
+import ExportSplitButton from "./export-split-button";
 
 import {
-  Slider,
   Button,
-  Box,
-  Tooltip,
   TextField,
   Select,
   SelectChangeEvent,
@@ -30,23 +29,9 @@ import {
   Popper,
   MenuList,
 } from "@mui/material";
-import {
-  differenceInMonths,
-  addMonths,
-  subMonths,
-  isBefore,
-  isAfter,
-} from "date-fns";
+import { differenceInMonths, subMonths } from "date-fns";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faForward,
-  faPlay,
-  faBackward,
-  faForwardStep,
-  faBackwardStep,
-  faCircleStop,
-  faDownload,
-} from "@fortawesome/free-solid-svg-icons";
+import { faDownload } from "@fortawesome/free-solid-svg-icons";
 
 import {
   sliderValToDate,
@@ -68,267 +53,7 @@ function valueLabelFormat(value: number) {
   return `${formatDate(sliderValToDate(value, minDate))}`;
 }
 
-const splitButtonOptions = ["All Frames", "Script only"];
 export type MapSplitMode = "side-by-side" | "split-screen";
-
-// -------------------------------------------
-// Component: PlayableSlider
-// -------------------------------------------
-// Component which is a playable slider, a Slider with PlayableControls
-function PlayableSlider(props: any) {
-  return (
-    <>
-      <Box sx={{ width: "50%", margin: "auto" }}>
-        <Slider
-          value={props.value}
-          min={props.min}
-          step={1}
-          max={props.max}
-          marks={props.marks}
-          //
-          onChange={props.onChange}
-          valueLabelFormat={props.valueLabelFormat}
-          getAriaValueText={props.valueLabelFormat}
-          //
-          size="small"
-          stlye={{ width: "50%" }}
-          valueLabelDisplay="auto"
-        />
-      </Box>
-      <>
-        <PlayableControls
-          // setTimelineDate should be replaced by setSliderValue or similar
-          setTimelineDate={props.setTimelineDate}
-          playbackSpeedFPS={props.playbackSpeedFPS}
-        />
-      </>
-    </>
-  );
-}
-
-// -------------------------------------------
-// Component: PlayableControls
-// -------------------------------------------
-// Component for PlayableControls, based on this S/O post + customized
-// https://stackoverflow.com/questions/66983676/control-the-material-ui-slider-with-a-play-and-stop-buttons-in-react-js
-// TODO setTimelineDate should be replaced by setSliderValue or similar
-function PlayableControls(props: any) {
-  const [isRunning, setIsRunning] = useState<boolean>(false);
-  const directionRef = useRef<"back" | "forward">("back");
-  const intervalIdRef = useRef(0);
-
-  const handleBack = () => {
-    directionRef.current = "back";
-    if (!isRunning) {
-      setIsRunning(true);
-    }
-  };
-  const handleNext = () => {
-    directionRef.current = "forward";
-    if (!isRunning) {
-      setIsRunning(true);
-    }
-  };
-  const handleBackStep = () => {
-    // setTimelineDate should be replaced by setSliderValue or similar
-    props.setTimelineDate(function (v: Date) {
-      if (isAfter(v, minDate)) {
-        return subMonths(v, 1);
-      }
-    });
-  };
-  const handleNextStep = () => {
-    // setTimelineDate should be replaced by setSliderValue or similar
-    props.setTimelineDate(function (v: Date) {
-      if (isBefore(v, maxDate)) {
-        return addMonths(v, 1);
-      }
-    });
-  };
-  const handleStop = () => {
-    setIsRunning((r) => !r);
-  };
-
-  useEffect(() => {
-    if (isRunning) {
-      intervalIdRef.current = setInterval(() => {
-        if (directionRef.current === "forward") {
-          // setValue((v) => ++v);
-          // setTimelineDate should be replaced by setSliderValue or similar
-          props.setTimelineDate(function (v: Date) {
-            if (isBefore(v, maxDate)) {
-              return addMonths(v, 1);
-            } else {
-              setIsRunning(false);
-              return v;
-            }
-          });
-        }
-        if (directionRef.current === "back") {
-          // setValue((v) => --v);
-          // setTimelineDate should be replaced by setSliderValue or similar
-          props.setTimelineDate(function (v: Date) {
-            if (isAfter(v, minDate)) {
-              return subMonths(v, 1);
-            } else {
-              setIsRunning(false);
-              return v;
-            }
-          });
-        }
-      }, 1000 / props.playbackSpeedFPS);
-    }
-
-    return () => clearInterval(intervalIdRef.current);
-  }, [isRunning]);
-
-  return (
-    <>
-      <Button onClick={handleBackStep}>
-        <Tooltip title={"handleBackStep"}>
-          <strong>
-            {" "}
-            <FontAwesomeIcon icon={faBackwardStep} />{" "}
-          </strong>
-        </Tooltip>
-      </Button>
-      <Button onClick={handleBack}>
-        <Tooltip title={"handleBack"}>
-          <strong>
-            {" "}
-            <FontAwesomeIcon icon={faBackward} />{" "}
-          </strong>
-        </Tooltip>
-      </Button>
-      <Button onClick={handleStop}>
-        <Tooltip title={"handleStop"}>
-          <strong>
-            {" "}
-            {isRunning ? (
-              <FontAwesomeIcon icon={faCircleStop} />
-            ) : directionRef.current == "forward" ? (
-              <FontAwesomeIcon icon={faPlay} />
-            ) : (
-              <FontAwesomeIcon icon={faPlay} transform="flip-h" />
-            )}{" "}
-          </strong>
-        </Tooltip>
-      </Button>
-      <Button onClick={handleNext}>
-        <Tooltip title={"handleNext"}>
-          <strong>
-            {" "}
-            <FontAwesomeIcon icon={faForward} />{" "}
-          </strong>
-        </Tooltip>
-      </Button>
-      <Button onClick={handleNextStep}>
-        <Tooltip title={"handleNextStep"}>
-          <strong>
-            {" "}
-            <FontAwesomeIcon icon={faForwardStep} />{" "}
-          </strong>
-        </Tooltip>
-      </Button>
-    </>
-  );
-}
-
-// -------------------------------------------
-// Component: ExportSplitButton
-// -------------------------------------------
-// Material UI MUI SplitButton
-// https://mui.com/material-ui/react-button-group/
-function ExportSplitButton(props: any) {
-  const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLDivElement>(null);
-  const [selectedIndex, setSelectedIndex] = useState(1);
-
-  // const handleClick = () => {
-  //   console.info(`You clicked ${splitButtonOptions[selectedIndex]}`);
-  // };
-
-  const handleMenuItemClick = (
-    event: React.MouseEvent<HTMLLIElement, MouseEvent>,
-    index: number
-  ) => {
-    setSelectedIndex(index);
-    setOpen(false);
-  };
-
-  const handleToggle = () => {
-    setOpen((prevOpen) => !prevOpen);
-  };
-
-  const handleClose = (event: Event) => {
-    if (
-      anchorRef.current &&
-      anchorRef.current.contains(event.target as HTMLElement)
-    ) {
-      return;
-    }
-
-    setOpen(false);
-  };
-  const exportFramesMode = selectedIndex == 0;
-
-  return (
-    <Fragment>
-      <ButtonGroup ref={anchorRef} aria-label="split button" variant="outlined">
-        <Button onClick={handleToggle}>
-          {splitButtonOptions[selectedIndex]}
-        </Button>
-        <Button
-          size="small"
-          aria-controls={open ? "split-button-menu" : undefined}
-          aria-expanded={open ? "true" : undefined}
-          aria-label="select merge strategy"
-          aria-haspopup="menu"
-          onClick={() => props.handleClick(exportFramesMode)}
-          variant="contained"
-        >
-          <FontAwesomeIcon icon={faDownload} />
-        </Button>
-      </ButtonGroup>
-      <Popper
-        sx={{
-          zIndex: 1,
-        }}
-        open={open}
-        anchorEl={anchorRef.current}
-        role={undefined}
-        transition
-        disablePortal
-      >
-        {({ TransitionProps, placement }) => (
-          <Grow
-            {...TransitionProps}
-            style={{
-              transformOrigin:
-                placement === "bottom" ? "center top" : "center bottom",
-            }}
-          >
-            <Paper>
-              <ClickAwayListener onClickAway={handleClose}>
-                <MenuList id="split-button-menu" autoFocusItem>
-                  {splitButtonOptions.map((option, index) => (
-                    <MenuItem
-                      key={option}
-                      selected={index === selectedIndex}
-                      onClick={(event) => handleMenuItemClick(event, index)}
-                    >
-                      {option}
-                    </MenuItem>
-                  ))}
-                </MenuList>
-              </ClickAwayListener>
-            </Paper>
-          </Grow>
-        )}
-      </Popper>
-    </Fragment>
-  );
-}
 
 // Could integrate unknown TMS servers via NextGis QMS, but not needed since all major ones already there
 // https://docs.nextgis.com/qms_srv_dev/doc/api.html
@@ -513,18 +238,13 @@ function ControlPanel(props) {
             slotProps={{
               textField: { size: "small", style: { width: "130px" } },
             }}
-            // label={'"year" and "month"'}
             views={["year", "month"]}
-            // style={{ margin: "50px", width: "10px" }}
             label="Basemap Date"
             format="YYYY/MM"
             minDate={dayjs(minDate)}
             maxDate={dayjs(maxDate)}
             value={dayjs(props.timelineDate)}
             onChange={(newValue) => props.setTimelineDate(new Date(newValue))}
-            // renderInput={(params) => (
-            //   <TextField {...params} sx={{ width: "10px" }} />
-            // )}
           />
         </LocalizationProvider>{" "}
         <TextField
@@ -554,6 +274,8 @@ function ControlPanel(props) {
           <PlayableSlider
             setTimelineDate={props.setTimelineDate}
             playbackSpeedFPS={playbackSpeedFPS}
+            minDate={minDate}
+            maxDate={maxDate}
             //
             min={0}
             max={monthsCount}
