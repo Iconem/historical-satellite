@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Fragment } from "react";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -392,14 +392,16 @@ function ControlPanel(props) {
     const center_lng = center?.lng?.toFixed(degrees_decimals);
     const center_lat = center?.lat?.toFixed(degrees_decimals);
     const zoom = mapRef?.current?.getMap()?.getZoom();
+    const foldername = `planet-monthly-${center_lng}-${center_lat}-${zoom}`;
     const gdal_commands =
       "REM GDAL COMMANDS to retrieve Planet Monthly Basemaps (without TiTiler)\n" +
       `REM https://historical-satellite.iconem.com/#${zoom}/${center_lng}/${center_lat} \n` +
       `REM https://www.google.fr/maps/@${center_lat},${center_lng},${zoom}z/data=!3m2!1e3!4b1 \n` +
       "REM ---\n\n" +
-      `set DOWNLOAD_FOLDER=planet-monthly-${center_lng}-${center_lat}-${zoom}\n` +
+      `set DOWNLOAD_FOLDER=${foldername}\n` +
       "set BASEMAP_WIDTH=4096\n\n" +
-      `for /f "delims=" %%i in ('dir /b/od/t:c C:\\PROGRA~1\\QGIS*') do set QGIS="C:\\PROGRA~1\\%%i"\n\n` +
+      `for /f "delims=" %%i in ('dir /b/od/t:c C:\\PROGRA~1\\QGIS*') do set QGIS="C:\\PROGRA~1\\%%i"\n` +
+      `mkdir ${foldername} \n\n` +
       gdalTranslateCmds.join("\n");
     aDiv.href =
       "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
@@ -555,31 +557,40 @@ function ControlPanel(props) {
             shrink: true,
           }}
         />{" "}
-        <Tooltip
-          title={
-            "Downloads every Planet monthly frame or only the downloader script (2016-01 - Present)"
-          }
+        <ToggleButtonGroup
+          size="small"
+          color="primary"
+          // exclusive
+          value={exportFramesMode}
+          onChange={handleExportFramesModeChange}
         >
-          <ToggleButtonGroup
-            size="small"
-            color="primary"
-            exclusive
-            value={exportFramesMode}
-            onChange={handleExportFramesModeChange}
+          <Tooltip
+            title={"Downloads every Planet monthly frame (2016-01 - Present)"}
           >
-            <ToggleButton value={true}>All Frames</ToggleButton>
-            <ToggleButton value={false}>Script only</ToggleButton>
-          </ToggleButtonGroup>
-        </Tooltip>{" "}
+            <ToggleButton
+              value={true}
+              variant="contained"
+              onClick={handleExportButtonClick}
+            >
+              <FontAwesomeIcon icon={faDownload} /> {"(All Frames)"}
+            </ToggleButton>
+          </Tooltip>
+          <Tooltip title={"Downloads only the downloader script"}>
+            <ToggleButton value={false}>
+              <FontAwesomeIcon icon={faDownload} /> {"(Script only)"}
+            </ToggleButton>
+          </Tooltip>
+        </ToggleButtonGroup>{" "}
         <>
-          <Button variant="contained" onClick={handleExportButtonClick}>
+          {/* <Button variant="contained" onClick={handleExportButtonClick}>
             <Tooltip title={"Export Planet monthly frames 2016-01-Present"}>
               <strong>
                 {" "}
-                <FontAwesomeIcon icon={faDownload} />{" "}
+                <FontAwesomeIcon icon={faDownload} />
+                {" Script only"}
               </strong>
             </Tooltip>
-          </Button>
+          </Button> */}
           <a
             id="downloadFramesDiv"
             style={{ display: "none" }}
