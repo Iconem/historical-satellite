@@ -248,7 +248,7 @@ function App() {
           //   height: "100%",
           // height: "auto",
 
-          zIndex: 30,
+          zIndex: 20,
           position: "absolute",
           width: "100px",
           left: `calc(${splitPanelSizesPercent[0]}% - 50px)`,

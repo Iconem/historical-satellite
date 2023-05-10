@@ -95,6 +95,39 @@ function titilerCropUrl(bounds: LngLatBounds, tmsUrl: string) {
 }
 
 // -----------------------------------------------------
+// BATCHES DOWNLOAD
+// Download TiTiler images by batches to avoid too many requests
+// resulting in 500 internal server error
+// ------------------------------------------------------
+const PROMISES_BATCH_SIZE = 5;
+const PROMISES_BATCH_DELAY = 2000; // 1000ms
+const timer = async (ms: number): Promise<any> =>
+  await new Promise((resolve) => setTimeout(resolve, ms));
+
+// Send batches of PROMISES_BATCH_SIZE POST requests to ApolloMapping API server
+async function fetchTitilerFramesBatches(gdalTranslateCmds: any, aDiv: any) {
+  for (let i = 0; i < gdalTranslateCmds.length; i += PROMISES_BATCH_SIZE) {
+    const chunk = gdalTranslateCmds.slice(i, i + PROMISES_BATCH_SIZE);
+    // Await all promises of chunk fetching
+    await Promise.all(
+      chunk.map((c: any) => {
+        fetch(c.downloadUrl)
+          .then((response) => response.blob())
+          .then((blob) => {
+            console.log("downloading new ", c.downloadUrl);
+            const blobURL = URL.createObjectURL(blob);
+            aDiv.href = blobURL;
+            aDiv.download = c.date_YYYY_MM + "_titiler.tif";
+            aDiv.click();
+          });
+      })
+    );
+
+    await timer(PROMISES_BATCH_DELAY);
+  }
+}
+
+// -----------------------------------------------------
 // Component: ControlPanel
 // ------------------------------------------------------
 function ControlPanel(props) {
@@ -196,18 +229,23 @@ function ControlPanel(props) {
     console.log(gdal_commands);
 
     // Dowloads all frames
-    if (exportFramesMode)
-      gdalTranslateCmds.forEach((c) => {
-        fetch(c.downloadUrl)
-          .then((response) => response.blob())
-          .then((blob) => {
-            console.log("downloading new ", c.downloadUrl);
-            const blobURL = URL.createObjectURL(blob);
-            aDiv.href = blobURL;
-            aDiv.download = c.date_YYYY_MM + "_titiler.tif";
-            aDiv.click();
-          });
-      });
+    if (exportFramesMode) {
+      // // --- METHOD 1 ---
+      // gdalTranslateCmds.forEach((c) => {
+      //   fetch(c.downloadUrl)
+      //     .then((response) => response.blob())
+      //     .then((blob) => {
+      //       console.log("downloading new ", c.downloadUrl);
+      //       const blobURL = URL.createObjectURL(blob);
+      //       aDiv.href = blobURL;
+      //       aDiv.download = c.date_YYYY_MM + "_titiler.tif";
+      //       aDiv.click();
+      //     });
+      // });
+
+      // // --- METHOD 2 : batches ---
+      fetchTitilerFramesBatches(gdalTranslateCmds, aDiv);
+    }
   }
 
   return (
@@ -226,6 +264,7 @@ function ControlPanel(props) {
         display: "flex",
         flexDirection: "column",
         flex: 1,
+        zIndex: 20,
       }}
     >
       <div
