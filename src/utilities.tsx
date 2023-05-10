@@ -102,6 +102,15 @@ const basemapsTmsSources: any = {
   // "Heremaps Sat"= "http://1.aerial.maps.api.here.com/maptile/2.1/maptile/newest/satellite.day/{z}/{x}/{y}/256/png8?app_id=hBqHrthpuP0nRYifaTTT&amp;app_code=iA3EYhFlEcBztET4RuA7Bg",
 };
 
+// Lighter to use this utility rather than import whole of proj4
+function convertLatlonTo3857(point: LngLat) {
+  var x = (point.lng * 20037508.34) / 180;
+  var y =
+    Math.log(Math.tan(((90 + point.lat) * Math.PI) / 360)) / (Math.PI / 180);
+  y = (y * 20037508.34) / 180;
+  return { x, y };
+}
+
 export {
   sliderValToDate,
   dateToSliderVal,
@@ -110,4 +119,5 @@ export {
   BasemapsIds,
   basemapsTmsSources,
   getSliderMarks,
+  convertLatlonTo3857,
 };

@@ -3,7 +3,7 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 
-import { LngLatBounds } from "mapbox-gl";
+import { LngLatBounds, LngLat } from "mapbox-gl";
 // import Slider from "@mui/material/Slider";
 // import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 // import PropTypes from 'prop-types'
@@ -41,7 +41,11 @@ import {
   BasemapsIds,
   basemapsTmsSources,
   getSliderMarks,
+  convertLatlonTo3857,
 } from "./utilities";
+
+const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
+const MAX_FRAME_SIZE = 2048; // 1024 - 2048
 
 // Set min/max dates for planet monthly basemaps on component mount
 const minDate = new Date("2016-01-01T00:00:00.000");
@@ -69,6 +73,8 @@ export type MapSplitMode = "side-by-side" | "split-screen";
 
 const escapeTmsUrl = (url: string) =>
   url.replace("{x}", "${x}").replace("{y}", "${y}").replace("{z}", "${z}");
+// const unescapeTmsUrl = (url: string) =>
+//   url.replace("${x}", "{x}").replace("${y}", "{y}").replace("${z}", "{z}");
 function titilerCropUrl(bounds: LngLatBounds, tmsUrl: string) {
   // const bounds = new LngLatBounds(new LngLat(-110, -70), new LngLat(110, 70));
   // "http://mt.google.com/vt/lyrs=y&amp;x=${x}&amp;y=${y}&amp;z=${z}";
@@ -76,14 +82,16 @@ function titilerCropUrl(bounds: LngLatBounds, tmsUrl: string) {
     tmsUrl
   )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>`;
   //
-  return (
-    "https://titiler.xyz/cog/crop/" +
-    // "https://app.iconem.com/titiler/cog/crop/" +
-    `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}` +
-    ".tif" +
-    `?url=${encodeURIComponent(wmsUrl)}` +
-    "&max_size=1024&coord-crs=epsg:4326"
-  );
+  // titiler returned image is in 4326 CRS, cannot be modified yet
+  const coords_str = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}.tif?max_size=${MAX_FRAME_SIZE}&coord-crs=epsg:4326`; // 4326
+  // Bug with 3857 bounds, InternalServerError 500 on titiler, so feature-request to support dst-tms
+  // const ll_3857 = convertLatlonTo3857(bounds.getSouthWest());
+  // const ur_3857 = convertLatlonTo3857(bounds.getNorthEast());
+  // const coords_str = `${ll_3857.x},${ll_3857.y},${ur_3857.x},${ur_3857.y}.tif?max_size=${MAX_FRAME_SIZE}&coord-crs=epsg:3857`; // 3857
+
+  return `${TITILER_ENDPOINT}/cog/crop/${coords_str}&url=${encodeURIComponent(
+    wmsUrl
+  )}`;
 }
 
 // -----------------------------------------------------
@@ -143,24 +151,16 @@ function ControlPanel(props) {
       // TRYING METHOD 2
       // https://medium.com/charisol-community/downloading-resources-in-html5-a-download-may-not-work-as-expected-bf63546e2baa
       // Also potentially useful: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
-      if (exportFramesMode)
-        fetch(downloadUrl)
-          .then((response) => response.blob())
-          .then((blob) => {
-            const blobURL = URL.createObjectURL(blob);
-            aDiv.href = blobURL;
-            aDiv.download = date_YYYY_MM + "_titiler.tif";
-            aDiv.click();
-          });
 
-      return (
+      const batch_cmd =
         `REM ${date_YYYY_MM}: ${downloadUrl}\n` +
+        // gdal_translate command
         `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
           tmsUrl
         )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>" %DOWNLOAD_FOLDER%\\${
           date_YYYY_MM + "_gdal.tif"
-        }`
-      );
+        }`;
+      return { downloadUrl, batch_cmd, date_YYYY_MM };
     });
 
     // Write gdal_translate command to batch script with indices to original location of cropped version
@@ -182,7 +182,7 @@ function ControlPanel(props) {
       "set BASEMAP_WIDTH=4096\n\n" +
       `for /f "delims=" %%i in ('dir /b/od/t:c C:\\PROGRA~1\\QGIS*') do set QGIS="C:\\PROGRA~1\\%%i"\n` +
       `mkdir ${foldername} \n\n` +
-      gdalTranslateCmds.join("\n");
+      gdalTranslateCmds.map((c) => c.batch_cmd).join("\n");
     aDiv.href =
       "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
     aDiv.download = "gdal_commands.bat";
@@ -194,6 +194,20 @@ function ControlPanel(props) {
     // https://developer.chrome.com/articles/file-system-access/#create-a-new-file
     // For desktop only: https://caniuse.com/native-filesystem-api
     console.log(gdal_commands);
+
+    // Dowloads all frames
+    if (exportFramesMode)
+      gdalTranslateCmds.forEach((c) => {
+        fetch(c.downloadUrl)
+          .then((response) => response.blob())
+          .then((blob) => {
+            console.log("downloading new ", c.downloadUrl);
+            const blobURL = URL.createObjectURL(blob);
+            aDiv.href = blobURL;
+            aDiv.download = c.date_YYYY_MM + "_titiler.tif";
+            aDiv.click();
+          });
+      });
   }
 
   return (
