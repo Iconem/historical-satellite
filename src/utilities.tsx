@@ -30,12 +30,16 @@ const planetBasemapUrl = (date: Date) => {
 // Set custom slider marks for each beginning of year
 const getSliderMarks = (minDate: Date, maxDate: Date) =>
   eachYearOfInterval({
-    start: minDate,
-    end: maxDate,
+    start: minDate <= maxDate ? minDate : maxDate,
+    end: minDate <= maxDate ? maxDate : minDate,
   }).map((date: Date) => ({
     value: dateToSliderVal(date, minDate),
     label: formatDate(date),
   }));
+
+// Set min/max dates for planet monthly basemaps on component mount
+export const MIN_DATE = new Date("2016-01-01T00:00:00.000");
+export const MAX_DATE = subMonths(new Date(), 1);
 
 // const basemapsTmsUrls = {
 // Typescript was not accepting computed strings in enums, so used open Mapbox api token for simplicity

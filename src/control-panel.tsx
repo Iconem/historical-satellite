@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, Fragment } from "react";
+import { useState } from "react";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -11,27 +11,16 @@ import { LngLatBounds, LngLat } from "mapbox-gl";
 import PlayableSlider from "./playable-slider";
 import LinksSection from "./links-section";
 import ExportSplitButton from "./export-split-button";
+import SettingsModal from "./settings-modal";
 
 import {
-  Button,
-  TextField,
   Select,
   SelectChangeEvent,
   FormControl,
   InputLabel,
   MenuItem,
-
-  // ButtonGroup
-  ButtonGroup,
-  ClickAwayListener,
-  Grow,
-  Paper,
-  Popper,
-  MenuList,
 } from "@mui/material";
-import { differenceInMonths, subMonths } from "date-fns";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDownload } from "@fortawesome/free-solid-svg-icons";
+import { differenceInMonths, eachMonthOfInterval } from "date-fns";
 
 import {
   sliderValToDate,
@@ -41,7 +30,9 @@ import {
   BasemapsIds,
   basemapsTmsSources,
   getSliderMarks,
-  convertLatlonTo3857,
+  MIN_DATE,
+  MAX_DATE,
+  // convertLatlonTo3857,
 } from "./utilities";
 
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
@@ -49,13 +40,7 @@ const MAX_FRAME_SIZE = 2048; // 1024 - 2048
 const PROMISES_BATCH_SIZE = 5;
 const PROMISES_BATCH_DELAY = 2000; // 2000ms
 
-// Set min/max dates for planet monthly basemaps on component mount
-const minDate = new Date("2016-01-01T00:00:00.000");
-const maxDate = subMonths(new Date(), 1);
-const monthsCount = differenceInMonths(maxDate, minDate);
-const marks = getSliderMarks(minDate, maxDate);
-
-function valueLabelFormat(value: number) {
+function valueLabelFormat(value: number, minDate: Date) {
   return `${formatDate(sliderValToDate(value, minDate))}`;
 }
 
@@ -139,6 +124,12 @@ function ControlPanel(props) {
     props.setTimelineDate(sliderValToDate(newValue, minDate));
   };
 
+  const [minDate, setMinDate] = useState<Date>(MIN_DATE);
+  const [maxDate, setMaxDate] = useState<Date>(MAX_DATE);
+  const monthsCount = differenceInMonths(maxDate, minDate);
+  const marks = getSliderMarks(minDate, maxDate);
+  const [exportInterval, setExportInterval] = useState<number>(12);
+
   const handleBasemapChange = (event: SelectChangeEvent) => {
     props.setSelectedTms(event.target.value as string);
   };
@@ -155,13 +146,19 @@ function ControlPanel(props) {
     const bounds = mapRef?.current?.getMap()?.getBounds();
     // Loop through each monthly basemap and download
 
+    // const filteredDates =
+    //   props.selectedTms == BasemapsIds.PlanetMonthly
+    //     ? Array.from({ length: monthsCount }, (value, index) =>
+    //         sliderValToDate(index, minDate)
+    //       ).filter(
+    //         // Test with only yearly downloads
+    //         (date, index) => index >= 0 && index <= 1000 && date.getMonth() >= 0
+    //       )
+    //     : [false];
     const filteredDates =
       props.selectedTms == BasemapsIds.PlanetMonthly
-        ? Array.from({ length: monthsCount }, (value, index) =>
-            sliderValToDate(index, minDate)
-          ).filter(
-            // Test with only yearly downloads
-            (date, index) => index >= 0 && index <= 1000 && date.getMonth() >= 0
+        ? eachMonthOfInterval({ start: minDate, end: maxDate }).filter(
+            (_: Date, i: number) => i % exportInterval == 0
           )
         : [false];
 
@@ -317,24 +314,13 @@ function ControlPanel(props) {
                 }
               />
             </LocalizationProvider>{" "}
-            <TextField
-              style={{ width: "60px" }}
-              size={"small"}
-              id="outlined-number"
-              label="FPS"
-              type="number"
-              value={`${playbackSpeedFPS}`}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                setPlaybackSpeedFPS(parseFloat(event.target.value));
-              }}
-              InputLabelProps={{
-                shrink: true,
-              }}
-            />
           </>
         )}{" "}
         <>
-          <ExportSplitButton handleClick={handleExportButtonClick} />
+          <ExportSplitButton
+            handleClick={handleExportButtonClick}
+            setExportInterval={setExportInterval}
+          />
 
           <a
             id="downloadFramesDiv"
@@ -343,6 +329,16 @@ function ControlPanel(props) {
             download=""
           />
         </>{" "}
+        <SettingsModal
+          playbackSpeedFPS={playbackSpeedFPS}
+          setPlaybackSpeedFPS={setPlaybackSpeedFPS}
+          minDate={minDate}
+          setMinDate={setMinDate}
+          maxDate={maxDate}
+          setMaxDate={setMaxDate}
+          exportInterval={exportInterval}
+          setExportInterval={setExportInterval}
+        />
         {props.selectedTms == BasemapsIds.PlanetMonthly && (
           <PlayableSlider
             setTimelineDate={props.setTimelineDate}
@@ -356,7 +352,7 @@ function ControlPanel(props) {
             //
             value={dateToSliderVal(props.timelineDate, minDate)}
             onChange={handleSliderChange}
-            valueLabelFormat={valueLabelFormat}
+            valueLabelFormat={(value: any) => valueLabelFormat(value, minDate)}
           />
         )}
         <LinksSection mapRef={props.mapRef} />

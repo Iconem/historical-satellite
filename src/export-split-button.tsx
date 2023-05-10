@@ -32,10 +32,15 @@ function ExportSplitButton(props: any) {
 
   const handleMenuItemClick = (
     event: React.MouseEvent<HTMLLIElement, MouseEvent>,
-    index: number
+    index: number,
+    setExportInterval: Function
   ) => {
     setSelectedIndex(index);
     setOpen(false);
+    // When export type is set to script only, setInterval to every month to get all frames in batch script
+    if (index == 1) {
+      setExportInterval(1);
+    }
   };
 
   const handleToggle = () => {
@@ -96,7 +101,13 @@ function ExportSplitButton(props: any) {
                     <MenuItem
                       key={option}
                       selected={index === selectedIndex}
-                      onClick={(event) => handleMenuItemClick(event, index)}
+                      onClick={(event) =>
+                        handleMenuItemClick(
+                          event,
+                          index,
+                          props.setExportInterval
+                        )
+                      }
                     >
                       {option}
                     </MenuItem>
