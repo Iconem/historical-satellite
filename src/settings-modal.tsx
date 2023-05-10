@@ -104,6 +104,34 @@ export default function SettingsModal(props: any) {
             {/* </Tooltip> */}
           </LocalizationProvider>{" "}
           <Typography id="modal-modal-description" sx={{ mt: 1, mb: 1 }}>
+            Additional export settings
+          </Typography>{" "}
+          <TextField
+            style={{ width: "130px" }}
+            sx={{ mt: 1 }}
+            size={"small"}
+            label="Frame Resolution"
+            type="number"
+            value={`${props.maxFrameResolution}`}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+              props.setMaxFrameResolution(parseInt(event.target.value));
+            }}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+          <TextField
+            style={{ width: "210px" }}
+            sx={{ mt: 1 }}
+            size={"small"}
+            label="TiTiler Endpoint"
+            value={`${props.titilerEndpoint}`}
+            onChange={props.setTitilerEndpoint}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+          <Typography id="modal-modal-description" sx={{ mt: 1, mb: 1 }}>
             Playback settings
           </Typography>{" "}
           <TextField

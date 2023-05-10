@@ -36,7 +36,7 @@ import {
 } from "./utilities";
 
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
-const MAX_FRAME_SIZE = 2048; // 1024 - 2048
+const MAX_FRAME_RESOLUTION = 2048; // 1024 - 2048
 const PROMISES_BATCH_SIZE = 5;
 const PROMISES_BATCH_DELAY = 2000; // 2000ms
 
@@ -62,7 +62,12 @@ const escapeTmsUrl = (url: string) =>
   url.replace("{x}", "${x}").replace("{y}", "${y}").replace("{z}", "${z}");
 // const unescapeTmsUrl = (url: string) =>
 //   url.replace("${x}", "{x}").replace("${y}", "{y}").replace("${z}", "{z}");
-function titilerCropUrl(bounds: LngLatBounds, tmsUrl: string) {
+function titilerCropUrl(
+  bounds: LngLatBounds,
+  tmsUrl: string,
+  maxFrameResolution: number = MAX_FRAME_RESOLUTION,
+  titilerEndpoint: string = TITILER_ENDPOINT
+) {
   // const bounds = new LngLatBounds(new LngLat(-110, -70), new LngLat(110, 70));
   // "http://mt.google.com/vt/lyrs=y&amp;x=${x}&amp;y=${y}&amp;z=${z}";
   const wmsUrl = `<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
@@ -70,13 +75,13 @@ function titilerCropUrl(bounds: LngLatBounds, tmsUrl: string) {
   )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>`;
   //
   // titiler returned image is in 4326 CRS, cannot be modified yet
-  const coords_str = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}.tif?max_size=${MAX_FRAME_SIZE}&coord-crs=epsg:4326`; // 4326
+  const coords_str = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}.tif?max_size=${maxFrameResolution}&coord-crs=epsg:4326`; // 4326
   // Bug with 3857 bounds, InternalServerError 500 on titiler, so feature-request to support dst-tms
   // const ll_3857 = convertLatlonTo3857(bounds.getSouthWest());
   // const ur_3857 = convertLatlonTo3857(bounds.getNorthEast());
   // const coords_str = `${ll_3857.x},${ll_3857.y},${ur_3857.x},${ur_3857.y}.tif?max_size=${MAX_FRAME_SIZE}&coord-crs=epsg:3857`; // 3857
 
-  return `${TITILER_ENDPOINT}/cog/crop/${coords_str}&url=${encodeURIComponent(
+  return `${titilerEndpoint}/cog/crop/${coords_str}&url=${encodeURIComponent(
     wmsUrl
   )}`;
 }
@@ -128,7 +133,12 @@ function ControlPanel(props) {
   const [maxDate, setMaxDate] = useState<Date>(MAX_DATE);
   const monthsCount = differenceInMonths(maxDate, minDate);
   const marks = getSliderMarks(minDate, maxDate);
+
   const [exportInterval, setExportInterval] = useState<number>(12);
+  const [titilerEndpoint, setTitilerEndpoint] =
+    useState<string>(TITILER_ENDPOINT);
+  const [maxFrameResolution, setMaxFrameResolution] =
+    useState<number>(MAX_FRAME_RESOLUTION);
 
   const handleBasemapChange = (event: SelectChangeEvent) => {
     props.setSelectedTms(event.target.value as string);
@@ -167,7 +177,12 @@ function ControlPanel(props) {
         props.selectedTms == BasemapsIds.PlanetMonthly
           ? planetBasemapUrl(date)
           : basemapsTmsSources[props.selectedTms].url;
-      const downloadUrl = titilerCropUrl(bounds, tmsUrl);
+      const downloadUrl = titilerCropUrl(
+        bounds,
+        tmsUrl,
+        maxFrameResolution,
+        titilerEndpoint
+      );
       const date_YYYY_MM = date
         ? formatDate(date)
         : BasemapsIds[props.selectedTms];
@@ -338,6 +353,11 @@ function ControlPanel(props) {
           setMaxDate={setMaxDate}
           exportInterval={exportInterval}
           setExportInterval={setExportInterval}
+          // additional settings
+          titilerEndpoint={titilerEndpoint}
+          setTitilerEndpoint={setTitilerEndpoint}
+          maxFrameResolution={maxFrameResolution}
+          setMaxFrameResolution={setMaxFrameResolution}
         />
         {props.selectedTms == BasemapsIds.PlanetMonthly && (
           <PlayableSlider
