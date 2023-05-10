@@ -46,6 +46,8 @@ import {
 
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
 const MAX_FRAME_SIZE = 2048; // 1024 - 2048
+const PROMISES_BATCH_SIZE = 5;
+const PROMISES_BATCH_DELAY = 2000; // 2000ms
 
 // Set min/max dates for planet monthly basemaps on component mount
 const minDate = new Date("2016-01-01T00:00:00.000");
@@ -99,8 +101,6 @@ function titilerCropUrl(bounds: LngLatBounds, tmsUrl: string) {
 // Download TiTiler images by batches to avoid too many requests
 // resulting in 500 internal server error
 // ------------------------------------------------------
-const PROMISES_BATCH_SIZE = 5;
-const PROMISES_BATCH_DELAY = 2000; // 1000ms
 const timer = async (ms: number): Promise<any> =>
   await new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -133,11 +133,11 @@ async function fetchTitilerFramesBatches(gdalTranslateCmds: any, aDiv: any) {
 function ControlPanel(props) {
   // ---------------------------
   // Slider control
+  // For slider play/pause loops
+  const [playbackSpeedFPS, setPlaybackSpeedFPS] = useState<number>(2);
   const handleSliderChange = (_: Event, newValue: number) => {
     props.setTimelineDate(sliderValToDate(newValue, minDate));
   };
-  // For slider play/pause loops
-  const [playbackSpeedFPS, setPlaybackSpeedFPS] = useState<number>(2);
 
   const handleBasemapChange = (event: SelectChangeEvent) => {
     props.setSelectedTms(event.target.value as string);
