@@ -13,6 +13,9 @@ import { planetBasemapUrl, BasemapsIds, basemapsTmsSources } from "./utilities";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
+// TODO Avoid tile popping on setTiles of rasterTileSet imagery source
+// https://github.com/mapbox/mapbox-gl-js/issues/12707
+
 // APP COMPONENT
 function App() {
   // Maps refs
@@ -20,10 +23,11 @@ function App() {
   const rightMapRef = useRef<MapRef>();
 
   // State variables
-  // const [basemapStyle, setBasemapStyle] = useState<string>(
-  //   "satellite-streets-v12"
-  // );
-  const basemapStyle = "satellite-streets-v12";
+  const [backgroundBasemapStyle, setBackgroundBasemapStyle] = useState<any>(
+    // "satellite-streets-v12"
+    { version: 8, sources: {}, layers: [] }
+  );
+  // const backgroundBasemapStyle = "satellite-streets-v12";
   const [leftTimelineDate, setLeftTimelineDate] = useState<Date>(
     subMonths(new Date(), 1)
   );
@@ -75,10 +79,6 @@ function App() {
     ]);
     resizeMaps();
   }, [rightTimelineDate]);
-
-  // const minDate = new Date("2016-01-01T00:00:00.000");
-  // const maxDate = new Date();
-  // const monthsCount = differenceInMonths(maxDate, minDate) - 1;
 
   // -----------------------
   // SPLIT SIDE BY SIDE MAPS
@@ -137,57 +137,13 @@ function App() {
   const leftMapboxMapStyle = useMemo(() => {
     return leftSelectedTms == BasemapsIds.Mapbox
       ? "mapbox://styles/mapbox/satellite-streets-v12"
-      : // : // : "mapbox://styles/mapbox/streets-v12"
-        { version: 8, sources: {}, layers: [] };
+      : backgroundBasemapStyle;
   }, [leftSelectedTms]);
   const rightMapboxMapStyle = useMemo(() => {
     return rightSelectedTms == BasemapsIds.Mapbox
       ? "mapbox://styles/mapbox/satellite-streets-v12"
-      : // : // : "mapbox://styles/mapbox/streets-v12"
-        { version: 8, sources: {}, layers: [] };
+      : backgroundBasemapStyle;
   }, [rightSelectedTms]);
-  // {
-  //   `mapbox://styles/mapbox/${basemapStyle}`;
-  // }
-  // mapStyle={
-  //   leftSelectedTms == BasemapsIds.Mapbox
-  //     ? "mapbox://styles/mapbox/satellite-streets-v12"
-  //     : // : "mapbox://styles/mapbox/streets-v12"
-  //       { version: 8, sources: {}, layers: [] }
-  // } // "mapbox://styles/mapbox/dark-v9"
-
-  /*
-  const width = typeof window === "undefined" ? 100 : window.innerWidth;
-  const leftMapPadding = useMemo(() => {
-    return {
-      // left: splitScreenMode === "split-screen" ? width / 2 : 0,
-      left:
-        splitScreenMode === "split-screen"
-          ? (0 * (width * splitPanelSizesPercent[0])) / 100
-          : 0,
-      top: 0,
-      right:
-        splitScreenMode === "split-screen"
-          ? (0 * (width * splitPanelSizesPercent[0])) / 100
-          : 0,
-      bottom: 0,
-    };
-  }, [width, splitScreenMode, splitPanelSizesPercent]);
-  const rightMapPadding = useMemo(() => {
-    return {
-      right:
-        splitScreenMode === "split-screen"
-          ? (0 * (width * splitPanelSizesPercent[0])) / 100
-          : 0,
-      top: 0,
-      left:
-        splitScreenMode === "split-screen"
-          ? (0 * (width * splitPanelSizesPercent[0])) / 100
-          : 0,
-      bottom: 0,
-    };
-  }, [width, splitScreenMode, splitPanelSizesPercent]);
-  */
 
   const sharedMapsProps = {
     viewState,
@@ -237,17 +193,7 @@ function App() {
       </style>
       <ToggleButtonGroup
         style={{
-          // textAlign: "center",
-          // padding: "30px",
           background: "#fffc", // "white",
-          // width: "100%",
-          // alignSelf: "flex-end",
-          // margin: "0 30px",
-          //   bottom: "30px",
-          // position: "absolute",
-          //   height: "100%",
-          // height: "auto",
-
           zIndex: 20,
           position: "absolute",
           width: "100px",
@@ -319,7 +265,6 @@ function App() {
               height: "100vh",
               width: "100%",
               backgroundColor: "#001624",
-              // backgroundColor: "rgba(255,0,0,0.5)",
             }}
           ></div>
           <div
@@ -327,7 +272,6 @@ function App() {
               height: "100vh",
               width: "100%",
               backgroundColor: "#00262F",
-              // backgroundColor: "rgba(0,0,255,0.5)",
             }}
           ></div>
         </Split>
@@ -352,16 +296,6 @@ function App() {
           flyTo={{ speed: 2.5 }}
           mapRef={leftMapRef}
         />
-        {/* <Source
-          id="planetbasemap-source"
-          scheme="xyz"
-          type="raster"
-          tiles={[planetBasemapUrl(timelineDate)]}
-          tileSize={256}
-          // key={basemap_date_str}
-        >
-          <Layer type="raster" layout={{}} paint={{}} />
-        </Source> */}
 
         {leftSelectedTms == BasemapsIds.Mapbox ? (
           <></>
