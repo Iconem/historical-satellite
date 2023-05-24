@@ -1,0 +1,7 @@
+python-dotenv
+GDAL
+Fiona
+geopandas
+pandas
+pyproj
+# Shapely

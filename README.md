@@ -53,6 +53,7 @@ References:
 - Vincent Sarago [Cog talk](https://medium.com/devseed/cog-talk-4ter-distributed-processes-8ee280f71080)
 - Qiusheng Wu [Geemap Timelapse](https://giswqs.medium.com/a-streamlit-app-for-creating-timelapse-of-annual-landsat-imagery-1984-2021-3db407a8ac32=)
 - Kyle Barron [cog-mosaic post](https://kylebarron.dev/blog/cog-mosaic/overview)
+- SentinelHub `How to Make the Perfect Time-Lapse of the Earth` [great post](https://medium.com/sentinel-hub/how-to-make-the-perfect-time-lapse-of-the-earth-351f214527f6) shared by Andras Zlinszky
 
 ## Consume temporal TMS in QGIS
 
