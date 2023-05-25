@@ -21,6 +21,7 @@ function App() {
   // Maps refs
   const leftMapRef = useRef<MapRef>();
   const rightMapRef = useRef<MapRef>();
+  document.a = leftMapRef;
 
   // State variables
   const [backgroundBasemapStyle, setBackgroundBasemapStyle] = useState<any>(

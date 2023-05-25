@@ -78,7 +78,7 @@ gdf = gpd.GeoDataFrame(pd.concat(gdf_list, ignore_index=True))
 print(gdf.head())
 gdf_points = gdf[gdf.geom_type == "Point"]
 
-gdf_points.plot()
+# gdf_points.plot()
 
 
 def export_planet_basemap_bounds(
@@ -157,7 +157,8 @@ export_planet_basemap_center_buffer(
 min_month = "2016-01"
 max_month = "2023-04"
 period_freq = "3M"  # retrieves image evey one month
-months = pd.date_range(min_month, max_month, freq=period_freq).strftime("%Y_%m")
+months = list(pd.date_range(min_month, max_month, freq=period_freq).strftime("%Y_%m"))
+months.remove("2017_01")  # seem to not be present
 
 # Other settings
 buffer = BOUNDS_BUFFER_METERS
@@ -168,21 +169,26 @@ buffer = BOUNDS_BUFFER_METERS
 for index, row in gdf_points[:10000].iterrows():  # iterfeatures or iterrows():
     # print(row)
     # point = gdf_points.loc[index, "geometry"]
-    out_fp = f"historical_{row.geometry.x:.6f}_{row.geometry.y:.6f}"
+    out_fp = f"historical_{min_month}_{max_month}_{period_freq}_{row.geometry.x:.6f}_{row.geometry.y:.6f}"
     os.makedirs(out_fp, exist_ok=True)
-    print("\nExporting planet monthly frames for ", out_fp)
+    print(f"\nExporting planet monthly [{index}/{len(gdf_points)}] for ", out_fp)
     for date_YYYY_MM in months:
-        print("   ", date_YYYY_MM)
+        print("   ", date_YYYY_MM, end="")
         # new_date = np.datetime64('2022-04') + np.timedelta64(5, 'M')
         # date_YYYY_MM = "2021_02"
         # center_latlon = (48.958581, 2.329102)
         center_latlon = (row.geometry.y, row.geometry.x)
-        export_planet_basemap_center_buffer(
-            date_YYYY_MM,
-            center_latlon,
-            buffer=BOUNDS_BUFFER_METERS,
-            output_ds=os.path.join(out_fp, f"{date_YYYY_MM}_gdal.tif")
-            # projWinSRS = "EPSG:3857"
-            # width = BASEMAP_WIDTH_PIX
-            # height = 0
-        )
+        output_ds = os.path.join(out_fp, f"{date_YYYY_MM}_gdal.tif")
+        if not os.path.exists(output_ds):  # only process if not existing already
+            export_planet_basemap_center_buffer(
+                date_YYYY_MM,
+                center_latlon,
+                buffer=BOUNDS_BUFFER_METERS,
+                output_ds=output_ds
+                # projWinSRS = "EPSG:3857"
+                # width = BASEMAP_WIDTH_PIX
+                # height = 0
+            )
+            print("   done  ", end="\r", flush=True)
+        else:
+            print("   exists", end="\r", flush=True)
