@@ -9,7 +9,12 @@ import Split from "react-split";
 
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 
-import { planetBasemapUrl, BasemapsIds, basemapsTmsSources } from "./utilities";
+import {
+  planetBasemapUrl,
+  BasemapsIds,
+  basemapsTmsSources,
+  debounce,
+} from "./utilities";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -68,18 +73,16 @@ function App() {
   }
 
   // Update raster TMS source faster than react component remount on timelineDate state update
-  useEffect(() => {
-    leftMapRef.current
-      ?.getSource("planetbasemap-source")
-      ?.setTiles([planetBasemapUrl(leftTimelineDate)]);
-    resizeMaps();
-  }, [leftTimelineDate]);
-  useEffect(() => {
-    (rightMapRef.current?.getSource("planetbasemap-source") as any)?.setTiles([
-      planetBasemapUrl(rightTimelineDate),
-    ]);
-    resizeMaps();
-  }, [rightTimelineDate]);
+  // useEffect(() => {
+  //   leftMapRef.current
+  //     ?.getSource("planetbasemap-source")
+  //     ?.setTiles([planetBasemapUrl(leftTimelineDate)]);
+  // }, [leftTimelineDate]);
+  // useEffect(() => {
+  //   (rightMapRef.current?.getSource("planetbasemap-source") as any)?.setTiles([
+  //     planetBasemapUrl(rightTimelineDate),
+  //   ]);
+  // }, [rightTimelineDate]);
 
   // -----------------------
   // SPLIT SIDE BY SIDE MAPS
@@ -134,6 +137,7 @@ function App() {
   const onLeftMoveStart = useCallback(() => setActiveMap("left"), []);
   const onRightMoveStart = useCallback(() => setActiveMap("right"), []);
   const onMove = useCallback((evt: any) => setViewState(evt.viewState), []);
+  const onMoveDebounce = debounce(onMove, 10, false);
 
   const leftMapboxMapStyle = useMemo(() => {
     return leftSelectedTms == BasemapsIds.Mapbox
@@ -285,7 +289,8 @@ function App() {
         ref={leftMapRef}
         onClick={() => setClickedMap("left")}
         onMoveStart={onLeftMoveStart}
-        onMove={activeMap === "left" ? onMove : () => ({})}
+        // onMove={activeMap === "left" ? onMove : () => ({})}
+        onMove={activeMap === "left" ? onMoveDebounce : () => ({})}
         style={LeftMapStyle}
         mapStyle={leftMapboxMapStyle}
 
@@ -308,8 +313,8 @@ function App() {
             // tiles={[]}
             tiles={[planetBasemapUrl(leftTimelineDate)]}
             tileSize={256}
-            key={"planetBasemap"}
-            // key={basemap_date_str}
+            // key={"planetBasemap"}
+            key={leftTimelineDate.toString()}
           >
             <Layer type="raster" layout={{}} paint={{}} />
           </Source>
@@ -351,7 +356,8 @@ function App() {
         ref={rightMapRef}
         onClick={() => setClickedMap("right")}
         onMoveStart={onRightMoveStart}
-        onMove={activeMap === "right" ? onMove : () => ({})}
+        // onMove={activeMap === "right" ? onMove : () => ({})}
+        onMove={activeMap === "right" ? onMoveDebounce : () => ({})}
         style={RightMapStyle}
         mapStyle={rightMapboxMapStyle}
       >
@@ -365,8 +371,8 @@ function App() {
             tiles={[planetBasemapUrl(rightTimelineDate)]}
             // tiles={[]}
             tileSize={256}
-            // key={basemap_date_str}
-            key={"planetBasemap"}
+            // key={"planetBasemap"}
+            key={rightTimelineDate.toString()}
           >
             <Layer type="raster" layout={{}} paint={{}} />
           </Source>

@@ -158,7 +158,7 @@ min_month = "2016-01"
 max_month = "2023-04"
 period_freq = "3M"  # retrieves image evey one month
 months = list(pd.date_range(min_month, max_month, freq=period_freq).strftime("%Y_%m"))
-months.remove("2017_01")  # seem to not be present
+months.remove("2017_01")  # mosaic 2017-01 seem to not be present
 
 # Other settings
 buffer = BOUNDS_BUFFER_METERS
