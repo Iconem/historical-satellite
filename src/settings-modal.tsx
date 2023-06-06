@@ -135,7 +135,7 @@ export default function SettingsModal(props: any) {
             Playback settings
           </Typography>{" "}
           <TextField
-            style={{ width: "60px" }}
+            style={{ width: "80px" }}
             size={"small"}
             id="outlined-number"
             label="FPS"

@@ -320,6 +320,16 @@ function ControlPanel(props) {
             value={props.selectedTms}
             label="Basemap"
             onChange={handleBasemapChange}
+            MenuProps={{
+              anchorOrigin: {
+                vertical: "top",
+                horizontal: "center",
+              },
+              transformOrigin: {
+                vertical: "bottom",
+                horizontal: "center",
+              },
+            }}
           >
             {Object.entries(basemapsTmsSources).map(([key, value]) => (
               <MenuItem value={key} key={key}>
