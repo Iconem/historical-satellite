@@ -20,7 +20,7 @@ import {
   InputLabel,
   MenuItem,
 } from "@mui/material";
-import { differenceInMonths, eachMonthOfInterval } from "date-fns";
+import { differenceInMonths, eachMonthOfInterval, isValid } from "date-fns";
 
 import {
   sliderValToDate,
@@ -138,8 +138,10 @@ function ControlPanel(props) {
   // const [maxDate, setMaxDate] = useState<Date>(MAX_DATE);
   const [minDate, setMinDate] = useLocalStorage("export_minDate", MIN_DATE);
   const [maxDate, setMaxDate] = useLocalStorage("export_maxDate", MAX_DATE);
-  const monthsCount = differenceInMonths(maxDate, minDate);
-  const marks = getSliderMarks(minDate, maxDate);
+  const validMinDate = minDate && isValid(minDate) ? minDate : MIN_DATE;
+  const validMaxDate = maxDate && isValid(maxDate) ? maxDate : MAX_DATE;
+  const monthsCount = differenceInMonths(validMaxDate, validMinDate);
+  const marks = getSliderMarks(validMinDate, validMaxDate);
 
   // const [exportInterval, setExportInterval] = useState<number>(12);
   // const [titilerEndpoint, setTitilerEndpoint] =
@@ -186,9 +188,10 @@ function ControlPanel(props) {
     //     : [false];
     const filteredDates =
       props.selectedTms == BasemapsIds.PlanetMonthly
-        ? eachMonthOfInterval({ start: minDate, end: maxDate }).filter(
-            (_: Date, i: number) => i % exportInterval == 0
-          )
+        ? eachMonthOfInterval({
+            start: validMinDate,
+            end: validMaxDate,
+          }).filter((_: Date, i: number) => i % exportInterval == 0)
         : [false];
 
     const gdalTranslateCmds = filteredDates.map((date) => {
@@ -350,8 +353,8 @@ function ControlPanel(props) {
                 views={["year", "month"]}
                 label="Basemap Date"
                 format="YYYY/MM"
-                minDate={dayjs(minDate)}
-                maxDate={dayjs(maxDate)}
+                minDate={dayjs(validMinDate)}
+                maxDate={dayjs(validMaxDate)}
                 value={dayjs(props.timelineDate)}
                 onChange={(newValue) =>
                   props.setTimelineDate(new Date(newValue))
@@ -392,16 +395,18 @@ function ControlPanel(props) {
           <PlayableSlider
             setTimelineDate={props.setTimelineDate}
             playbackSpeedFPS={playbackSpeedFPS}
-            minDate={minDate}
-            maxDate={maxDate}
+            minDate={validMinDate}
+            maxDate={validMaxDate}
             //
             min={0}
             max={monthsCount}
             marks={marks}
             //
-            value={dateToSliderVal(props.timelineDate, minDate)}
+            value={dateToSliderVal(props.timelineDate, validMinDate)}
             onChange={handleSliderChange}
-            valueLabelFormat={(value: any) => valueLabelFormat(value, minDate)}
+            valueLabelFormat={(value: any) =>
+              valueLabelFormat(value, validMinDate)
+            }
           />
         )}
         <LinksSection mapRef={props.mapRef} />

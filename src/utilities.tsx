@@ -29,14 +29,15 @@ const planetBasemapUrl = (date: Date) => {
 };
 
 // Set custom slider marks for each beginning of year
-const getSliderMarks = (minDate: Date, maxDate: Date) =>
-  eachYearOfInterval({
+function getSliderMarks(minDate: Date, maxDate: Date) {
+  return eachYearOfInterval({
     start: minDate <= maxDate ? minDate : maxDate,
     end: minDate <= maxDate ? maxDate : minDate,
   }).map((date: Date) => ({
     value: dateToSliderVal(date, minDate),
     label: formatDate(date),
   }));
+}
 
 // Set min/max dates for planet monthly basemaps on component mount
 export const MIN_DATE = new Date("2016-01-01T00:00:00.000");
@@ -190,6 +191,8 @@ const useLocalStorage = (
 // Check if object vars have same attribs and props, or are both (or all) arrays
 // From https://stackoverflow.com/questions/14368596/how-can-i-check-that-two-objects-have-the-same-set-of-property-names
 function objectsHaveSameKeys(...objects: any): boolean {
+  const anyIsNullOrUndef = objects.some((obj: any) => obj == null);
+  if (anyIsNullOrUndef) return false;
   const areAllArrays = objects.every((arr: Array<any>) => Array.isArray(arr));
   const allKeys = objects.reduce(
     (keys: Array<string>, object: any) => keys.concat(Object.keys(object)),
