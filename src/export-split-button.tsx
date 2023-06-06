@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload } from "@fortawesome/free-solid-svg-icons";
+import { useLocalStorage } from "./utilities";
 
 // -------------------------------------------
 // Component: ExportSplitButton
@@ -24,7 +25,11 @@ const splitButtonOptions = ["All Frames", "Script only"];
 function ExportSplitButton(props: any) {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
-  const [selectedIndex, setSelectedIndex] = useState(1);
+  // const [selectedIndex, setSelectedIndex] = useState(1);
+  const [selectedIndex, setSelectedIndex] = useLocalStorage(
+    "export_buttonSelectedIndex",
+    1
+  );
 
   // const handleClick = () => {
   //   console.info(`You clicked ${splitButtonOptions[selectedIndex]}`);

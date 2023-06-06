@@ -14,6 +14,7 @@ import {
   BasemapsIds,
   basemapsTmsSources,
   debounce,
+  useLocalStorage,
 } from "./utilities";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -26,7 +27,6 @@ function App() {
   // Maps refs
   const leftMapRef = useRef<MapRef>();
   const rightMapRef = useRef<MapRef>();
-  document.a = leftMapRef;
 
   // State variables
   const [backgroundBasemapStyle, setBackgroundBasemapStyle] = useState<any>(
@@ -34,16 +34,26 @@ function App() {
     { version: 8, sources: {}, layers: [] }
   );
   // const backgroundBasemapStyle = "satellite-streets-v12";
-  const [leftTimelineDate, setLeftTimelineDate] = useState<Date>(
+  // const [leftTimelineDate, setLeftTimelineDate] = useState<Date>(
+  //   subMonths(new Date(), 1)
+  // );
+  // const [rightTimelineDate, setRightTimelineDate] = useState<Date>(
+  //   subMonths(new Date(), 18)
+  // );
+  const [leftTimelineDate, setLeftTimelineDate] = useLocalStorage(
+    "leftTimelineDate",
     subMonths(new Date(), 1)
   );
-  const [rightTimelineDate, setRightTimelineDate] = useState<Date>(
+  const [rightTimelineDate, setRightTimelineDate] = useLocalStorage(
+    "rightTimelineDate",
     subMonths(new Date(), 18)
   );
   // Like Mapbox gl compare https://docs.mapbox.com/mapbox-gl-js/example/mapbox-gl-compare/
-  const [splitPanelSizesPercent, setSplitPanelSizesPercent] = useState([
-    75, 25,
-  ]);
+  // const [splitPanelSizesPercent, setSplitPanelSizesPercent] = useState([75, 25]);
+  const [splitPanelSizesPercent, setSplitPanelSizesPercent] = useLocalStorage(
+    "ui_splitPanelSizesPercent",
+    [75, 25]
+  );
   const hash = window.location.hash;
   let hashed_viewstate = hash
     .substring(1)
@@ -59,10 +69,18 @@ function App() {
     pitch: 0,
   });
 
-  const [leftSelectedTms, setLeftSelectedTms] = useState<BasemapsIds>(
+  // const [leftSelectedTms, setLeftSelectedTms] = useState<BasemapsIds>(
+  //   BasemapsIds.PlanetMonthly
+  // );
+  // const [rightSelectedTms, setRightSelectedTms] = useState<BasemapsIds>(
+  //   BasemapsIds.GoogleHybrid
+  // );
+  const [leftSelectedTms, setLeftSelectedTms] = useLocalStorage(
+    "ui_leftSelectedTms",
     BasemapsIds.PlanetMonthly
   );
-  const [rightSelectedTms, setRightSelectedTms] = useState<BasemapsIds>(
+  const [rightSelectedTms, setRightSelectedTms] = useLocalStorage(
+    "ui_rightSelectedTms",
     BasemapsIds.GoogleHybrid
   );
   // End of state variables
@@ -94,8 +112,12 @@ function App() {
   // It is set to the map that received user input last ('movestart')
   const [activeMap, setActiveMap] = useState<"left" | "right">("left");
   const [clickedMap, setClickedMap] = useState<"left" | "right">("left");
-  const [splitScreenMode, setSplitScreenMode] =
-    useState<MapSplitMode>("split-screen");
+  // const [splitScreenMode, setSplitScreenMode] =
+  //   useState<MapSplitMode>("split-screen");
+  const [splitScreenMode, setSplitScreenMode] = useLocalStorage(
+    "ui_splitScreenMode",
+    "split-screen"
+  );
   const LeftMapStyle: React.CSSProperties = {
     position: "absolute",
     top: 0,

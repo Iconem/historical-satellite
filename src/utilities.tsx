@@ -5,6 +5,7 @@ import {
   format,
   eachYearOfInterval,
 } from "date-fns";
+import { useState, useEffect } from "react";
 
 // Helper functions to convert between date for date-picker and slider-value
 // Conversion between slider value and datepicker date
@@ -155,6 +156,52 @@ function debounce(
   };
 }
 
+// Utility to get react state from localStorage if exists
+// From https://www.robinwieruch.de/local-storage-react/
+const useLocalStorage = (
+  storageKey: string,
+  fallbackState: any,
+  compareTypes = true
+): any => {
+  const storedItem = localStorage.getItem(storageKey);
+  let initValue = storedItem ? JSON.parse(storedItem) : fallbackState;
+
+  // If fallbackState is not null, then: if it has a type, check localStorage value has same type / or if type is object (and arrays are objects), check they have the same signature
+  if (fallbackState && compareTypes) {
+    if (
+      typeof initValue !== typeof fallbackState ||
+      (typeof initValue === "object" &&
+        fallbackState !== null &&
+        !objectsHaveSameKeys(fallbackState, initValue))
+    ) {
+      // console.log(`Setting ${storageKey} value to fallbackState`)
+      initValue = fallbackState;
+    }
+  }
+  const [value, setValue] = useState(initValue);
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(value));
+  }, [value, storageKey]);
+
+  return [value, setValue];
+};
+
+// Check if object vars have same attribs and props, or are both (or all) arrays
+// From https://stackoverflow.com/questions/14368596/how-can-i-check-that-two-objects-have-the-same-set-of-property-names
+function objectsHaveSameKeys(...objects: any): boolean {
+  const areAllArrays = objects.every((arr: Array<any>) => Array.isArray(arr));
+  const allKeys = objects.reduce(
+    (keys: Array<string>, object: any) => keys.concat(Object.keys(object)),
+    []
+  );
+  const union = new Set(allKeys);
+  return (
+    areAllArrays ||
+    objects.every((object: any) => union.size === Object.keys(object).length)
+  );
+}
+
 export {
   sliderValToDate,
   dateToSliderVal,
@@ -165,4 +212,5 @@ export {
   getSliderMarks,
   convertLatlonTo3857,
   debounce,
+  useLocalStorage,
 };

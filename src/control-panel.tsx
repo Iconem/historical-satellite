@@ -1,4 +1,4 @@
-import { useState } from "react";
+// import { useState } from "react";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -32,6 +32,7 @@ import {
   getSliderMarks,
   MIN_DATE,
   MAX_DATE,
+  useLocalStorage,
   // convertLatlonTo3857,
 } from "./utilities";
 
@@ -124,21 +125,39 @@ function ControlPanel(props) {
   // ---------------------------
   // Slider control
   // For slider play/pause loops
-  const [playbackSpeedFPS, setPlaybackSpeedFPS] = useState<number>(2);
+  // const [playbackSpeedFPS, setPlaybackSpeedFPS] = useState<number>(2);
+  const [playbackSpeedFPS, setPlaybackSpeedFPS] = useLocalStorage(
+    "playbackSpeedFPS",
+    2
+  );
   const handleSliderChange = (_: Event, newValue: number) => {
     props.setTimelineDate(sliderValToDate(newValue, minDate));
   };
 
-  const [minDate, setMinDate] = useState<Date>(MIN_DATE);
-  const [maxDate, setMaxDate] = useState<Date>(MAX_DATE);
+  // const [minDate, setMinDate] = useState<Date>(MIN_DATE);
+  // const [maxDate, setMaxDate] = useState<Date>(MAX_DATE);
+  const [minDate, setMinDate] = useLocalStorage("export_minDate", MIN_DATE);
+  const [maxDate, setMaxDate] = useLocalStorage("export_maxDate", MAX_DATE);
   const monthsCount = differenceInMonths(maxDate, minDate);
   const marks = getSliderMarks(minDate, maxDate);
 
-  const [exportInterval, setExportInterval] = useState<number>(12);
-  const [titilerEndpoint, setTitilerEndpoint] =
-    useState<string>(TITILER_ENDPOINT);
-  const [maxFrameResolution, setMaxFrameResolution] =
-    useState<number>(MAX_FRAME_RESOLUTION);
+  // const [exportInterval, setExportInterval] = useState<number>(12);
+  // const [titilerEndpoint, setTitilerEndpoint] =
+  //   useState<string>(TITILER_ENDPOINT);
+  // const [maxFrameResolution, setMaxFrameResolution] =
+  //   useState<number>(MAX_FRAME_RESOLUTION);
+  const [exportInterval, setExportInterval] = useLocalStorage(
+    "export_exportInterval",
+    12
+  );
+  const [titilerEndpoint, setTitilerEndpoint] = useLocalStorage(
+    "export_titilerEndpoint",
+    TITILER_ENDPOINT
+  );
+  const [maxFrameResolution, setMaxFrameResolution] = useLocalStorage(
+    "export_maxFrameResolution",
+    MAX_FRAME_RESOLUTION
+  );
 
   const handleBasemapChange = (event: SelectChangeEvent) => {
     props.setSelectedTms(event.target.value as string);
