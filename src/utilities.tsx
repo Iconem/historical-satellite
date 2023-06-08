@@ -182,7 +182,14 @@ const useLocalStorage = (
   const [value, setValue] = useState(initValue);
 
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(value));
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(value));
+    } catch (e) {
+      console.log(
+        "Local Storage is full, Cannot update storage key",
+        storageKey
+      );
+    }
   }, [value, storageKey]);
 
   return [value, setValue];
