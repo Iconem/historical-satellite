@@ -334,6 +334,14 @@ function ControlPanel(props) {
               },
             }}
           >
+            {/* 
+              TODO
+              Use a combo-box with suggestions (sources) which can also be used to define a new TMS url
+              When copy-pasting a new tms url, would display a dialog to also set a friendly display name
+              Could add an option to remove every option, or reset TMS list
+              Could also more simply hide this list in the settings, so a user could add/remove new TMS sources
+              https://mui.com/material-ui/react-autocomplete/#creatable
+            */}
             {Object.entries(basemapsTmsSources).map(([key, value]) => (
               <MenuItem value={key} key={key}>
                 {BasemapsIds[key]}
