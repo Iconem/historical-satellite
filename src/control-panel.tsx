@@ -12,6 +12,7 @@ import PlayableSlider from "./playable-slider";
 import LinksSection from "./links-section";
 import ExportSplitButton from "./export-split-button";
 import SettingsModal from "./settings-modal";
+import BlendingControl from "./blending-control";
 
 import {
   Select,
@@ -121,8 +122,11 @@ async function fetchTitilerFramesBatches(gdalTranslateCmds: any, aDiv: any) {
 // -----------------------------------------------------
 // Component: ControlPanel
 // ------------------------------------------------------
-function ControlPanel(props) {
+function ControlPanel(props:any) {
   // ---------------------------
+  // Adding blending state
+  const blendingMode = props.blendingMode || "normal";
+  const setBlendingMode = props.setBlendingMode || (() => {});
   // Slider control
   // For slider play/pause loops
   // const [playbackSpeedFPS, setPlaybackSpeedFPS] = useState<number>(2);
@@ -371,6 +375,10 @@ function ControlPanel(props) {
             </LocalizationProvider>{" "}
           </>
         )}{" "}
+        <BlendingControl
+        blendingMode={blendingMode}
+        setBlendingMode={setBlendingMode}
+        />
         <>
           <ExportSplitButton
             handleClick={handleExportButtonClick}

@@ -112,6 +112,8 @@ function App() {
   // It is set to the map that received user input last ('movestart')
   const [activeMap, setActiveMap] = useState<"left" | "right">("left");
   const [clickedMap, setClickedMap] = useState<"left" | "right">("left");
+  // Initializing blending mode state
+  const [blendingMode, setBlendingMode] = useState("normal");
   // const [splitScreenMode, setSplitScreenMode] =
   //   useState<MapSplitMode>("split-screen");
   const [splitScreenMode, setSplitScreenMode] = useLocalStorage(
@@ -146,6 +148,8 @@ function App() {
       splitScreenMode === "split-screen"
         ? `polygon(${splitPanelSizesPercent[0]}% 0%, ${splitPanelSizesPercent[0]}% 100%, 100% 100%, 100% 0% )`
         : "",
+    // Adding blending mode
+    mixBlendMode: blendingMode,
   };
   useEffect(() => {
     resizeMaps();
@@ -413,6 +417,9 @@ function App() {
         )}
       </Map>
       <ControlPanel
+        // Adding blending mode to pass downward
+        blendingMode={blendingMode}
+        setBlendingMode={setBlendingMode}
         timelineDate={
           clickedMap == "left" ? leftTimelineDate : rightTimelineDate
         }
