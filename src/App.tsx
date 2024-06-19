@@ -114,6 +114,9 @@ function App() {
   const [clickedMap, setClickedMap] = useState<"left" | "right">("left");
   // Initializing blending mode state
   const [blendingMode, setBlendingMode] = useState("normal");
+  const [blendingActivation, setBlendingActivation] = useState(true);
+  // Initializing opacity state
+  const [opacity, setOpacity] = useState(1);
   // const [splitScreenMode, setSplitScreenMode] =
   //   useState<MapSplitMode>("split-screen");
   const [splitScreenMode, setSplitScreenMode] = useLocalStorage(
@@ -149,7 +152,8 @@ function App() {
         ? `polygon(${splitPanelSizesPercent[0]}% 0%, ${splitPanelSizesPercent[0]}% 100%, 100% 100%, 100% 0% )`
         : "",
     // Adding blending mode
-    mixBlendMode: blendingMode,
+    mixBlendMode: blendingActivation ? blendingMode : "normal",
+    opacity: opacity,
   };
   useEffect(() => {
     resizeMaps();
@@ -417,7 +421,11 @@ function App() {
         )}
       </Map>
       <ControlPanel
-        // Adding blending mode to pass downward
+        // Adding blending mode opacity, and blending mode activation to pass downward
+        blendingActivation={blendingActivation}
+        setBlendingActivation={setBlendingActivation}
+        opacity={opacity}
+        setOpacity={setOpacity}
         blendingMode={blendingMode}
         setBlendingMode={setBlendingMode}
         timelineDate={

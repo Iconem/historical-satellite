@@ -13,6 +13,8 @@ import LinksSection from "./links-section";
 import ExportSplitButton from "./export-split-button";
 import SettingsModal from "./settings-modal";
 import BlendingControl from "./blending-control";
+import OpacitySlider from "./opacity-slider";
+import BlendingActivator from "./blending-activator";
 
 import {
   Select,
@@ -127,6 +129,9 @@ function ControlPanel(props:any) {
   // Adding blending state
   const blendingMode = props.blendingMode || "normal";
   const setBlendingMode = props.setBlendingMode || (() => {});
+  // Adding blending activation state
+  const blendingActivation = props.blendingActivation || true;
+  const setBlendingActivation = props.setBlendingActivation || (() => {});
   // Slider control
   // For slider play/pause loops
   // const [playbackSpeedFPS, setPlaybackSpeedFPS] = useState<number>(2);
@@ -316,69 +321,88 @@ function ControlPanel(props:any) {
           height: "auto",
         }}
       >
-        <FormControl
-          sx={{ m: 0, minWidth: 200, textAlign: "left" }}
-          size="small"
+        <div 
+          style={{
+            display: "flex",
+            width: "60vw",
+            marginInline: "auto",
+            marginBottom: "15px",
+            justifyContent: "space-evenly"
+        }}
         >
-          <InputLabel id="select-label">Basemap</InputLabel>
-          <Select
-            labelId="demo-select-small-label"
-            id="demo-select-small"
-            value={props.selectedTms}
-            label="Basemap"
-            onChange={handleBasemapChange}
-            MenuProps={{
-              anchorOrigin: {
-                vertical: "top",
-                horizontal: "center",
-              },
-              transformOrigin: {
-                vertical: "bottom",
-                horizontal: "center",
-              },
-            }}
+          <FormControl
+            sx={{ m: 0, minWidth: 200, textAlign: "left" }}
+            size="small"
           >
-            {/* 
-              TODO
-              Use a combo-box with suggestions (sources) which can also be used to define a new TMS url
-              When copy-pasting a new tms url, would display a dialog to also set a friendly display name
-              Could add an option to remove every option, or reset TMS list
-              Could also more simply hide this list in the settings, so a user could add/remove new TMS sources
-              https://mui.com/material-ui/react-autocomplete/#creatable
-            */}
-            {Object.entries(basemapsTmsSources).map(([key, value]) => (
-              <MenuItem value={key} key={key}>
-                {BasemapsIds[key]}
-              </MenuItem>
-            ))}
-            {/* <MenuItem value={''}>Mapbox</MenuItem> */}
-          </Select>
-        </FormControl>
-        {props.selectedTms == BasemapsIds.PlanetMonthly && (
-          <>
-            {" "}
-            <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="fr">
-              <DatePicker
-                slotProps={{
-                  textField: { size: "small", style: { width: "130px" } },
-                }}
-                views={["year", "month"]}
-                label="Basemap Date"
-                format="YYYY/MM"
-                minDate={dayjs(validMinDate)}
-                maxDate={dayjs(validMaxDate)}
-                value={dayjs(props.timelineDate)}
-                onChange={(newValue) =>
-                  props.setTimelineDate(new Date(newValue))
-                }
-              />
-            </LocalizationProvider>{" "}
-          </>
-        )}{" "}
-        <BlendingControl
-        blendingMode={blendingMode}
-        setBlendingMode={setBlendingMode}
-        />
+            <InputLabel id="select-label">Basemap</InputLabel>
+            <Select
+              labelId="demo-select-small-label"
+              id="demo-select-small"
+              value={props.selectedTms}
+              label="Basemap"
+              onChange={handleBasemapChange}
+              MenuProps={{
+                anchorOrigin: {
+                  vertical: "top",
+                  horizontal: "center",
+                },
+                transformOrigin: {
+                  vertical: "bottom",
+                  horizontal: "center",
+                },
+              }}
+            >
+              {/* 
+                TODO
+                Use a combo-box with suggestions (sources) which can also be used to define a new TMS url
+                When copy-pasting a new tms url, would display a dialog to also set a friendly display name
+                Could add an option to remove every option, or reset TMS list
+                Could also more simply hide this list in the settings, so a user could add/remove new TMS sources
+                https://mui.com/material-ui/react-autocomplete/#creatable
+              */}
+              {Object.entries(basemapsTmsSources).map(([key, value]) => (
+                <MenuItem value={key} key={key}>
+                  {BasemapsIds[key]}
+                </MenuItem>
+              ))}
+              {/* <MenuItem value={''}>Mapbox</MenuItem> */}
+            </Select>
+          </FormControl>
+          {props.selectedTms == BasemapsIds.PlanetMonthly && (
+            <>
+              {" "}
+              <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="fr">
+                <DatePicker
+                  slotProps={{
+                    textField: { size: "small", style: { width: "130px" } },
+                  }}
+                  views={["year", "month"]}
+                  label="Basemap Date"
+                  format="YYYY/MM"
+                  minDate={dayjs(validMinDate)}
+                  maxDate={dayjs(validMaxDate)}
+                  value={dayjs(props.timelineDate)}
+                  onChange={(newValue) =>
+                    props.setTimelineDate(new Date(newValue))
+                  }
+                />
+              </LocalizationProvider>{" "}
+            </>
+          )}{" "}
+          <div>
+            <BlendingControl
+            blendingMode={blendingMode}
+            setBlendingMode={setBlendingMode}
+            />
+            <BlendingActivator
+              blendingActivation={blendingActivation}
+              setBlendingActivation={setBlendingActivation}
+            />
+          </div>
+          <OpacitySlider
+            setOpacity={props.setOpacity}
+            opacity={props.opacity}
+          />
         <>
           <ExportSplitButton
             handleClick={handleExportButtonClick}
@@ -407,6 +431,7 @@ function ControlPanel(props:any) {
           maxFrameResolution={maxFrameResolution}
           setMaxFrameResolution={setMaxFrameResolution}
         />
+        </div>
         {props.selectedTms == BasemapsIds.PlanetMonthly && (
           <PlayableSlider
             setTimelineDate={props.setTimelineDate}

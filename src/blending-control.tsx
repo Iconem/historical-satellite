@@ -3,9 +3,8 @@ import { FormControl, InputLabel, MenuItem, Select } from "@mui/material";
 
 const BlendingControl = (props:any) => {
   const blendingModes = [
-    'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten',
-    'color-dodge', 'color-burn', 'hard-light', 'soft-light',
-    'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity'
+    'difference', 'exclusion', 'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten',
+    'color-dodge', 'color-burn', 'hard-light', 'soft-light', 'hue', 'saturation', 'color', 'luminosity'
   ];
 
   const handleBlendingModeChange = (event:any) => {
