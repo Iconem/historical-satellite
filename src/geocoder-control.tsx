@@ -92,9 +92,10 @@ export default function GeocoderControl(
       const ctrl = new MapboxGeocoder({
         ...props,
         localGeocoder: coordinatesGeocoder,
+        zoom: 12,
         marker: false,
         accessToken: props.mapboxAccessToken,
-        flyTo: { duration: 0 },
+        flyTo: { duration: 100 },
       });
       //   ctrl.on('loading', props.onLoading);
       //   ctrl.on('results', props.onResults);
