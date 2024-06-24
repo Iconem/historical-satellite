@@ -8,10 +8,10 @@ import {
   type ControlPosition,
 } from "react-map-gl";
 import type * as React from "react";
-
+import mapboxgl from "mapbox-gl";
 import MapboxGeocoder, {
   type GeocoderOptions,
-} from "@mapbox/mapbox-gl-geocoder";
+} from '@mapbox/mapbox-gl-geocoder';
 
 type GeocoderControlProps = Omit<
   GeocoderOptions,
@@ -103,7 +103,19 @@ export default function GeocoderControl(
       ctrl.on("result", (evt) => {
         console.log("RESULT", evt);
         // props.onResult(evt)
-        props.mapRef?.current?.fitBounds(evt?.result?.bbox, {
+
+        let bounds = evt?.result?.bbox ? evt?.result?.bbox : new mapboxgl.LngLatBounds(
+          {
+          lng: evt?.result.center[0] - 0.25,
+          lat: evt?.result.center[1] -0.25
+          }, 
+          {
+            lng: evt?.result.center[0] + 0.25,
+            lat: evt?.result.center[1] + 0.25
+          }
+        );
+
+        props.mapRef?.current?.fitBounds(bounds, {
           padding: 0,
           center: evt?.result?.center,
         });

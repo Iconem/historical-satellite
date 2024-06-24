@@ -329,7 +329,7 @@ function App() {
         <GeocoderControl
           mapboxAccessToken={MAPBOX_TOKEN}
           position="top-left"
-          flyTo={{ speed: 2.5 }}
+          flyTo={{ speed: 0.5 }}
           mapRef={leftMapRef}
         />
 

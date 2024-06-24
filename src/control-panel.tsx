@@ -37,7 +37,6 @@ import {
   useLocalStorage,
   // convertLatlonTo3857,
 } from "./utilities";
-import { width } from "@fortawesome/free-solid-svg-icons/fa0";
 
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
 const MAX_FRAME_RESOLUTION = 2048; // 1024 - 2048
