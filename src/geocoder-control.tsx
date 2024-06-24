@@ -92,7 +92,8 @@ export default function GeocoderControl(
       const ctrl = new MapboxGeocoder({
         ...props,
         localGeocoder: coordinatesGeocoder,
-        zoom: 12,
+        addressAccuracy: 'place',
+        zoom: 15,
         marker: false,
         accessToken: props.mapboxAccessToken,
         flyTo: { duration: 100 },

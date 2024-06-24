@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 
 import "./App.css";
-import Map, { type MapRef, Source, Layer } from "react-map-gl";
+import Map, { type MapRef, Source, Layer, ScaleControl } from "react-map-gl";
 import GeocoderControl from "./geocoder-control";
 import ControlPanel, { type MapSplitMode } from "./control-panel";
-import { subMonths } from "date-fns";
+import { set, subMonths } from "date-fns";
 import Split from "react-split";
 
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
@@ -16,6 +16,7 @@ import {
   debounce,
   useLocalStorage,
 } from "./utilities";
+import mapboxgl from "mapbox-gl";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -323,7 +324,6 @@ function App() {
         onMove={activeMap === "left" ? onMoveDebounce : () => ({})}
         style={LeftMapStyle}
         mapStyle={leftMapboxMapStyle}
-
         // projection={"naturalEarth"} // globe mercator naturalEarth equalEarth  // TODO: eventually make projection controllable
       >
         <GeocoderControl
@@ -378,6 +378,7 @@ function App() {
           </Source> 
         } */}
         {/* beforeId={"GROUP_"} */}
+        <ScaleControl maxWidth={60} unit="metric" position={'top-left'}/>
       </Map>
       <Map
         {...sharedMapsProps}
@@ -438,6 +439,7 @@ function App() {
         setSelectedTms={
           clickedMap == "left" ? setLeftSelectedTms : setRightSelectedTms
         }
+        swapMapSources={() => {setLeftSelectedTms(rightSelectedTms); setRightSelectedTms(leftSelectedTms)}}
         splitScreenMode={splitScreenMode}
         setSplitScreenMode={setSplitScreenMode}
         setSplitPanelSizesPercent={setSplitPanelSizesPercent}

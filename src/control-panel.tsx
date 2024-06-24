@@ -24,7 +24,6 @@ import {
   MenuItem,
 } from "@mui/material";
 import { differenceInMonths, eachMonthOfInterval, isValid } from "date-fns";
-
 import {
   sliderValToDate,
   dateToSliderVal,
@@ -38,6 +37,7 @@ import {
   useLocalStorage,
   // convertLatlonTo3857,
 } from "./utilities";
+import { width } from "@fortawesome/free-solid-svg-icons/fa0";
 
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
 const MAX_FRAME_RESOLUTION = 2048; // 1024 - 2048
@@ -132,6 +132,8 @@ function ControlPanel(props:any) {
   // Adding blending activation state
   const blendingActivation = props.blendingActivation || true;
   const setBlendingActivation = props.setBlendingActivation || (() => {});
+  // Adding map sources swap
+  const swapMapSources = props.swapMapSources
   // Slider control
   // For slider play/pause loops
   // const [playbackSpeedFPS, setPlaybackSpeedFPS] = useState<number>(2);
@@ -389,6 +391,7 @@ function ControlPanel(props:any) {
               </LocalizationProvider>{" "}
             </>
           )}{" "}
+          <img src="swap.svg" onClick={swapMapSources} style={{width: '30px', height: 'auto'}}></img>
           <div>
             <BlendingControl
             blendingMode={blendingMode}
