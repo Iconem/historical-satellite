@@ -329,7 +329,7 @@ function App() {
         <GeocoderControl
           mapboxAccessToken={MAPBOX_TOKEN}
           position="top-left"
-          flyTo={{ speed: 0.5 }}
+          flyTo={true}
           mapRef={leftMapRef}
         />
 
@@ -391,6 +391,7 @@ function App() {
         onMove={activeMap === "right" ? onMoveDebounce : () => ({})}
         style={RightMapStyle}
         mapStyle={rightMapboxMapStyle}
+
       >
         {rightSelectedTms == BasemapsIds.Mapbox ? (
           <></>
