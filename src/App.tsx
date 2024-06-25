@@ -188,6 +188,7 @@ function App() {
     dragRotate: false,
     width: "100%",
     height: "100%",
+    projection:"naturalEarth"
   };
 
   const handleSplitScreenChange = (
