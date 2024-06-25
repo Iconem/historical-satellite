@@ -7,6 +7,8 @@ import {
 } from "date-fns";
 import { useState, useEffect } from "react";
 
+import { lngLatToWorld } from "@math.gl/web-mercator";
+
 // Helper functions to convert between date for date-picker and slider-value
 // Conversion between slider value and datepicker date
 function sliderValToDate(val: number, minDate: Date) {
@@ -212,6 +214,137 @@ function objectsHaveSameKeys(...objects: any): boolean {
   );
 }
 
+
+  // For bing Aerial, can retrieve the imagery tile collection date min/max properties - and aggregate into a viewport min/max
+  // Could also be displayed on top of each tile, in a corner, so no aggregation needed.
+  //  type mapboxgl.TransformRequestFunction = (url: string, resourceType: mapboxgl.ResourceType) => mapboxgl.RequestParameters
+  let numTilesLoaded = 0;
+  const tiles_dates = []
+  const transformRequest = function (
+    url: string,
+    resourceType: mapboxgl.ResourceType
+  ) {
+    if (numTilesLoaded === undefined) numTilesLoaded = 0;
+    if (resourceType == "Tile") {
+      numTilesLoaded++;
+      console.log(
+        "numTilesLoaded from beginning/component load",
+        numTilesLoaded
+      );
+
+      if (url.includes("virtualearth.net")) getBingDatesFromUrl(url);
+    }
+    return { url };
+  } as mapboxgl.TransformRequestFunction;
+
+  function getBingDatesFromResponse(response: Response) {
+    const dates_str = response.headers
+      .get("X-Ve-Tilemeta-Capturedatesrange")
+      ?.split("-");
+    const dates = dates_str?.map((s) => new Date(s));
+    return dates;
+  }
+  function getVisibleTilesXYZ(map: mapboxgl.Map, tileSize: number) {
+    const tiles = [];
+    const zoom = Math.floor(map.getZoom()) + 1;
+    const bounds = map.getBounds();
+    // const topLeft = map.project(bounds.getNorthWest());
+    // const bottomRight = map.project(bounds.getSouthEast());
+    const topLeft = lngLatToWorld(bounds.getNorthWest().toArray()).map(
+      (x) => (x / 512) * 2 ** zoom
+    );
+    const bottomRight = lngLatToWorld(bounds.getSouthEast().toArray()).map(
+      (x) => (x / 512) * 2 ** zoom
+    );
+    console.log("getVisibleTilesXYZ", map, zoom, bounds, topLeft, bottomRight);
+
+    for (
+      let x = Math.floor(topLeft[0]); // .x
+      x <= Math.floor(bottomRight[0]);
+      x++
+    ) {
+      for (
+        let y = Math.floor(topLeft[1]); // .y
+        y >= Math.floor(bottomRight[1]);
+        y--
+      ) {
+        tiles.push({ x, y, z: zoom });
+      }
+    }
+
+    return tiles;
+  }
+  function toQuad(x: number, y: number, z: number) {
+    var quadkey = "";
+    for (var i = z; i >= 0; --i) {
+      var bitmask = 1 << i;
+      var digit = 0;
+      if ((x & bitmask) !== 0) {
+        digit |= 1;
+      }
+      if ((y & bitmask) !== 0) {
+        digit |= 2;
+      }
+      quadkey += digit;
+    }
+    return quadkey;
+  }
+  function getBingUrl(quadkey: string) {
+    // return "https://t.ssl.ak.tiles.virtualearth.net/tiles/a12022010003311020210.jpeg?g=13578&n=z&prx=1";
+    return basemapsTmsSources[BasemapsIds.Bing].url.replace(
+      "{quadkey}",
+      quadkey
+    );
+  }
+  async function getBingDatesFromUrl(url: string) {
+    const dates = await fetch(url).then(function (response) {
+      // In the bing case, can look for a response header property
+      console.log(url, response.headers);
+      const dates = getBingDatesFromResponse(response);
+      console.log("getBingDatesFromUrl, in fetch", dates);
+      return dates;
+    });
+    return dates ?? "error on fetch ?";
+  }
+
+  async function getBingViewportDate(map: any) {
+    const urlArray = getVisibleTilesXYZ(map, 256); // source.tileSize)
+    console.log(urlArray);
+    const quadkeysArray = urlArray.map((xyz: any) => toQuad(xyz.x, xyz.y, xyz.z));
+    console.log(quadkeysArray);
+    const bingUrls = quadkeysArray.map((quadkey: string) => getBingUrl(quadkey));
+    console.log(bingUrls);
+
+    const promArray = bingUrls.map(async (url) => {
+      return await getBingDatesFromUrl(url);
+    });
+    // console.log("promArray", promArray);
+    // Promise.all(promArray).then((dates) => {
+    //   console.log("after promise.all", dates);
+    //   const minDate = Math.min(...(dates as any).map((d: number[]) => d[0]));
+    //   const maxDate = Math.max(...(dates as any).map((d: number[]) => d[1]));
+    //   console.log(dates, minDate, maxDate);
+    //   document.a = dates;
+    // });
+
+    const tilesDates = await Promise.all(
+      bingUrls.map(async (url) => await getBingDatesFromUrl(url))
+    );
+    const minDate = new Date(
+      Math.min(...(tilesDates as any).map((d: number[]) => d[0]))
+    )
+      .toISOString()
+      .slice(0, 10);
+    const maxDate = new Date(
+      Math.max(...(tilesDates as any).map((d: number[]) => d[1]))
+    )
+      .toISOString()
+      .slice(0, 10);
+    console.log("yaya", tilesDates, "\n", minDate, maxDate);
+    return {minDate, maxDate}
+  }
+
+
 export {
   sliderValToDate,
   dateToSliderVal,
@@ -223,4 +356,5 @@ export {
   convertLatlonTo3857,
   debounce,
   useLocalStorage,
+  getBingViewportDate,
 };

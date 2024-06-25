@@ -5,7 +5,10 @@ import {
   Typography,
   IconButton,
   Box,
-  Tooltip,
+  Tooltip, 
+  Checkbox, 
+  FormControlLabel,
+  // CheckboxChangeEvent,
 } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGear } from "@fortawesome/free-solid-svg-icons";
@@ -31,6 +34,12 @@ export default function SettingsModal(props: any) {
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
   const errorMessage = "start Date should be before end date!";
+  
+  const handleCollectionDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('handleCollectionDateChange',event, event.target, event.target.value, event.target.checked)
+    props.setCollectionDateActivated( event.target.checked);
+  };
+
   return (
     <Fragment>
       <IconButton aria-label="delete" onClick={handleOpen} size={"small"}>
@@ -147,6 +156,17 @@ export default function SettingsModal(props: any) {
             InputLabelProps={{
               shrink: true,
             }}
+          />
+
+          <FormControlLabel
+            label="Activate Collection Date (Beta, caution)"
+            control={
+              <Checkbox
+                checked={props.collectionDateActivated}
+                onChange={handleCollectionDateChange}
+                inputProps={{ 'aria-label': 'controlled' }}
+              />
+            }
           />
         </Box>
       </Modal>

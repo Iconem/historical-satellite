@@ -30,7 +30,7 @@ function LinksSection(props: { mapRef: any }) {
       </Link>
       {") | ESRI "}
       <Link
-        href={`https://livingatlas.arcgis.com/wayback/#active=37890&ext=${bounds?.getWest()},${bounds?.getSouth()},${bounds?.getEast()},${bounds?.getNorth()}`}
+        href={`https://livingatlas.arcgis.com/wayback/#active=37890&ext=${bounds?.getWest()},${bounds?.getSouth()},${bounds?.getEast()},${bounds?.getNorth()}&localChangesOnly=true`}
         target={"_blank"}
       >
         Imagery Wayback Machine

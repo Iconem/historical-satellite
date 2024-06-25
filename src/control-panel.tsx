@@ -1,4 +1,4 @@
-// import { useState } from "react";
+import { useState } from "react";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -22,6 +22,8 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
+  Button,
+  Tooltip,
 } from "@mui/material";
 import { differenceInMonths, eachMonthOfInterval, isValid } from "date-fns";
 import {
@@ -35,6 +37,7 @@ import {
   MIN_DATE,
   MAX_DATE,
   useLocalStorage,
+  getBingViewportDate,
   // convertLatlonTo3857,
 } from "./utilities";
 
@@ -152,6 +155,25 @@ function ControlPanel(props:any) {
   const validMaxDate = maxDate && isValid(maxDate) ? maxDate : MAX_DATE;
   const monthsCount = differenceInMonths(validMaxDate, validMinDate);
   const marks = getSliderMarks(validMinDate, validMaxDate);
+  const [collectionDateStr, setCollectionDateStr] = useState('?');
+
+  
+  const collectionDateRetrievable: BasemapsIds[] = [BasemapsIds.Bing, BasemapsIds.PlanetMonthly]
+  async function getCollectionDateViewport(selectedTms: BasemapsIds) {
+    let collectionDate = {minDate: '?', maxDate: '?'};
+    const map = props.mapRef?.current?.getMap() as any;
+
+    switch (+selectedTms) {
+      case BasemapsIds.Bing: 
+      collectionDate = await getBingViewportDate(map)
+       break;
+
+      default:
+        console.log(`Cannot retrieve collection date for ${selectedTms}.`);
+    }
+    console.log('\n\nRETRIEVED COLLECTION DATE', collectionDate)
+    setCollectionDateStr(`${collectionDate?.minDate} - ${collectionDate?.maxDate}`)
+  }
 
   // const [exportInterval, setExportInterval] = useState<number>(12);
   // const [titilerEndpoint, setTitilerEndpoint] =
@@ -170,9 +192,13 @@ function ControlPanel(props:any) {
     "export_maxFrameResolution",
     MAX_FRAME_RESOLUTION
   );
+  const [collectionDateActivated, setCollectionDateActivated] = useLocalStorage(
+    "collectionDateActivated",
+    true
+  );
 
   const handleBasemapChange = (event: SelectChangeEvent) => {
-    props.setSelectedTms(event.target.value as string);
+    props.setSelectedTms(event.target.value as BasemapsIds); // as string
   };
   // ------------------------------------------
   // HANDLE EXPORT SAVE TO DISK
@@ -418,6 +444,19 @@ function ControlPanel(props:any) {
             download=""
           />
         </>{" "}
+      {(( collectionDateActivated  && props.selectedTms == BasemapsIds.Bing )) && ( 
+      // {(( collectionDateActivated  && collectionDateRetrievable.includes((props.selectedTms as BasemapsIds)) )) && ( 
+        <Tooltip title={"Caution, Beta feature, only for Bing for now, Seems inacurate"}>
+          <Button 
+            variant="outlined" // outlined or text
+            size="small"
+            onClick={() => {
+              getCollectionDateViewport(props.selectedTms)
+            }}> 
+              Collection Date: {collectionDateStr} 
+            </Button>
+          </Tooltip>
+       )} 
         <SettingsModal
           playbackSpeedFPS={playbackSpeedFPS}
           setPlaybackSpeedFPS={setPlaybackSpeedFPS}
@@ -432,6 +471,8 @@ function ControlPanel(props:any) {
           setTitilerEndpoint={setTitilerEndpoint}
           maxFrameResolution={maxFrameResolution}
           setMaxFrameResolution={setMaxFrameResolution}
+          collectionDateActivated={collectionDateActivated}
+          setCollectionDateActivated={setCollectionDateActivated}
         />
         </div>
         {props.selectedTms == BasemapsIds.PlanetMonthly && (

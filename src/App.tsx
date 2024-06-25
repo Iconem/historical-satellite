@@ -7,7 +7,7 @@ import ControlPanel, { type MapSplitMode } from "./control-panel";
 import { set, subMonths } from "date-fns";
 import Split from "react-split";
 
-import { ToggleButton, ToggleButtonGroup } from "@mui/material";
+import { ToggleButton, ToggleButtonGroup, Button } from "@mui/material";
 
 import {
   planetBasemapUrl,
@@ -76,11 +76,11 @@ function App() {
   // const [rightSelectedTms, setRightSelectedTms] = useState<BasemapsIds>(
   //   BasemapsIds.GoogleHybrid
   // );
-  const [leftSelectedTms, setLeftSelectedTms] = useLocalStorage(
+  const [leftSelectedTms, setLeftSelectedTms]: [BasemapsIds, (e: BasemapsIds)=>void] = useLocalStorage(
     "ui_leftSelectedTms",
     BasemapsIds.PlanetMonthly
   );
-  const [rightSelectedTms, setRightSelectedTms] = useLocalStorage(
+  const [rightSelectedTms, setRightSelectedTms]: [BasemapsIds, (e: BasemapsIds)=>void] = useLocalStorage(
     "ui_rightSelectedTms",
     BasemapsIds.GoogleHybrid
   );
@@ -325,6 +325,8 @@ function App() {
         onMove={activeMap === "left" ? onMoveDebounce : () => ({})}
         style={LeftMapStyle}
         mapStyle={leftMapboxMapStyle}
+        // transformRequest={transformRequest}
+
         // projection={"naturalEarth"} // globe mercator naturalEarth equalEarth  // TODO: eventually make projection controllable
       >
         <GeocoderControl
@@ -358,6 +360,9 @@ function App() {
             maxzoom={basemapsTmsSources[leftSelectedTms].maxzoom || 20}
             tileSize={256}
             key={leftSelectedTms}
+            // https://github.com/maptiler/tilejson-spec/tree/custom-projection/2.2.0
+            // yandex is in CRS/SRS EPSG:3395 but mapbox source only supports CRS 3857 atm
+            // crs={"EPSG:3395"}
           >
             <Layer type="raster" layout={{}} paint={{}} />
           </Source>
