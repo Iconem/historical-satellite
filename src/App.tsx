@@ -143,32 +143,37 @@ function App() {
     left: 0,
     right: 0,
     bottom: 0,
+    height: "100%",
     width:
       splitScreenMode === "split-screen"
         ? `100%`
         : `${splitPanelSizesPercent[0]}%`,
-    height: "100%",
   };
   const RightMapStyle: React.CSSProperties = {
     position: "absolute",
     top: 0,
     right: 0,
     bottom: 0,
-    left:
-      splitScreenMode === "split-screen" ? 0 : `${splitPanelSizesPercent[0]}%`,
-    width:
-      splitScreenMode === "split-screen"
-        ? `100%`
-        : `${splitPanelSizesPercent[1]}%`,
     height: "100%",
-    clipPath:
-      splitScreenMode === "split-screen"
-        ? `polygon(${splitPanelSizesPercent[0]}% 0%, ${splitPanelSizesPercent[0]}% 100%, 100% 100%, 100% 0% )`
-        : "",
-    // Adding blending mode
-    mixBlendMode: blendingActivation ? blendingMode : "normal",
-    opacity: opacity,
-
+    
+    ...( 
+      splitScreenMode === "split-screen" ? 
+      {
+        left: 0 ,
+        width: `100%`,
+        clipPath: `polygon(${splitPanelSizesPercent[0]}% 0%, ${splitPanelSizesPercent[0]}% 100%, 100% 100%, 100% 0% )`,
+        // Adding blending mode
+        mixBlendMode: (blendingActivation ? blendingMode : "normal"),
+        opacity: opacity,
+      } : 
+      {
+        left: `${splitPanelSizesPercent[0]}%`,
+        width: `${splitPanelSizesPercent[1]}%`,
+        clipPath: '', 
+        mixBlendMode: 'normal', 
+        opacity: 1,
+      }
+    ) 
   };
   useEffect(() => {
     resizeMaps();
@@ -183,6 +188,38 @@ function App() {
   const onRightMoveStart = useCallback(() => setActiveMap("right"), []);
   const onMove = useCallback((evt: any) => setViewState(evt.viewState), []);
   const onMoveDebounce = debounce(onMove, 10, false);
+
+  
+  function cloneCanvas(oldCanvas: HTMLCanvasElement, newCanvas: HTMLCanvasElement) {    
+    //set dimensions
+    newCanvas.width = oldCanvas.width;
+    newCanvas.height = oldCanvas.height;
+    
+    //apply the old canvas to the new one
+    newCanvas.getContext('2d')?.drawImage(oldCanvas, 0, 0);
+    return newCanvas;
+  }
+  const onMoveEnd = debounce(
+    function (evt: any) {
+      console.log('onMoveEnd')
+      const oldCanvas = leftMapRef.current?.getCanvas();
+      console.log('oldCanvas', oldCanvas)
+      const newCanvas = document.getElementById('leftMapCanvasClone')
+      console.log('newCanvas', newCanvas)
+      cloneCanvas(oldCanvas as HTMLCanvasElement, newCanvas as HTMLCanvasElement)
+      console.log('cloned')
+    }, 
+    10, 
+    false
+  );
+  /*
+  c = document.querySelectorAll('canvas')
+  a = document.createElement('canvas')
+  document.body.appendChild(a)
+
+  cloneCanvas(c[0], a)
+  a.style = {position: 'absolute', top: 0, left: 0, width: '100%', height: '100%'}
+  */
 
   const leftMapboxMapStyle = useMemo(() => {
     return leftSelectedTms == BasemapsIds.Mapbox
@@ -202,7 +239,8 @@ function App() {
     dragRotate: false,
     width: "100%",
     height: "100%",
-    projection:"naturalEarth"
+    projection:"naturalEarth", 
+    preserveDrawingBuffer : true
   };
 
   const handleSplitScreenChange = (
@@ -337,6 +375,7 @@ function App() {
         onMoveStart={onLeftMoveStart}
         // onMove={activeMap === "left" ? onMove : () => ({})}
         onMove={activeMap === "left" ? onMoveDebounce : () => ({})}
+        onMoveEnd={onMoveEnd}
         style={LeftMapStyle}
         mapStyle={leftMapboxMapStyle}
         // transformRequest={transformRequest}
@@ -400,6 +439,7 @@ function App() {
         {/* beforeId={"GROUP_"} */}
         <ScaleControl maxWidth={60} unit="metric" position={'top-left'}/>
       </Map>
+      <>
       <Map
         {...sharedMapsProps}
         // Left/Right Maps Sync
@@ -442,6 +482,22 @@ function App() {
         )}
         <ScaleControl maxWidth={60} unit="metric" position={'top-right'}/>
       </Map>
+      {(splitScreenMode !== "split-screen") && (
+        <canvas 
+          style={
+            {...RightMapStyle, 
+              pointerEvents: 'none',
+              // backgroundColor: 'red',
+              mixBlendMode: blendingActivation ? blendingMode : "normal",
+              opacity: opacity,
+              display: blendingActivation ? 'block' : 'none'
+            }
+          } 
+          id={'leftMapCanvasClone'}>
+
+          </canvas>
+        )}
+      </>
       <ControlPanel
         // Adding blending mode opacity, and blending mode activation to pass downward
         blendingActivation={blendingActivation}
