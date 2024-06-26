@@ -25,7 +25,8 @@ import {
   Button,
   Tooltip,
   Stack,
-  IconButton,Box,
+  IconButton,
+  Divider,
 } from "@mui/material";
 
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
@@ -166,6 +167,7 @@ function ControlPanel(props:any) {
   
   const collectionDateRetrievable: BasemapsIds[] = [BasemapsIds.Bing, BasemapsIds.PlanetMonthly]
   async function getCollectionDateViewport(selectedTms: BasemapsIds) {
+    setCollectionDateStr('')
     let collectionDate = {minDate: '?', maxDate: '?'};
     const map = props.mapRef?.current?.getMap() as any;
 
@@ -368,127 +370,136 @@ function ControlPanel(props:any) {
             direction="row" 
             sx={{ mb: 1 }} 
             alignItems="center"
-            divider={
-              <Box
-                component="hr"
-                sx={{
-                  border: `1px solid #ccc`,
-                  height: '100%'
-                }}
-              />}
+            divider={<Divider orientation="vertical" flexItem />}
+            useFlexGap flexWrap="wrap"
           >
-          <>
-          <FormControl
-            sx={{ m: 0, minWidth: 200, textAlign: "left" }}
-            size="small"
-          >
-            <InputLabel id="select-label">Basemap</InputLabel>
-            <Select
-              labelId="demo-select-small-label"
-              id="demo-select-small"
-              value={props.selectedTms}
-              label="Basemap"
-              onChange={handleBasemapChange}
-              MenuProps={{
-                anchorOrigin: {
-                  vertical: "top",
-                  horizontal: "center",
-                },
-                transformOrigin: {
-                  vertical: "bottom",
-                  horizontal: "center",
-                },
-              }}
-            >
-              {/* 
-                TODO
-                Use a combo-box with suggestions (sources) which can also be used to define a new TMS url
-                When copy-pasting a new tms url, would display a dialog to also set a friendly display name
-                Could add an option to remove every option, or reset TMS list
-                Could also more simply hide this list in the settings, so a user could add/remove new TMS sources
-                https://mui.com/material-ui/react-autocomplete/#creatable
-              */}
-              {Object.entries(basemapsTmsSources).map(([key, value]) => (
-                <MenuItem value={key} key={key}>
-                  {BasemapsIds[key]}
-                </MenuItem>
-              ))}
-              {/* <MenuItem value={''}>Mapbox</MenuItem> */}
-            </Select>
-          </FormControl>
-          {props.selectedTms == BasemapsIds.PlanetMonthly && (
-            <>
-              {" "}
-              <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="fr">
-                <DatePicker
-                  slotProps={{
-                    textField: { size: "small", style: { width: "130px" } },
-                  }}
-                  views={["year", "month"]}
-                  label="Basemap Date"
-                  format="YYYY/MM"
-                  minDate={dayjs(validMinDate)}
-                  maxDate={dayjs(validMaxDate)}
-                  value={dayjs(props.timelineDate)}
-                  onChange={(newValue) =>
-                    props.setTimelineDate(new Date(newValue))
-                  }
-                />
-              </LocalizationProvider>{" "}
-            </>
-          )}{" "}
-          
-          <IconButton color="primary" aria-label="swap map sources">
-            <SwapHorizIcon onClick={swapMapSources} />
-          </IconButton>
-        </>
-        <>
-          <BlendingControl
-          blendingMode={blendingMode}
-          setBlendingMode={setBlendingMode}
-          />
-          <BlendingActivator
-            blendingActivation={blendingActivation}
-            setBlendingActivation={setBlendingActivation}
-          />
-        <OpacitySlider
-          setOpacity={props.setOpacity}
-          opacity={props.opacity}
-        />
-        </>
-        <>
-        <>
-          <ExportSplitButton
-            handleClick={handleExportButtonClick}
-            setExportInterval={setExportInterval}
-          />
 
-          <a
-            id="downloadFramesDiv"
-            style={{ display: "none" }}
-            target="_blank"
-            download=""
-          />
-        </>{" "}
-        <SettingsModal
-          playbackSpeedFPS={playbackSpeedFPS}
-          setPlaybackSpeedFPS={setPlaybackSpeedFPS}
-          minDate={minDate}
-          setMinDate={setMinDate}
-          maxDate={maxDate}
-          setMaxDate={setMaxDate}
-          exportInterval={exportInterval}
-          setExportInterval={setExportInterval}
-          // additional settings
-          titilerEndpoint={titilerEndpoint}
-          setTitilerEndpoint={setTitilerEndpoint}
-          maxFrameResolution={maxFrameResolution}
-          setMaxFrameResolution={setMaxFrameResolution}
-          collectionDateActivated={collectionDateActivated}
-          setCollectionDateActivated={setCollectionDateActivated}
-        />
-        </>
-        </Stack>
+            <Stack 
+              spacing={2} 
+              direction="row" 
+              sx={{ mb: 1, flexGrow: 1, }} 
+              alignItems="center"
+            >
+              <FormControl
+                sx={{ m: 0, minWidth: 200, textAlign: "left" }}
+                size="small"
+              >
+                <InputLabel id="select-label">Basemap</InputLabel>
+                <Select
+                  labelId="demo-select-small-label"
+                  id="demo-select-small"
+                  value={props.selectedTms}
+                  label="Basemap"
+                  onChange={handleBasemapChange}
+                  MenuProps={{
+                    anchorOrigin: {
+                      vertical: "top",
+                      horizontal: "center",
+                    },
+                    transformOrigin: {
+                      vertical: "bottom",
+                      horizontal: "center",
+                    },
+                  }}
+                >
+                  {/* 
+                    TODO
+                    Use a combo-box with suggestions (sources) which can also be used to define a new TMS url
+                    When copy-pasting a new tms url, would display a dialog to also set a friendly display name
+                    Could add an option to remove every option, or reset TMS list
+                    Could also more simply hide this list in the settings, so a user could add/remove new TMS sources
+                    https://mui.com/material-ui/react-autocomplete/#creatable
+                  */}
+                  {Object.entries(basemapsTmsSources).map(([key, value]) => (
+                    <MenuItem value={key} key={key}>
+                      {BasemapsIds[key]}
+                    </MenuItem>
+                  ))}
+                  {/* <MenuItem value={''}>Mapbox</MenuItem> */}
+                </Select>
+              </FormControl>
+              {props.selectedTms == BasemapsIds.PlanetMonthly && (
+                <>
+                  {" "}
+                  <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="fr">
+                    <DatePicker
+                      slotProps={{
+                        textField: { size: "small", style: { width: "130px" } },
+                      }}
+                      views={["year", "month"]}
+                      label="Basemap Date"
+                      format="YYYY/MM"
+                      minDate={dayjs(validMinDate)}
+                      maxDate={dayjs(validMaxDate)}
+                      value={dayjs(props.timelineDate)}
+                      onChange={(newValue) =>
+                        props.setTimelineDate(new Date(newValue))
+                      }
+                    />
+                  </LocalizationProvider>{" "}
+                </>
+              )}{" "}
+              <IconButton color="primary" aria-label="swap map sources">
+                <SwapHorizIcon onClick={swapMapSources} />
+              </IconButton>
+            </Stack>
+
+            <Stack 
+              spacing={2} 
+              direction="row" 
+              sx={{ mb: 1, flexGrow: 1, }} 
+              alignItems="center"
+            >
+              <BlendingControl
+                blendingMode={blendingMode}
+                setBlendingMode={setBlendingMode}
+              />
+              <BlendingActivator
+                blendingActivation={blendingActivation}
+                setBlendingActivation={setBlendingActivation}
+              />
+              <OpacitySlider
+                setOpacity={props.setOpacity}
+                opacity={props.opacity}
+              />
+            </Stack>
+            <Stack 
+              spacing={2} 
+              direction="row" 
+              sx={{ mb: 1, flexGrow: 1,  }} 
+              alignItems="center"
+            >
+              <ExportSplitButton
+                handleClick={handleExportButtonClick}
+                setExportInterval={setExportInterval}
+              />
+
+              <a
+                id="downloadFramesDiv"
+                style={{ display: "none" }}
+                target="_blank"
+                download=""
+              />
+          
+              <SettingsModal
+                playbackSpeedFPS={playbackSpeedFPS}
+                setPlaybackSpeedFPS={setPlaybackSpeedFPS}
+                minDate={minDate}
+                setMinDate={setMinDate}
+                maxDate={maxDate}
+                setMaxDate={setMaxDate}
+                exportInterval={exportInterval}
+                setExportInterval={setExportInterval}
+                // additional settings
+                titilerEndpoint={titilerEndpoint}
+                setTitilerEndpoint={setTitilerEndpoint}
+                maxFrameResolution={maxFrameResolution}
+                setMaxFrameResolution={setMaxFrameResolution}
+                collectionDateActivated={collectionDateActivated}
+                setCollectionDateActivated={setCollectionDateActivated}
+              />
+            </Stack>
+          </Stack>
         </div>
         <div 
           style={{
@@ -496,23 +507,25 @@ function ControlPanel(props:any) {
             width: "60vw",
             marginInline: "auto",
             marginBottom: "15px",
-            justifyContent: "space-evenly"
-        }}
+            justifyContent: "space-evenly",
+            minHeight: '31px'
+          }}
         >
-      {( collectionDateActivated  && props.selectedTms == BasemapsIds.Bing ) ? ( 
-      // {(( collectionDateActivated  && collectionDateRetrievable.includes((props.selectedTms as BasemapsIds)) )) && ( 
-        <Tooltip title={"Caution, Beta feature, only for Bing for now, Seems inacurate"}>
-          <Button 
-            variant="outlined" // outlined or text
-            size="small"
-            onClick={() => {
-              getCollectionDateViewport(props.selectedTms)
-            }}> 
-              Collection Date: {collectionDateStr} 
-            </Button>
-          </Tooltip>
-       ) : <></>} 
-       </div>
+          {( collectionDateActivated  && props.selectedTms == BasemapsIds.Bing ) ? ( 
+          // {(( collectionDateActivated  && collectionDateRetrievable.includes((props.selectedTms as BasemapsIds)) )) && ( 
+            <Tooltip title={"Caution, Beta feature, only for Bing for now, Seems inacurate"}>
+              <Button 
+                variant="outlined" // outlined or text
+                size="small"
+                sx={{display: 'true'}}
+                onClick={() => {
+                  getCollectionDateViewport(props.selectedTms)
+                }}> 
+                  Collection Date: {collectionDateStr} 
+                </Button>
+              </Tooltip>
+          ) : <>{" "}</>} 
+        </div>
         {props.selectedTms == BasemapsIds.PlanetMonthly && (
           <PlayableSlider
             setTimelineDate={props.setTimelineDate}
