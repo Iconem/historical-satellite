@@ -443,7 +443,8 @@ function ControlPanel(props:any) {
                 <SwapHorizIcon onClick={swapMapSources} />
               </IconButton>
             </Stack>
-
+            
+            {props.splitScreenMode === "split-screen" && (
             <Stack 
               spacing={2} 
               direction="row" 
@@ -463,6 +464,7 @@ function ControlPanel(props:any) {
                 opacity={props.opacity}
               />
             </Stack>
+            )}
             <Stack 
               spacing={2} 
               direction="row" 
