@@ -93,6 +93,8 @@ function App() {
     // rightMapRef.current.resize();
   }
 
+  const leftRuler = new RulerControl();
+  const rightRuler = new RulerControl();
 
   if (!rulerOk) {
     console.log("Adding ruler control");
