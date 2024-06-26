@@ -8,6 +8,9 @@ import { set, subMonths } from "date-fns";
 import Split from "react-split";
 import {RulerControl} from 'mapbox-gl-controls'
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
+import MapboxDraw from '@mapbox/mapbox-gl-draw';
+
+// import '@mapbox-controls/ruler/src/index.css';
 
 
 import {
@@ -23,6 +26,79 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 let rulerOk = false;
 // TODO Avoid tile popping on setTiles of rasterTileSet imagery source
 // https://github.com/mapbox/mapbox-gl-js/issues/12707
+
+
+/* eslint-disable complexity,max-statements */
+function MapboxRulerControl(props: any) {
+  const customControl = useControl(
+    () => {
+      const ctrl = new RulerControl({
+        ...props
+      });
+      return ctrl;
+    },
+    {
+      position: props.position
+    }
+  );
+
+  return null;
+}
+
+function MapboxRulerControl2(props: any) {
+  useControl<MapboxDraw>(
+    () => new RulerControl(props),
+    ({map}: {map: MapRef}) => {
+      map.on('ruler.on', (evt: {features: object[]}) => {console.log('ruler.on', evt)});
+      map.on('ruler.off', (evt: {features: object[]}) => {console.log('ruler.off', evt)});
+    },
+    ({map}: {map: MapRef}) => {
+      map.off('ruler.on', props.onCreate);
+      map.off('ruler.off', props.onUpdate);
+    },
+    {
+      position: props.position
+    }
+  );
+
+  return null;
+}
+
+
+function DrawControl(props: any) { // DrawControlProps) {
+  useControl(() => new MapboxDraw(props), {
+    position: props.position
+  });
+
+  return null;
+}
+
+
+function DrawControl2(props: any) {
+  useControl<MapboxDraw>(
+    () => new MapboxDraw(props),
+    ({map}: {map: MapRef}) => {
+      map.on('draw.create', (evt: {features: object[]}) => {console.log('on draw.create', evt)});
+      map.on('draw.update', (evt: {features: object[]}) => {console.log('on draw.update', evt)});
+      map.on('draw.delete', (evt: {features: object[]}) => {console.log('on draw.delete', evt)});
+    },
+    ({map}: {map: MapRef}) => {
+      map.off('draw.create', props.onCreate);
+      map.off('draw.update', props.onUpdate);
+      map.off('draw.delete', props.onDelete);
+    },
+    {
+      position: props.position
+    }
+  );
+
+  return null;
+}
+
+
+
+
+
 
 // APP COMPONENT
 function App() {
@@ -93,12 +169,12 @@ function App() {
     // rightMapRef.current.resize();
   }
 
-  const leftRuler = new RulerControl();
+  // const leftRuler = new RulerControl();
   const rightRuler = new RulerControl();
 
   if (!rulerOk) {
     console.log("Adding ruler control");
-    leftMapRef.current?.getMap()?.addControl(leftRuler, "top-left");
+    // leftMapRef.current?.getMap()?.addControl(leftRuler, "top-left");
     rightMapRef.current?.getMap()?.addControl(rightRuler, "top-right");
     if (leftMapRef.current?.getMap()) {rulerOk=true;}
     // setRulerOk(true);
@@ -202,7 +278,7 @@ function App() {
     dragRotate: false,
     width: "100%",
     height: "100%",
-    projection:"naturalEarth"
+    projection:"naturalEarth", 
   };
 
   const handleSplitScreenChange = (
@@ -349,6 +425,35 @@ function App() {
           flyTo={true}
           mapRef={leftMapRef}
         />
+        <MapboxRulerControl2 
+          position="top-left"
+          invisible= {false}
+          // labelFormat= {(n: number) => string}
+          // lineLayout= {import('mapbox-gl').LineLayout}
+          // linePaint= {import('mapbox-gl').LinePaint}
+          // markerLayout= {import('mapbox-gl').CircleLayout}
+          // markerPaint= {import('mapbox-gl').CirclePaint}
+          // labelLayout= {import('mapbox-gl').SymbolLayout}
+          // labelPaint= {import('mapbox-gl').SymbolPaint}
+          />
+          {/* <DrawControl
+            position="top-left"
+            displayControlsDefault={false}
+            controls={{
+              polygon: true,
+              trash: true
+            }}
+          /> */}
+
+        <DrawControl2 
+            position="top-left"
+            displayControlsDefault={true}
+            controls={{
+              polygon: true,
+              trash: true
+            }}
+            />
+
 
         {leftSelectedTms == BasemapsIds.Mapbox ? (
           <></>
