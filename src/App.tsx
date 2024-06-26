@@ -127,10 +127,10 @@ function App() {
   const [activeMap, setActiveMap] = useState<"left" | "right">("left");
   const [clickedMap, setClickedMap] = useState<"left" | "right">("left");
   // Initializing blending mode state
-  const [blendingMode, setBlendingMode] = useState("normal");
-  const [blendingActivation, setBlendingActivation] = useState(true);
+  const [blendingMode, setBlendingMode] = useState("difference");
+  const [blendingActivation, setBlendingActivation] = useState(false);
   // Initializing opacity state
-  const [opacity, setOpacity] = useState(100);
+  const [opacity, setOpacity] = useState(1);
   // const [splitScreenMode, setSplitScreenMode] =
   //   useState<MapSplitMode>("split-screen");
   const [splitScreenMode, setSplitScreenMode] = useLocalStorage(
@@ -201,13 +201,9 @@ function App() {
   }
   const onMoveEnd = debounce(
     function (evt: any) {
-      console.log('onMoveEnd')
       const oldCanvas = leftMapRef.current?.getCanvas();
-      console.log('oldCanvas', oldCanvas)
       const newCanvas = document.getElementById('leftMapCanvasClone')
-      console.log('newCanvas', newCanvas)
       cloneCanvas(oldCanvas as HTMLCanvasElement, newCanvas as HTMLCanvasElement)
-      console.log('cloned')
     }, 
     10, 
     false
@@ -239,7 +235,7 @@ function App() {
     dragRotate: false,
     width: "100%",
     height: "100%",
-    projection:"naturalEarth", 
+    projection:"naturalEarth", // naturalEarth preferred, mercator possible
     preserveDrawingBuffer : true
   };
 
@@ -253,6 +249,7 @@ function App() {
 
     if (splitScreenMode == "side-by-side") {
       setSplitPanelSizesPercent([50, 50]);
+      setBlendingActivation(false)
     }
   };
 
@@ -440,63 +437,74 @@ function App() {
         <ScaleControl maxWidth={60} unit="metric" position={'top-left'}/>
       </Map>
       <>
-      <Map
-        {...sharedMapsProps}
-        // Left/Right Maps Sync
-        id="right-map"
-        ref={rightMapRef}
-        onClick={() => setClickedMap("right")}
-        onMoveStart={onRightMoveStart}
-        // onMove={activeMap === "right" ? onMove : () => ({})}
-        onMove={activeMap === "right" ? onMoveDebounce : () => ({})}
+      <div
         style={RightMapStyle}
-        mapStyle={rightMapboxMapStyle}
       >
-        {rightSelectedTms == BasemapsIds.Mapbox ? (
-          <></>
-        ) : rightSelectedTms == BasemapsIds.PlanetMonthly ? (
-          <Source
-            id="planetbasemap-source"
-            scheme="xyz"
-            type="raster"
-            tiles={[planetBasemapUrl(rightTimelineDate)]}
-            // tiles={[]}
-            tileSize={256}
-            // key={"planetBasemap"}
-            key={rightTimelineDate.toString()}
-          >
-            <Layer type="raster" layout={{}} paint={{}} />
-          </Source>
-        ) : (
-          <Source
-            id="tms-source"
-            scheme="xyz"
-            type="raster"
-            tiles={[basemapsTmsSources[rightSelectedTms].url]}
-            maxzoom={basemapsTmsSources[rightSelectedTms].maxzoom || 20}
-            tileSize={256}
-            key={rightSelectedTms}
-          >
-            <Layer type="raster" layout={{}} paint={{}} />
-          </Source>
-        )}
-        <ScaleControl maxWidth={60} unit="metric" position={'top-right'}/>
-      </Map>
-      {(splitScreenMode !== "split-screen") && (
-        <canvas 
-          style={
-            {...RightMapStyle, 
-              pointerEvents: 'none',
-              // backgroundColor: 'red',
-              mixBlendMode: blendingActivation ? blendingMode : "normal",
-              opacity: opacity,
-              display: blendingActivation ? 'block' : 'none'
-            }
-          } 
-          id={'leftMapCanvasClone'}>
+        <Map
+          {...sharedMapsProps}
+          // Left/Right Maps Sync
+          id="right-map"
+          ref={rightMapRef}
+          onClick={() => setClickedMap("right")}
+          onMoveStart={onRightMoveStart}
+          // onMove={activeMap === "right" ? onMove : () => ({})}
+          onMove={activeMap === "right" ? onMoveDebounce : () => ({})}
+          onMoveEnd={onMoveEnd}
+          // style={RightMapStyle}
+          mapStyle={rightMapboxMapStyle}
+        >
+          {
+            rightSelectedTms == BasemapsIds.Mapbox ? 
+            ( <></> ) : 
+            rightSelectedTms == BasemapsIds.PlanetMonthly ? (
+              <Source
+                id="planetbasemap-source"
+                scheme="xyz"
+                type="raster"
+                tiles={[planetBasemapUrl(rightTimelineDate)]}
+                // tiles={[]}
+                tileSize={256}
+                // key={"planetBasemap"}
+                key={rightTimelineDate.toString()}
+              >
+                <Layer type="raster" layout={{}} paint={{}} />
+              </Source>
+            ) : (
+              <Source
+                id="tms-source"
+                scheme="xyz"
+                type="raster"
+                tiles={[basemapsTmsSources[rightSelectedTms].url]}
+                maxzoom={basemapsTmsSources[rightSelectedTms].maxzoom || 20}
+                tileSize={256}
+                key={rightSelectedTms}
+              >
+                <Layer type="raster" layout={{}} paint={{}} />
+              </Source>
+            )
+          }
+          <ScaleControl maxWidth={60} unit="metric" position={'top-right'}/>
+        </Map>
+        {(splitScreenMode !== "split-screen") && (
+          <canvas 
+            style={
+              {...RightMapStyle, 
+                pointerEvents: 'none',
+                // backgroundColor: 'red',
+                mixBlendMode: blendingActivation ? blendingMode : "normal",
+                opacity: opacity,
+                display: blendingActivation ? 'block' : 'none', 
+                top: 0, bottom: 0, left: 0, right: 0, 
+                margin: '0 auto',
+                height: 'auto',
+                width: 'auto',
+              }
+            } 
+            id={'leftMapCanvasClone'}>
 
-          </canvas>
-        )}
+            </canvas>
+          )}
+        </div>
       </>
       <ControlPanel
         // Adding blending mode opacity, and blending mode activation to pass downward
