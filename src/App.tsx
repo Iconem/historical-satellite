@@ -172,6 +172,7 @@ function App() {
         clipPath: '', 
         mixBlendMode: 'normal', 
         opacity: 1,
+        overflow: 'hidden',
       }
     ) 
   };
@@ -494,10 +495,11 @@ function App() {
                 mixBlendMode: blendingActivation ? blendingMode : "normal",
                 opacity: opacity,
                 display: blendingActivation ? 'block' : 'none', 
-                top: 0, bottom: 0, left: 0, right: 0, 
+                ...{top: 0, bottom: 0, left: 0, right: 0, }, 
                 margin: '0 auto',
                 height: 'auto',
                 width: 'auto',
+                left: splitPanelSizesPercent[0] <= 50 ? 0 : `${50 - 50 * (splitPanelSizesPercent[0] / splitPanelSizesPercent[1] || 0)}%`
               }
             } 
             id={'leftMapCanvasClone'}>
