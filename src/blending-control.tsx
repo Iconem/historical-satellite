@@ -17,7 +17,7 @@ const BlendingControl = (props:any) => {
       <Select
         labelId="select-label"
         id="demo-select-small"
-        value={props.selectedBlendingMode}
+        value={props.blendingMode}
         label="Blending Mode"
         onChange={handleBlendingModeChange}
       >

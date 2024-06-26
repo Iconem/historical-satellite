@@ -451,13 +451,13 @@ function ControlPanel(props:any) {
               sx={{ mb: 1, flexGrow: 1, }} 
               alignItems="center"
             >
-              <BlendingControl
-                blendingMode={blendingMode}
-                setBlendingMode={setBlendingMode}
-              />
               <BlendingActivator
-                blendingActivation={blendingActivation}
-                setBlendingActivation={setBlendingActivation}
+                blendingActivation={props.blendingActivation}
+                setBlendingActivation={props.setBlendingActivation}
+              />
+              <BlendingControl
+                blendingMode={props.blendingMode}
+                setBlendingMode={props.setBlendingMode}
               />
               <OpacitySlider
                 setOpacity={props.setOpacity}

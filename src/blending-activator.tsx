@@ -6,11 +6,12 @@ export default function CheckboxBlending(props:any) {
         props.setBlendingActivation(event.target.checked);
     }
     return (
-        <Checkbox
-        defaultChecked
-        checked={props.BlendingActivation}
+    <Checkbox
+        // defaultChecked
+        checked={props.blendingActivation}
         onChange={handleCheckboxChange}
         inputProps={{ 'aria-label': 'controlled' }}
         />
     );
 }
+

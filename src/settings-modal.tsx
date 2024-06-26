@@ -36,7 +36,6 @@ export default function SettingsModal(props: any) {
   const errorMessage = "start Date should be before end date!";
   
   const handleCollectionDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('handleCollectionDateChange',event, event.target, event.target.value, event.target.checked)
     props.setCollectionDateActivated( event.target.checked);
   };
 
