@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 
 import "./App.css";
-import Map, { type MapRef, Source, Layer, ScaleControl } from "react-map-gl";
+import Map, { type MapRef, Source, Layer, ScaleControl, useControl } from "react-map-gl";
 import GeocoderControl from "./geocoder-control";
 import ControlPanel, { type MapSplitMode } from "./control-panel";
 import { set, subMonths } from "date-fns";
 import Split from "react-split";
+import {RulerControl} from 'mapbox-gl-controls'
+import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 
-import { ToggleButton, ToggleButtonGroup, Button } from "@mui/material";
 
 import {
   planetBasemapUrl,
@@ -19,7 +20,7 @@ import {
 import mapboxgl from "mapbox-gl";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
-
+let rulerOk = false;
 // TODO Avoid tile popping on setTiles of rasterTileSet imagery source
 // https://github.com/mapbox/mapbox-gl-js/issues/12707
 
@@ -32,7 +33,8 @@ function App() {
   // State variables
   const [backgroundBasemapStyle, setBackgroundBasemapStyle] = useState<any>(
     // "satellite-streets-v12"
-    { version: 8, sources: {}, layers: [] }
+    { version: 8, sources: {}, layers: [], glyphs:"mapbox://fonts/mapbox/{fontstack}/{range}.pbf"
+  }
   );
   // const backgroundBasemapStyle = "satellite-streets-v12";
   // const [leftTimelineDate, setLeftTimelineDate] = useState<Date>(
@@ -89,6 +91,17 @@ function App() {
     leftMapRef.current?.getMap()?.resize();
     rightMapRef.current?.getMap()?.resize();
     // rightMapRef.current.resize();
+  }
+
+  const leftRuler = new RulerControl();
+  const rightRuler = new RulerControl();
+
+  if (!rulerOk) {
+    console.log("Adding ruler control");
+    leftMapRef.current?.getMap()?.addControl(leftRuler, "top-left");
+    rightMapRef.current?.getMap()?.addControl(rightRuler, "top-right");
+    if (leftMapRef.current?.getMap()) {rulerOk=true;}
+    // setRulerOk(true);
   }
 
   // Update raster TMS source faster than react component remount on timelineDate state update
@@ -155,6 +168,7 @@ function App() {
     // Adding blending mode
     mixBlendMode: blendingActivation ? blendingMode : "normal",
     opacity: opacity,
+
   };
   useEffect(() => {
     resizeMaps();
@@ -397,7 +411,6 @@ function App() {
         onMove={activeMap === "right" ? onMoveDebounce : () => ({})}
         style={RightMapStyle}
         mapStyle={rightMapboxMapStyle}
-
       >
         {rightSelectedTms == BasemapsIds.Mapbox ? (
           <></>
@@ -427,6 +440,7 @@ function App() {
             <Layer type="raster" layout={{}} paint={{}} />
           </Source>
         )}
+        <ScaleControl maxWidth={60} unit="metric" position={'top-right'}/>
       </Map>
       <ControlPanel
         // Adding blending mode opacity, and blending mode activation to pass downward

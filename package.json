@@ -23,6 +23,7 @@
     "date-fns": "^2.30.0",
     "dayjs": "^1.11.7",
     "mapbox-gl": "^2.14.1",
+    "mapbox-gl-controls": "^2.3.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-map-gl": "^7.0.23",
