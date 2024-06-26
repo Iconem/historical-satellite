@@ -130,7 +130,7 @@ function App() {
   const [blendingMode, setBlendingMode] = useState("normal");
   const [blendingActivation, setBlendingActivation] = useState(true);
   // Initializing opacity state
-  const [opacity, setOpacity] = useState(1);
+  const [opacity, setOpacity] = useState(100);
   // const [splitScreenMode, setSplitScreenMode] =
   //   useState<MapSplitMode>("split-screen");
   const [splitScreenMode, setSplitScreenMode] = useLocalStorage(

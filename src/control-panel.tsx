@@ -24,7 +24,13 @@ import {
   MenuItem,
   Button,
   Tooltip,
+  Stack,
+  IconButton,Box,
 } from "@mui/material";
+
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+// import SwapHorizontalCircleIcon from '@mui/icons-material/SwapHorizontalCircle';
+
 import { differenceInMonths, eachMonthOfInterval, isValid } from "date-fns";
 import {
   sliderValToDate,
@@ -357,6 +363,21 @@ function ControlPanel(props:any) {
             justifyContent: "space-evenly"
         }}
         >
+          <Stack 
+            spacing={2} 
+            direction="row" 
+            sx={{ mb: 1 }} 
+            alignItems="center"
+            divider={
+              <Box
+                component="hr"
+                sx={{
+                  border: `1px solid #ccc`,
+                  height: '100%'
+                }}
+              />}
+          >
+          <>
           <FormControl
             sx={{ m: 0, minWidth: 200, textAlign: "left" }}
             size="small"
@@ -416,21 +437,26 @@ function ControlPanel(props:any) {
               </LocalizationProvider>{" "}
             </>
           )}{" "}
-          <img src="swap.svg" onClick={swapMapSources} style={{width: '30px', height: 'auto'}}></img>
-          <div>
-            <BlendingControl
-            blendingMode={blendingMode}
-            setBlendingMode={setBlendingMode}
-            />
-            <BlendingActivator
-              blendingActivation={blendingActivation}
-              setBlendingActivation={setBlendingActivation}
-            />
-          </div>
-          <OpacitySlider
-            setOpacity={props.setOpacity}
-            opacity={props.opacity}
+          
+          <IconButton color="primary" aria-label="swap map sources">
+            <SwapHorizIcon onClick={swapMapSources} />
+          </IconButton>
+        </>
+        <>
+          <BlendingControl
+          blendingMode={blendingMode}
+          setBlendingMode={setBlendingMode}
           />
+          <BlendingActivator
+            blendingActivation={blendingActivation}
+            setBlendingActivation={setBlendingActivation}
+          />
+        <OpacitySlider
+          setOpacity={props.setOpacity}
+          opacity={props.opacity}
+        />
+        </>
+        <>
         <>
           <ExportSplitButton
             handleClick={handleExportButtonClick}
@@ -444,19 +470,6 @@ function ControlPanel(props:any) {
             download=""
           />
         </>{" "}
-      {(( collectionDateActivated  && props.selectedTms == BasemapsIds.Bing )) && ( 
-      // {(( collectionDateActivated  && collectionDateRetrievable.includes((props.selectedTms as BasemapsIds)) )) && ( 
-        <Tooltip title={"Caution, Beta feature, only for Bing for now, Seems inacurate"}>
-          <Button 
-            variant="outlined" // outlined or text
-            size="small"
-            onClick={() => {
-              getCollectionDateViewport(props.selectedTms)
-            }}> 
-              Collection Date: {collectionDateStr} 
-            </Button>
-          </Tooltip>
-       )} 
         <SettingsModal
           playbackSpeedFPS={playbackSpeedFPS}
           setPlaybackSpeedFPS={setPlaybackSpeedFPS}
@@ -474,7 +487,32 @@ function ControlPanel(props:any) {
           collectionDateActivated={collectionDateActivated}
           setCollectionDateActivated={setCollectionDateActivated}
         />
+        </>
+        </Stack>
         </div>
+        <div 
+          style={{
+            display: "flex",
+            width: "60vw",
+            marginInline: "auto",
+            marginBottom: "15px",
+            justifyContent: "space-evenly"
+        }}
+        >
+      {( collectionDateActivated  && props.selectedTms == BasemapsIds.Bing ) ? ( 
+      // {(( collectionDateActivated  && collectionDateRetrievable.includes((props.selectedTms as BasemapsIds)) )) && ( 
+        <Tooltip title={"Caution, Beta feature, only for Bing for now, Seems inacurate"}>
+          <Button 
+            variant="outlined" // outlined or text
+            size="small"
+            onClick={() => {
+              getCollectionDateViewport(props.selectedTms)
+            }}> 
+              Collection Date: {collectionDateStr} 
+            </Button>
+          </Tooltip>
+       ) : <></>} 
+       </div>
         {props.selectedTms == BasemapsIds.PlanetMonthly && (
           <PlayableSlider
             setTimelineDate={props.setTimelineDate}

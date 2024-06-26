@@ -5,21 +5,22 @@ export default function OpacitySlider(props:any) {
   const [value, setValue] = React.useState<number>(1);
   const handleOpacityChange = (event:any) => {
     setValue(event.target.value);
-    props.setOpacity(event.target.value);
+    props.setOpacity(event.target.value / 100);
     };
     return (
-        <div>
-            <Slider
-            style={{width: '10vw'}}
-            value={value}
-            step={0.05}
-            aria-label='Always visible'
-            min={0}
-            max={1}
-            valueLabelDisplay='on'
-            onChange={handleOpacityChange}
-            />
-        </div>
-        );
+      <Slider
+        style={{width: '10vw'}}
+        value={value}
+        step={1}
+        // aria-label='Always visible'
+        size="small"
+        min={0}
+        max={100}
+        valueLabelDisplay='auto'
+        onChange={handleOpacityChange}
+        getAriaValueText={v => `Opacity: ${v} %`}
+        valueLabelFormat={v => `Opacity: ${v} %`}
+      />
+    );
 }
   
