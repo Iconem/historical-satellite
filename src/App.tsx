@@ -363,6 +363,7 @@ function App() {
           ></div>
         </Split>
       </div>
+      <div style={{position: 'absolute', inset: '0'}} id={'mapsParent'} >
       <Map
         {...sharedMapsProps}
         hash={true}
@@ -437,7 +438,6 @@ function App() {
         {/* beforeId={"GROUP_"} */}
         <ScaleControl maxWidth={60} unit="metric" position={'top-left'}/>
       </Map>
-      <>
       <div
         style={RightMapStyle}
       >
@@ -488,12 +488,13 @@ function App() {
         </Map>
         {(splitScreenMode !== "split-screen") && (
           <canvas 
+            preserveDrawingBuffer = {true}
             style={
               {...RightMapStyle, 
                 pointerEvents: 'none',
                 // backgroundColor: 'red',
                 mixBlendMode: blendingActivation ? blendingMode : "normal",
-                opacity: opacity,
+                opacity: blendingMode !== 'normal' ? opacity : 0,
                 display: blendingActivation ? 'block' : 'none', 
                 ...{top: 0, bottom: 0, left: 0, right: 0, }, 
                 margin: '0 auto',
@@ -507,7 +508,7 @@ function App() {
             </canvas>
           )}
         </div>
-      </>
+      </div>
       <ControlPanel
         // Adding blending mode opacity, and blending mode activation to pass downward
         blendingActivation={blendingActivation}

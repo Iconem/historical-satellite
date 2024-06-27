@@ -20,19 +20,25 @@ import { useLocalStorage } from "./utilities";
 // Material UI MUI SplitButton
 // https://mui.com/material-ui/react-button-group/
 
-const splitButtonOptions = ["All Frames", "Script only"];
+const splitButtonOptions = ["All Frames", "Script only", "Composited"];
+export enum ExportButtonOptions {
+  ALL_FRAMES= "All Frames",
+  SCRIPT_ONLY = "Script only",
+  COMPOSITED = "Composited",
+}
 
-function ExportSplitButton(props: any) {
+
+export function ExportSplitButton(props: any) {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
-  // const [selectedIndex, setSelectedIndex] = useState(1);
-  const [selectedIndex, setSelectedIndex] = useLocalStorage(
-    "export_buttonSelectedIndex",
+  // const [exportSelectedIndex, setExportSelectedIndex] = useState(1);
+  const [exportSelectedIndex, setExportSelectedIndex] = useLocalStorage(
+    "export_buttonexportSelectedIndex",
     1
   );
 
   // const handleClick = () => {
-  //   console.info(`You clicked ${splitButtonOptions[selectedIndex]}`);
+  //   console.info(`You clicked ${splitButtonOptions[exportSelectedIndex]}`);
   // };
 
   const handleMenuItemClick = (
@@ -40,7 +46,7 @@ function ExportSplitButton(props: any) {
     index: number,
     setExportInterval: Function
   ) => {
-    setSelectedIndex(index);
+    setExportSelectedIndex(index);
     setOpen(false);
     // When export type is set to script only, setInterval to every month to get all frames in batch script
     if (index == 1) {
@@ -62,13 +68,18 @@ function ExportSplitButton(props: any) {
 
     setOpen(false);
   };
-  const exportFramesMode = selectedIndex == 0;
+  // const exportFramesMode = exportSelectedIndex == 0;
+  // const a = Object.keys(ExportButtonOptions)[ exportSelectedIndex ]
+  // const b = ExportButtonOptions[exportSelectedIndex as (typeof ExportButtonOptions)]
+  const exportFramesMode = Object.values(ExportButtonOptions)[exportSelectedIndex];
+  // const index: number = Object.keys(LookingForEnum).indexOf('Casual'); // 1
+
 
   return (
     <Fragment>
       <ButtonGroup aria-label="split button" variant="outlined">
         <Button onClick={handleToggle} ref={anchorRef}>
-          {splitButtonOptions[selectedIndex]}
+          {splitButtonOptions[exportSelectedIndex]}
         </Button>
         <Button
           size="small"
@@ -76,7 +87,7 @@ function ExportSplitButton(props: any) {
           aria-expanded={open ? "true" : undefined}
           aria-label="select merge strategy"
           aria-haspopup="menu"
-          onClick={() => props.handleClick(exportFramesMode)}
+          onClick={() => props.handleExportButtonClick(exportFramesMode)}
           variant="contained"
           disableElevation
         >
@@ -105,7 +116,8 @@ function ExportSplitButton(props: any) {
                   {splitButtonOptions.map((option, index) => (
                     <MenuItem
                       key={option}
-                      selected={index === selectedIndex}
+                      // disabled={option == 'Composited'}
+                      selected={index === exportSelectedIndex}
                       onClick={(event) =>
                         handleMenuItemClick(
                           event,
@@ -127,4 +139,4 @@ function ExportSplitButton(props: any) {
   );
 }
 
-export default ExportSplitButton;
+// export default ExportSplitButton;

@@ -10,11 +10,12 @@ import { LngLatBounds, LngLat } from "mapbox-gl";
 
 import PlayableSlider from "./playable-slider";
 import LinksSection from "./links-section";
-import ExportSplitButton from "./export-split-button";
+import {ExportSplitButton, ExportButtonOptions} from "./export-split-button";
 import SettingsModal from "./settings-modal";
 import BlendingControl from "./blending-control";
 import OpacitySlider from "./opacity-slider";
 import BlendingActivator from "./blending-activator";
+import { toPng } from 'html-to-image';
 
 import {
   Select,
@@ -213,117 +214,138 @@ function ControlPanel(props:any) {
   // -------------------------------------------
   // Define function in component to use mapRef
   // Inspiration for ui overlays (date, latlon, scale) https://github.com/doersino/earthacrosstime/tree/master
-  function handleExportButtonClick(exportFramesMode: boolean = true) {
-    const aDiv = document.getElementById(
-      "downloadFramesDiv"
-    ) as HTMLAnchorElement;
-    const mapRef = props.mapRef;
-    const bounds = mapRef?.current?.getMap()?.getBounds();
-    // Loop through each monthly basemap and download
-
-    // const filteredDates =
-    //   props.selectedTms == BasemapsIds.PlanetMonthly
-    //     ? Array.from({ length: monthsCount }, (value, index) =>
-    //         sliderValToDate(index, minDate)
-    //       ).filter(
-    //         // Test with only yearly downloads
-    //         (date, index) => index >= 0 && index <= 1000 && date.getMonth() >= 0
-    //       )
-    //     : [false];
-    const filteredDates =
-      props.selectedTms == BasemapsIds.PlanetMonthly
-        ? eachMonthOfInterval({
-            start: validMinDate,
-            end: validMaxDate,
-          }).filter((_: Date, i: number) => i % exportInterval == 0)
-        : [false];
-
-    const gdalTranslateCmds = filteredDates.map((date) => {
-      const tmsUrl =
-        props.selectedTms == BasemapsIds.PlanetMonthly
-          ? planetBasemapUrl(date)
-          : basemapsTmsSources[props.selectedTms].url;
-      const downloadUrl = titilerCropUrl(
-        bounds,
-        tmsUrl,
-        maxFrameResolution,
-        titilerEndpoint
-      );
-      const date_YYYY_MM = date
-        ? formatDate(date)
-        : BasemapsIds[props.selectedTms];
-      console.log("downloading", aDiv.href, "to", aDiv.download);
-      // METHOD 1 WILL SIMPLY OPEN IMAGE IN NEW TAB
-      // aDiv.href = downloadUrl;
-      // aDiv.download = date_YYYY_MM + '_titiler.tif';
-      // aDiv.click();
-      // The download link won't work for cross-origin requests unless the other server sends a Content-Disposition: attachment header with the response. For security reasons.
-
-      // TRYING METHOD 2
-      // https://medium.com/charisol-community/downloading-resources-in-html5-a-download-may-not-work-as-expected-bf63546e2baa
-      // Also potentially useful: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
-
-      const batch_cmd =
-        `REM ${date_YYYY_MM}: ${downloadUrl}\n` +
-        // gdal_translate command
-        `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
-          tmsUrl
-        )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>" %DOWNLOAD_FOLDER%\\${
-          date_YYYY_MM + "_gdal.tif"
-        }`;
-      return { downloadUrl, batch_cmd, date_YYYY_MM };
-    });
-
-    // Write gdal_translate command to batch script with indices to original location of cropped version
-    const center = mapRef?.current?.getMap()?.getCenter();
-    const degrees_decimals = 4; // 4 decimals ~11m precision / 5 decimals ~1m precision
-    const center_lng = center?.lng?.toFixed(degrees_decimals);
-    const center_lat = center?.lat?.toFixed(degrees_decimals);
-    const zoom = mapRef?.current?.getMap()?.getZoom();
-    const foldername =
-      props.selectedTms == BasemapsIds.PlanetMonthly
-        ? `planet-monthly-${center_lng}-${center_lat}-${zoom}`
-        : BasemapsIds[props.selectedTms];
-    const gdal_commands =
-      "REM GDAL COMMANDS to retrieve Planet Monthly Basemaps (without TiTiler)\n" +
-      `REM https://historical-satellite.iconem.com/#${zoom}/${center_lng}/${center_lat} \n` +
-      `REM https://www.google.fr/maps/@${center_lat},${center_lng},${zoom}z/data=!3m2!1e3!4b1 \n` +
-      "REM ---\n\n" +
-      `set DOWNLOAD_FOLDER=${foldername}\n` +
-      "set BASEMAP_WIDTH=4096\n\n" +
-      `for /f "delims=" %%i in ('dir /b/od/t:c C:\\PROGRA~1\\QGIS*') do set QGIS="C:\\PROGRA~1\\%%i"\n` +
-      `mkdir ${foldername} \n\n` +
-      gdalTranslateCmds.map((c) => c.batch_cmd).join("\n");
-    aDiv.href =
-      "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
-    aDiv.download = "gdal_commands.bat";
-
-    aDiv.click();
-    // METHOD 2 TEST not working, since MDN says only supported in secure contexts (HTTPS)
-    // Other way using HTML Native Filesystem API
-    // https://stackoverflow.com/questions/34870711/download-a-file-at-different-location-using-html5/70001920#70001920
-    // https://developer.chrome.com/articles/file-system-access/#create-a-new-file
-    // For desktop only: https://caniuse.com/native-filesystem-api
-    console.log(gdal_commands);
-
-    // Dowloads all frames
-    if (exportFramesMode) {
-      // // --- METHOD 1 ---
-      // gdalTranslateCmds.forEach((c) => {
-      //   fetch(c.downloadUrl)
-      //     .then((response) => response.blob())
-      //     .then((blob) => {
-      //       console.log("downloading new ", c.downloadUrl);
-      //       const blobURL = URL.createObjectURL(blob);
-      //       aDiv.href = blobURL;
-      //       aDiv.download = c.date_YYYY_MM + "_titiler.tif";
-      //       aDiv.click();
-      //     });
-      // });
-
-      // // --- METHOD 2 : batches ---
-      fetchTitilerFramesBatches(gdalTranslateCmds, aDiv);
+  // function handleExportButtonClick(exportFramesMode: boolean = true) {
+  function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES) {
+    // html-to-image can do both export with clipPath and mixBlendMode, although seem a bit slower than html2canvas!
+    // Note html2canvas cannot export with mixBlendModes and clipPath yet, see https://github.com/niklasvh/html2canvas/issues/580
+    if (exportFramesMode == ExportButtonOptions.COMPOSITED) {
+      toPng(document.getElementById('mapsParent') || document.body)
+      .then(function (dataUrl) {
+        const a = document.createElement('a')
+        a.setAttribute('download', 'composited.png')
+        a.setAttribute('href', dataUrl)
+        a.click()
+      })
+      .catch(function (error) {
+        console.error('Something went wrong with screenshoting composited image!', error);
+      });
     }
+    
+    else {
+        
+      const aDiv = document.getElementById(
+        "downloadFramesDiv"
+      ) as HTMLAnchorElement;
+      const mapRef = props.mapRef;
+      const bounds = mapRef?.current?.getMap()?.getBounds();
+      // Loop through each monthly basemap and download
+
+      // const filteredDates =
+      //   props.selectedTms == BasemapsIds.PlanetMonthly
+      //     ? Array.from({ length: monthsCount }, (value, index) =>
+      //         sliderValToDate(index, minDate)
+      //       ).filter(
+      //         // Test with only yearly downloads
+      //         (date, index) => index >= 0 && index <= 1000 && date.getMonth() >= 0
+      //       )
+      //     : [false];
+      const filteredDates =
+        props.selectedTms == BasemapsIds.PlanetMonthly
+          ? eachMonthOfInterval({
+              start: validMinDate,
+              end: validMaxDate,
+            }).filter((_: Date, i: number) => i % exportInterval == 0)
+          : [false];
+
+      const gdalTranslateCmds = filteredDates.map((date) => {
+        const tmsUrl =
+          props.selectedTms == BasemapsIds.PlanetMonthly
+            ? planetBasemapUrl(date)
+            : basemapsTmsSources[props.selectedTms].url;
+        const downloadUrl = titilerCropUrl(
+          bounds,
+          tmsUrl,
+          maxFrameResolution,
+          titilerEndpoint
+        );
+        const date_YYYY_MM = date
+          ? formatDate(date)
+          : BasemapsIds[props.selectedTms];
+        console.log("downloading", aDiv.href, "to", aDiv.download);
+        // METHOD 1 WILL SIMPLY OPEN IMAGE IN NEW TAB
+        // aDiv.href = downloadUrl;
+        // aDiv.download = date_YYYY_MM + '_titiler.tif';
+        // aDiv.click();
+        // The download link won't work for cross-origin requests unless the other server sends a Content-Disposition: attachment header with the response. For security reasons.
+
+        // TRYING METHOD 2
+        // https://medium.com/charisol-community/downloading-resources-in-html5-a-download-may-not-work-as-expected-bf63546e2baa
+        // Also potentially useful: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
+
+        const batch_cmd =
+          `REM ${date_YYYY_MM}: ${downloadUrl}\n` +
+          // gdal_translate command
+          `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
+            tmsUrl
+          )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>" %DOWNLOAD_FOLDER%\\${
+            date_YYYY_MM + "_gdal.tif"
+          }`;
+        return { downloadUrl, batch_cmd, date_YYYY_MM };
+      });
+
+      // Write gdal_translate command to batch script with indices to original location of cropped version
+      const center = mapRef?.current?.getMap()?.getCenter();
+      const degrees_decimals = 4; // 4 decimals ~11m precision / 5 decimals ~1m precision
+      const center_lng = center?.lng?.toFixed(degrees_decimals);
+      const center_lat = center?.lat?.toFixed(degrees_decimals);
+      const zoom = mapRef?.current?.getMap()?.getZoom();
+      const foldername =
+        props.selectedTms == BasemapsIds.PlanetMonthly
+          ? `planet-monthly-${center_lng}-${center_lat}-${zoom}`
+          : BasemapsIds[props.selectedTms];
+      const gdal_commands =
+        "REM GDAL COMMANDS to retrieve Planet Monthly Basemaps (without TiTiler)\n" +
+        `REM https://historical-satellite.iconem.com/#${zoom}/${center_lng}/${center_lat} \n` +
+        `REM https://www.google.fr/maps/@${center_lat},${center_lng},${zoom}z/data=!3m2!1e3!4b1 \n` +
+        "REM ---\n\n" +
+        `set DOWNLOAD_FOLDER=${foldername}\n` +
+        "set BASEMAP_WIDTH=4096\n\n" +
+        `for /f "delims=" %%i in ('dir /b/od/t:c C:\\PROGRA~1\\QGIS*') do set QGIS="C:\\PROGRA~1\\%%i"\n` +
+        `mkdir ${foldername} \n\n` +
+        gdalTranslateCmds.map((c) => c.batch_cmd).join("\n");
+      aDiv.href =
+        "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
+      aDiv.download = "gdal_commands.bat";
+
+      aDiv.click();
+      // METHOD 2 TEST not working, since MDN says only supported in secure contexts (HTTPS)
+      // Other way using HTML Native Filesystem API
+      // https://stackoverflow.com/questions/34870711/download-a-file-at-different-location-using-html5/70001920#70001920
+      // https://developer.chrome.com/articles/file-system-access/#create-a-new-file
+      // For desktop only: https://caniuse.com/native-filesystem-api
+      console.log(gdal_commands);
+      console.log('\n\n', exportFramesMode, ExportButtonOptions.ALL_FRAMES, exportFramesMode.constructor.name, ExportButtonOptions.ALL_FRAMES.constructor.name)
+
+      // Dowloads all frames
+      if (exportFramesMode == ExportButtonOptions.ALL_FRAMES) {
+        // // --- METHOD 1 ---
+        // gdalTranslateCmds.forEach((c) => {
+        //   fetch(c.downloadUrl)
+        //     .then((response) => response.blob())
+        //     .then((blob) => {
+        //       console.log("downloading new ", c.downloadUrl);
+        //       const blobURL = URL.createObjectURL(blob);
+        //       aDiv.href = blobURL;
+        //       aDiv.download = c.date_YYYY_MM + "_titiler.tif";
+        //       aDiv.click();
+        //     });
+        // });
+
+        // // --- METHOD 2 : batches ---
+        console.log('exportFramesMode == ExportButtonOptions.ALL_FRAMES')
+        fetchTitilerFramesBatches(gdalTranslateCmds, aDiv);
+      }
+    } 
   }
 
   return (
@@ -458,6 +480,7 @@ function ControlPanel(props:any) {
               <BlendingControl
                 blendingMode={props.blendingMode}
                 setBlendingMode={props.setBlendingMode}
+                setBlendingActivation={props.setBlendingActivation}
               />
               <OpacitySlider
                 setOpacity={props.setOpacity}
@@ -472,7 +495,7 @@ function ControlPanel(props:any) {
               alignItems="center"
             >
               <ExportSplitButton
-                handleClick={handleExportButtonClick}
+                handleExportButtonClick={handleExportButtonClick}
                 setExportInterval={setExportInterval}
               />
 
@@ -503,31 +526,36 @@ function ControlPanel(props:any) {
             </Stack>
           </Stack>
         </div>
-        <div 
-          style={{
-            display: "flex",
-            width: "60vw",
-            marginInline: "auto",
-            marginBottom: "15px",
-            justifyContent: "space-evenly",
-            minHeight: '31px'
-          }}
-        >
-          {( collectionDateActivated  && props.selectedTms == BasemapsIds.Bing ) ? ( 
-          // {(( collectionDateActivated  && collectionDateRetrievable.includes((props.selectedTms as BasemapsIds)) )) && ( 
-            <Tooltip title={"Caution, Beta feature, only for Bing for now, Seems inacurate"}>
-              <Button 
-                variant="outlined" // outlined or text
-                size="small"
-                sx={{display: 'true'}}
-                onClick={() => {
-                  getCollectionDateViewport(props.selectedTms)
-                }}> 
-                  Collection Date: {collectionDateStr} 
-                </Button>
-              </Tooltip>
-          ) : <>{" "}</>} 
-        </div>
+        {
+          +props.selectedTms !== BasemapsIds.PlanetMonthly && 
+          (
+            <div 
+              style={{
+                display: "flex",
+                width: "60vw",
+                marginInline: "auto",
+                marginBottom: "15px",
+                justifyContent: "space-evenly",
+                minHeight: '31px'
+              }}
+            >
+              {( collectionDateActivated  && props.selectedTms == BasemapsIds.Bing ) ? ( 
+              // {(( collectionDateActivated  && collectionDateRetrievable.includes((props.selectedTms as BasemapsIds)) )) && ( 
+                <Tooltip title={"Caution, Beta feature, only for Bing for now, Seems inacurate"}>
+                  <Button 
+                    variant="outlined" // outlined or text
+                    size="small"
+                    sx={{display: 'true'}}
+                    onClick={() => {
+                      getCollectionDateViewport(props.selectedTms)
+                    }}> 
+                      Collection Date: {collectionDateStr} 
+                    </Button>
+                  </Tooltip>
+              ) : <>{" "}</>} 
+            </div>
+          )
+        }
         {props.selectedTms == BasemapsIds.PlanetMonthly && (
           <PlayableSlider
             setTimelineDate={props.setTimelineDate}

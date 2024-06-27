@@ -8,7 +8,9 @@ const BlendingControl = (props:any) => {
   ];
 
   const handleBlendingModeChange = (event:any) => {
-    props.setBlendingMode(event.target.value);
+    const mode = event.target.value;
+    props.setBlendingMode(mode);
+    if (mode !== 'normal') props.setBlendingActivation(true)
   };
 
   return (
