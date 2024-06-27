@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import "./App.css";
 import Map, { type MapRef, Source, Layer, ScaleControl, useControl } from "react-map-gl";
 import GeocoderControl from "./geocoder-control";
-import ControlPanel, { type MapSplitMode } from "./control-panel";
+import ControlPanelDrawer, { type MapSplitMode } from "./control-panel";
 import { set, subMonths } from "date-fns";
 import Split from "react-split";
 import {RulerControl} from 'mapbox-gl-controls'
@@ -250,7 +250,6 @@ function App() {
 
     if (splitScreenMode == "side-by-side") {
       setSplitPanelSizesPercent([50, 50]);
-      setBlendingActivation(false)
     }
   };
 
@@ -509,7 +508,7 @@ function App() {
           )}
         </div>
       </div>
-      <ControlPanel
+      <ControlPanelDrawer
         // Adding blending mode opacity, and blending mode activation to pass downward
         blendingActivation={blendingActivation}
         setBlendingActivation={setBlendingActivation}
@@ -533,6 +532,9 @@ function App() {
         setSplitPanelSizesPercent={setSplitPanelSizesPercent}
         mapRef={leftMapRef}
         clickedMap={clickedMap}
+        // Additional
+        setLeftSelectedTms= {setLeftSelectedTms}
+        setRightSelectedTms= {setRightSelectedTms}
       />
     </>
   );

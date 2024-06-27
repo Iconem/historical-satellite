@@ -28,8 +28,13 @@ import {
   Stack,
   IconButton,
   Divider,
+  Box, 
+  Drawer
 } from "@mui/material";
 
+
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 // import SwapHorizontalCircleIcon from '@mui/icons-material/SwapHorizontalCircle';
 
@@ -131,19 +136,98 @@ async function fetchTitilerFramesBatches(gdalTranslateCmds: any, aDiv: any) {
   }
 }
 
+const drawerWidth = '240px';
+
+
+function ControlPanelDrawer(props: any) {
+  // const theme = useTheme();
+  const [open, setOpen] = useState(true);
+
+  const handleDrawerToggle = () => {
+    setOpen(!open);
+  };
+
+  return (
+    <Box sx={{ 
+      display: 'flex', 
+      height: 0, 
+      alignItems: 'flex-end', 
+      flexDirection: 'row-reverse'
+    }}>
+      <IconButton
+        color="inherit"
+        aria-label="open settings"
+        onClick={handleDrawerToggle}
+        edge="start"
+        sx={{ 
+          m: 2, 
+          // position: 'absolute',
+          // bottom: open ? '240px' : 0,
+          // right: 0,
+          backgroundColor: 'rgb(200 200 200 / 57%)',
+          color: open ? 'grey' : 'white',
+          zIndex: 2000,
+          transition: 'bottom 225ms cubic-bezier(0, 0, 0.2, 1) 0ms',
+          // transition: theme.transitions.create('margin', {
+          //   easing: theme.transitions.easing.sharp,
+          //   duration: theme.transitions.duration.leavingScreen,
+          // })
+        }}
+      >
+        {(open ? <ExpandMore /> : <ExpandLess />)}
+      </IconButton>
+      <Drawer
+        sx={{
+          // width: drawerWidth,
+          // height: drawerWidth,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            // height: drawerWidth,
+            boxSizing: 'border-box',
+            backgroundColor: 'transparent',
+          },
+          // height: 'fit-content'
+        }}
+        variant="persistent"
+        anchor="bottom"
+        open={open}
+      >
+
+      <ControlPanel
+        // Adding blending mode opacity, and blending mode activation to pass downward
+        blendingActivation={props.blendingActivation}
+        setBlendingActivation={props.setBlendingActivation}
+        opacity={props.opacity}
+        setOpacity={props.setOpacity}
+        blendingMode={props.blendingMode}
+        setBlendingMode={props.setBlendingMode}
+        timelineDate={ props.timelineDate }
+        setTimelineDate={ props.setTimelineDate }
+        selectedTms={props.selectedTms}
+        setSelectedTms={ props.setSelectedTms }
+        swapMapSources={props.swapMapSources}
+        splitScreenMode={props.splitScreenMode}
+        setSplitScreenMode={props.setSplitScreenMode}
+        setSplitPanelSizesPercent={props.setSplitPanelSizesPercent}
+        mapRef={props.leftMapRef}
+        clickedMap={props.clickedMap}
+        // Additional
+        setLeftSelectedTms={props.setLeftSelectedTms}
+        setRightSelectedTms={props.setRightSelectedTms}
+      />
+        
+      </Drawer>
+      
+    </Box>
+  );
+}
+
+
 // -----------------------------------------------------
 // Component: ControlPanel
 // ------------------------------------------------------
 function ControlPanel(props:any) {
   // ---------------------------
-  // Adding blending state
-  const blendingMode = props.blendingMode || "normal";
-  const setBlendingMode = props.setBlendingMode || (() => {});
-  // Adding blending activation state
-  const blendingActivation = props.blendingActivation || true;
-  const setBlendingActivation = props.setBlendingActivation || (() => {});
-  // Adding map sources swap
-  const swapMapSources = props.swapMapSources
   // Slider control
   // For slider play/pause loops
   // const [playbackSpeedFPS, setPlaybackSpeedFPS] = useState<number>(2);
@@ -351,7 +435,7 @@ function ControlPanel(props:any) {
   return (
     <div
       style={{
-        position: "absolute",
+        // position: "absolute",
         width: "100%",
         pointerEvents: "auto",
 
@@ -462,7 +546,7 @@ function ControlPanel(props:any) {
                 </>
               )}{" "}
               <IconButton color="primary" aria-label="swap map sources">
-                <SwapHorizIcon onClick={swapMapSources} />
+                <SwapHorizIcon onClick={props.swapMapSources} />
               </IconButton>
             </Stack>
             
@@ -580,4 +664,4 @@ function ControlPanel(props:any) {
   );
 }
 
-export default ControlPanel;
+export default ControlPanelDrawer;
