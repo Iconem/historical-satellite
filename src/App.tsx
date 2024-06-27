@@ -204,7 +204,7 @@ function App() {
     function (evt: any) {
       const oldCanvas = leftMapRef.current?.getCanvas();
       const newCanvas = document.getElementById('leftMapCanvasClone')
-      cloneCanvas(oldCanvas as HTMLCanvasElement, newCanvas as HTMLCanvasElement)
+      if (oldCanvas && newCanvas) cloneCanvas(oldCanvas as HTMLCanvasElement, newCanvas as HTMLCanvasElement)
     }, 
     10, 
     false
@@ -487,7 +487,6 @@ function App() {
         </Map>
         {(splitScreenMode !== "split-screen") && (
           <canvas 
-            preserveDrawingBuffer = {true}
             style={
               {...RightMapStyle, 
                 pointerEvents: 'none',

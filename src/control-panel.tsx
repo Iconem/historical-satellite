@@ -209,7 +209,7 @@ function ControlPanelDrawer(props: any) {
         splitScreenMode={props.splitScreenMode}
         setSplitScreenMode={props.setSplitScreenMode}
         setSplitPanelSizesPercent={props.setSplitPanelSizesPercent}
-        mapRef={props.leftMapRef}
+        mapRef={props.mapRef}
         clickedMap={props.clickedMap}
         // Additional
         setLeftSelectedTms={props.setLeftSelectedTms}
@@ -289,6 +289,7 @@ function ControlPanel(props:any) {
     "collectionDateActivated",
     true
   );
+  const map = props.mapRef?.current?.getMap() as any;
 
   const handleBasemapChange = (event: SelectChangeEvent) => {
     props.setSelectedTms(event.target.value as BasemapsIds); // as string
@@ -631,7 +632,7 @@ function ControlPanel(props:any) {
                     size="small"
                     sx={{display: 'true'}}
                     onClick={() => {
-                      getCollectionDateViewport(props.selectedTms)
+                      getCollectionDateViewport(props.selectedTms, map)
                     }}> 
                       Collection Date: {collectionDateStr} 
                     </Button>
