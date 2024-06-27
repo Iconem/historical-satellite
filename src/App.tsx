@@ -498,7 +498,7 @@ function App() {
                 display: blendingActivation ? 'block' : 'none', 
                 ...{top: 0, bottom: 0, left: 0, right: 0, }, 
                 margin: '0 auto',
-                height: 'auto',
+                height: '100%',
                 width: 'auto',
                 left: splitPanelSizesPercent[0] <= 50 ? 0 : `${50 - 50 * (splitPanelSizesPercent[0] / splitPanelSizesPercent[1] || 0)}%`
               }
