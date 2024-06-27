@@ -126,7 +126,7 @@ async function fetchTitilerFramesBatches(gdalTranslateCmds: any, aDiv: any) {
             console.log("downloading new ", c.downloadUrl);
             const blobURL = URL.createObjectURL(blob);
             aDiv.href = blobURL;
-            aDiv.download = c.date_YYYY_MM + "_titiler.tif";
+            aDiv.download = c.filename + "_titiler.tif";
             aDiv.click();
           });
       })
@@ -312,12 +312,11 @@ function ControlPanel(props:any) {
         a.click()
       })
       .catch(function (error) {
-        console.error('Something went wrong with screenshoting composited image!', error);
+        console.error('Error with downloading of composited image!', error);
       });
     }
     
     else {
-        
       const aDiv = document.getElementById(
         "downloadFramesDiv"
       ) as HTMLAnchorElement;
@@ -335,48 +334,59 @@ function ControlPanel(props:any) {
       //       )
       //     : [false];
       const filteredDates =
-        props.selectedTms == BasemapsIds.PlanetMonthly
-          ? eachMonthOfInterval({
+          eachMonthOfInterval({
               start: validMinDate,
               end: validMaxDate,
             }).filter((_: Date, i: number) => i % exportInterval == 0)
-          : [false];
 
-      const gdalTranslateCmds = filteredDates.map((date) => {
-        const tmsUrl =
-          props.selectedTms == BasemapsIds.PlanetMonthly
-            ? planetBasemapUrl(date)
-            : basemapsTmsSources[props.selectedTms].url;
+         
+      function get_batch_cmd (tmsUrl: string, bounds, filename: string,) {
         const downloadUrl = titilerCropUrl(
           bounds,
           tmsUrl,
           maxFrameResolution,
           titilerEndpoint
         );
-        const date_YYYY_MM = date
-          ? formatDate(date)
-          : BasemapsIds[props.selectedTms];
-        console.log("downloading", aDiv.href, "to", aDiv.download);
-        // METHOD 1 WILL SIMPLY OPEN IMAGE IN NEW TAB
-        // aDiv.href = downloadUrl;
-        // aDiv.download = date_YYYY_MM + '_titiler.tif';
-        // aDiv.click();
-        // The download link won't work for cross-origin requests unless the other server sends a Content-Disposition: attachment header with the response. For security reasons.
+        const batch_cmd = `REM ${filename}\nREM ${downloadUrl}\n` +
+        // gdal_translate command
+        `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
+          tmsUrl
+        )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>" %DOWNLOAD_FOLDER%\\${
+          filename + "_gdal.tif"
+        }`;
+        return { downloadUrl, batch_cmd, filename }
+      }
 
+          /*
+            
+            BasemapsIds[props.selectedTms]
+          */
+      const gdalTranslateCmds_planet = filteredDates.map((date) => {
+        const tmsUrl = planetBasemapUrl(date);
+        const date_YYYY_MM = formatDate(date);
         // TRYING METHOD 2
         // https://medium.com/charisol-community/downloading-resources-in-html5-a-download-may-not-work-as-expected-bf63546e2baa
         // Also potentially useful: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
-
-        const batch_cmd =
-          `REM ${date_YYYY_MM}: ${downloadUrl}\n` +
-          // gdal_translate command
-          `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
-            tmsUrl
-          )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>" %DOWNLOAD_FOLDER%\\${
-            date_YYYY_MM + "_gdal.tif"
-          }`;
-        return { downloadUrl, batch_cmd, date_YYYY_MM };
+        const filename = `PlanetMonthly_${date_YYYY_MM}`
+        const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
+        return cmd_obj;
       });
+      console.log(gdalTranslateCmds_planet)
+
+      const gdalTranslateCmds_other = Object.entries(basemapsTmsSources)
+        .filter(([key, value]) => {
+          return +key !== BasemapsIds.PlanetMonthly
+        })
+        .map(([key, value]) => {
+          const filename = BasemapsIds[key]
+          // const tmsUrl = basemapsTmsSources[props.selectedTms].url
+          const tmsUrl = basemapsTmsSources[key].url
+          const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
+          return cmd_obj;
+      })
+      console.log(gdalTranslateCmds_other)
+
+      const gdalTranslateCmds = [...gdalTranslateCmds_other, ...gdalTranslateCmds_planet ]
 
       // Write gdal_translate command to batch script with indices to original location of cropped version
       const center = mapRef?.current?.getMap()?.getCenter();
