@@ -49,9 +49,9 @@ export function ExportSplitButton(props: any) {
     setExportSelectedIndex(index);
     setOpen(false);
     // When export type is set to script only, setInterval to every month to get all frames in batch script
-    if (index == 1) {
-      setExportInterval(1);
-    }
+    // if (index == 1) {
+    //   setExportInterval(1);
+    // }
   };
 
   const handleToggle = () => {
