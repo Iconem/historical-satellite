@@ -101,6 +101,7 @@ export function ExportSplitButton(props: any) {
         transition
         disablePortal
         placement={"top"}
+        sx={{zIndex: 10}}
       >
         {({ TransitionProps, placement }) => (
           <Grow

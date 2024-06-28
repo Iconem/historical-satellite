@@ -55,7 +55,7 @@ import {
 } from "./utilities";
 
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
-const MAX_FRAME_RESOLUTION = 2048; // 1024 - 2048
+const MAX_FRAME_RESOLUTION = 512; // 1024 - 2048 TODO 512 FOR TESTING? 2048 BETTER
 const PROMISES_BATCH_SIZE = 5;
 const PROMISES_BATCH_DELAY = 2000; // 2000ms
 
@@ -78,9 +78,22 @@ export type MapSplitMode = "side-by-side" | "split-screen";
 // https://titiler.xyz/cog/crop/-110,-70,110,70.png?url=%3CGDAL_WMS%3E%3CService%20name%3D%27TMS%27%3E%3CServerUrl%3Ehttp%3A%2F%2Fmt.google.com%2Fvt%2Flyrs%3Dy%26amp%3Bx%3D%24%7Bx%7D%26amp%3By%3D%24%7By%7D%26amp%3Bz%3D%24%7Bz%7D%3C%2FServerUrl%3E%3C%2FService%3E%3CDataWindow%3E%3CUpperLeftX%3E-20037508.34%3C%2FUpperLeftX%3E%3CUpperLeftY%3E20037508.34%3C%2FUpperLeftY%3E%3CLowerRightX%3E20037508.34%3C%2FLowerRightX%3E%3CLowerRightY%3E-20037508.34%3C%2FLowerRightY%3E%3CTileLevel%3E18%3C%2FTileLevel%3E%3CTileCountX%3E1%3C%2FTileCountX%3E%3CTileCountY%3E1%3C%2FTileCountY%3E%3CYOrigin%3Etop%3C%2FYOrigin%3E%3C%2FDataWindow%3E%3CProjection%3EEPSG%3A3857%3C%2FProjection%3E%3CBlockSizeX%3E256%3C%2FBlockSizeX%3E%3CBlockSizeY%3E256%3C%2FBlockSizeY%3E%3CBandsCount%3E3%3C%2FBandsCount%3E%3CCache%20%2F%3E%3C%2FGDAL_WMS%3E
 
 const escapeTmsUrl = (url: string) =>
-  url.replace("{x}", "${x}").replace("{y}", "${y}").replace("{z}", "${z}");
+  url
+    .replace("{x}", "${x}")
+    .replace("{y}", "${y}")
+    .replace("{z}", "${z}")
+    .replace("{quadkey}", "${quadkey}")
+    .replaceAll("&", "&amp;"); // before that, only planet, esri and osm worked. After that escape, here also works.
 // const unescapeTmsUrl = (url: string) =>
 //   url.replace("${x}", "{x}").replace("${y}", "{y}").replace("${z}", "{z}");
+function buildGdalWmsXml(tmsUrl: string) {
+  return (!tmsUrl.includes('quadkey')) ? 
+  `<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl( tmsUrl )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>`
+   : 
+  `<GDAL_WMS><Service name="VirtualEarth"><ServerUrl> ${escapeTmsUrl( tmsUrl )} </ServerUrl></Service><MaxConnections>4</MaxConnections><Cache/></GDAL_WMS>`;
+}
+
+// See discussion here https://github.com/developmentseed/titiler/discussions/640
 function titilerCropUrl(
   bounds: LngLatBounds,
   tmsUrl: string,
@@ -89,9 +102,10 @@ function titilerCropUrl(
 ) {
   // const bounds = new LngLatBounds(new LngLat(-110, -70), new LngLat(110, 70));
   // "http://mt.google.com/vt/lyrs=y&amp;x=${x}&amp;y=${y}&amp;z=${z}";
-  const wmsUrl = `<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
-    tmsUrl
-  )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>`;
+  const wmsUrl = buildGdalWmsXml(tmsUrl)
+  // const wmsUrlOld = `<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
+  //   tmsUrl
+  // )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>`;
   //
   // titiler returned image is in 4326 CRS, cannot be modified yet
   const coords_str = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}.tif?max_size=${maxFrameResolution}&coord-crs=epsg:4326`; // 4326
@@ -99,11 +113,27 @@ function titilerCropUrl(
   // const ll_3857 = convertLatlonTo3857(bounds.getSouthWest());
   // const ur_3857 = convertLatlonTo3857(bounds.getNorthEast());
   // const coords_str = `${ll_3857.x},${ll_3857.y},${ur_3857.x},${ur_3857.y}.tif?max_size=${MAX_FRAME_SIZE}&coord-crs=epsg:3857`; // 3857
+  
+  // return `${titilerEndpoint}/cog/crop/${coords_str}&url=${encodeURIComponent(
+  //   wmsUrlOld.replaceAll("&amp;", '&')
+  // )}`;
 
   return `${titilerEndpoint}/cog/crop/${coords_str}&url=${encodeURIComponent(
-    wmsUrl
+    wmsUrl.replaceAll("&amp;", '&')
   )}`;
 }
+
+/*
+// TODO Trying to make work both titiler image download and gdal batch script
+
+titilerEndpoint = "https://titiler.xyz" 
+coords_str = '-110,-70,110,70'
+wmsUrl = "<GDAL_WMS><Service name='TMS'><ServerUrl>http://mt.google.com/vt/lyrs=y&amp;x=${x}&amp;y=${y}&amp;z=${z}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>"
+a = `${titilerEndpoint}/cog/crop/${coords_str}&url=${encodeURIComponent(
+    wmsUrl
+  )}`;
+console.log(a) 
+*/
 
 // -----------------------------------------------------
 // BATCHES DOWNLOAD
@@ -277,8 +307,12 @@ function ControlPanel(props:any) {
     "export_exportInterval",
     12
   );
-  const [titilerEndpoint, setTitilerEndpoint] = useLocalStorage(
-    "export_titilerEndpoint",
+  // const [titilerEndpoint, setTitilerEndpoint] = useLocalStorage(
+  //   "export_titilerEndpoint",
+  //   TITILER_ENDPOINT
+  // );
+  const [titilerEndpoint, setTitilerEndpoint] = useState(
+    // "https://app.iconem.com/titiler",
     TITILER_ENDPOINT
   );
   const [maxFrameResolution, setMaxFrameResolution] = useLocalStorage(
@@ -349,18 +383,12 @@ function ControlPanel(props:any) {
         );
         const batch_cmd = `REM ${filename}\nREM ${downloadUrl}\n` +
         // gdal_translate command
-        `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(
-          tmsUrl
-        )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>" %DOWNLOAD_FOLDER%\\${
+        `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "${buildGdalWmsXml(tmsUrl)}" %DOWNLOAD_FOLDER%\\${
           filename + "_gdal.tif"
         }`;
         return { downloadUrl, batch_cmd, filename }
       }
-
-          /*
-            
-            BasemapsIds[props.selectedTms]
-          */
+      
       const gdalTranslateCmds_planet = filteredDates.map((date) => {
         const tmsUrl = planetBasemapUrl(date);
         const date_YYYY_MM = formatDate(date);
@@ -371,7 +399,6 @@ function ControlPanel(props:any) {
         const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
         return cmd_obj;
       });
-      console.log(gdalTranslateCmds_planet)
 
       const gdalTranslateCmds_other = Object.entries(basemapsTmsSources)
         .filter(([key, value]) => {
@@ -384,9 +411,9 @@ function ControlPanel(props:any) {
           const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
           return cmd_obj;
       })
-      console.log(gdalTranslateCmds_other)
 
-      const gdalTranslateCmds = [...gdalTranslateCmds_other, ...gdalTranslateCmds_planet ]
+      // const gdalTranslateCmds = [...gdalTranslateCmds_other, ...gdalTranslateCmds_planet ]
+      const gdalTranslateCmds = [...gdalTranslateCmds_planet ]
 
       // Write gdal_translate command to batch script with indices to original location of cropped version
       const center = mapRef?.current?.getMap()?.getCenter();
@@ -394,10 +421,7 @@ function ControlPanel(props:any) {
       const center_lng = center?.lng?.toFixed(degrees_decimals);
       const center_lat = center?.lat?.toFixed(degrees_decimals);
       const zoom = mapRef?.current?.getMap()?.getZoom();
-      const foldername =
-        props.selectedTms == BasemapsIds.PlanetMonthly
-          ? `planet-monthly-${center_lng}-${center_lat}-${zoom}`
-          : BasemapsIds[props.selectedTms];
+      const foldername = `historical-maps-${center_lng}-${center_lat}-${zoom}`;
       const gdal_commands =
         "REM GDAL COMMANDS to retrieve Planet Monthly Basemaps (without TiTiler)\n" +
         `REM https://historical-satellite.iconem.com/#${zoom}/${center_lng}/${center_lat} \n` +
@@ -418,8 +442,6 @@ function ControlPanel(props:any) {
       // https://stackoverflow.com/questions/34870711/download-a-file-at-different-location-using-html5/70001920#70001920
       // https://developer.chrome.com/articles/file-system-access/#create-a-new-file
       // For desktop only: https://caniuse.com/native-filesystem-api
-      console.log(gdal_commands);
-      console.log('\n\n', exportFramesMode, ExportButtonOptions.ALL_FRAMES, exportFramesMode.constructor.name, ExportButtonOptions.ALL_FRAMES.constructor.name)
 
       // Dowloads all frames
       if (exportFramesMode == ExportButtonOptions.ALL_FRAMES) {
