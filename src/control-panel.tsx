@@ -90,7 +90,7 @@ function buildGdalWmsXml(tmsUrl: string) {
   return (!tmsUrl.includes('quadkey')) ? 
   `<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl( tmsUrl )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>`
   : 
-  `<GDAL_WMS><Service name="VirtualEarth"><ServerUrl> ${escapeTmsUrl( tmsUrl )} </ServerUrl></Service><MaxConnections>4</MaxConnections><Cache/></GDAL_WMS>`;
+  `<GDAL_WMS><Service name='VirtualEarth'><ServerUrl>${escapeTmsUrl( tmsUrl )}</ServerUrl></Service><MaxConnections>4</MaxConnections><Cache/></GDAL_WMS>`;
 }
 
 // See discussion here https://github.com/developmentseed/titiler/discussions/640
