@@ -96,7 +96,7 @@ export default function GeocoderControl(
         zoom: 15,
         marker: false,
         accessToken: props.mapboxAccessToken,
-        flyTo: { maxDuration: 1000 },
+        flyTo: { maxDuration: 0 },
       });
       //   ctrl.on('loading', props.onLoading);
       //   ctrl.on('results', props.onResults);
