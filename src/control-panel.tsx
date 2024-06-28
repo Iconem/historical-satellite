@@ -172,7 +172,8 @@ const drawerWidth = '240px';
 function ControlPanelDrawer(props: any) {
   // const theme = useTheme();
   const [open, setOpen] = useState(true);
-
+  const setUseCustomPlanetApiKey = props.setUseCustomPlanetApiKey;
+  const setCustomPlanetApiKey = props.setCustomPlanetApiKey;
   const handleDrawerToggle = () => {
     setOpen(!open);
   };
@@ -244,6 +245,10 @@ function ControlPanelDrawer(props: any) {
         // Additional
         setLeftSelectedTms={props.setLeftSelectedTms}
         setRightSelectedTms={props.setRightSelectedTms}
+        setUseCustomPlanetApiKey={setUseCustomPlanetApiKey}
+        setCustomPlanetApiKey={setCustomPlanetApiKey}
+        UseCustomPlanetApiKey={props.UseCustomPlanetApiKey}
+        customPlanetApiKey={props.customPlanetApiKey}
       />
         
       </Drawer>
@@ -268,6 +273,9 @@ function ControlPanel(props:any) {
   const handleSliderChange = (_: Event, newValue: number) => {
     props.setTimelineDate(sliderValToDate(newValue, minDate));
   };
+
+  const setUseCustomPlanetApiKey = props.setUseCustomPlanetApiKey;
+  const setCustomPlanetApiKey = props.setCustomPlanetApiKey;
 
   // const [minDate, setMinDate] = useState<Date>(MIN_DATE);
   // const [maxDate, setMaxDate] = useState<Date>(MAX_DATE);
@@ -639,6 +647,10 @@ function ControlPanel(props:any) {
                 setMaxFrameResolution={setMaxFrameResolution}
                 collectionDateActivated={collectionDateActivated}
                 setCollectionDateActivated={setCollectionDateActivated}
+                setCustomPlanetApiKey={setCustomPlanetApiKey} 
+                setUseCustomPlanetApiKey={setUseCustomPlanetApiKey}
+                useCustomPlanetApiKey={props.useCustomPlanetApiKey}
+                customPlanetApiKey={props.customPlanetApiKey}
               />
             </Stack>
           </Stack>

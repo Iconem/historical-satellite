@@ -22,12 +22,12 @@ const formatDate = (date: Date) => format(date, "yyyy-MM");
 // PlanetMonthly URLS
 const PLANET_BASEMAP_API_KEY = import.meta.env.VITE_PLANET_BASEMAP_API_KEY;
 
-const planetBasemapUrl = (date: Date) => {
+const planetBasemapUrl = (date: Date, useCustom: Boolean, customApi?:string) => {
   // basemap_date_str = "2019_01";
   return `https://tiles.planet.com/basemaps/v1/planet-tiles/global_monthly_${format(
     date,
     "yyyy_MM"
-  )}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${PLANET_BASEMAP_API_KEY}`;
+  )}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${useCustom ? customApi : PLANET_BASEMAP_API_KEY}`;
 };
 
 // Set custom slider marks for each beginning of year

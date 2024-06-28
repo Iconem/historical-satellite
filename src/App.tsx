@@ -43,6 +43,20 @@ function App() {
   // const [rightTimelineDate, setRightTimelineDate] = useState<Date>(
   //   subMonths(new Date(), 18)
   // );
+
+  const [customPlanetApiKey, setCustomPlanetApiKey] = useLocalStorage(
+    "customPlanetApiKey",
+    ""
+  );
+  const [useCustomApiKey, setUseCustomApiKey] = useLocalStorage(
+    "useCustomPlanetApiKey",
+    false
+  );
+  const [planetUrl, setPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), false));
+  useEffect(() => {
+    setPlanetUrl(planetBasemapUrl(clickedMap == "left" ? leftTimelineDate : rightTimelineDate, useCustomApiKey, customPlanetApiKey));
+  }, [useCustomApiKey]);
+
   const [leftTimelineDate, setLeftTimelineDate] = useLocalStorage(
     "leftTimelineDate",
     subMonths(new Date(), 1)
@@ -383,7 +397,7 @@ function App() {
         <GeocoderControl
           mapboxAccessToken={MAPBOX_TOKEN}
           position="top-left"
-          flyTo={true}
+          flyTo={false}
           mapRef={leftMapRef}
         />
 
@@ -395,7 +409,7 @@ function App() {
             scheme="xyz"
             type="raster"
             // tiles={[]}
-            tiles={[planetBasemapUrl(leftTimelineDate)]}
+            tiles={[planetUrl]}
             tileSize={256}
             // key={"planetBasemap"}
             key={leftTimelineDate.toString()}
@@ -461,8 +475,7 @@ function App() {
                 id="planetbasemap-source"
                 scheme="xyz"
                 type="raster"
-                tiles={[planetBasemapUrl(rightTimelineDate)]}
-                // tiles={[]}
+                tiles={[planetUrl]}                // tiles={[]}
                 tileSize={256}
                 // key={"planetBasemap"}
                 key={rightTimelineDate.toString()}
@@ -508,6 +521,11 @@ function App() {
         </div>
       </div>
       <ControlPanelDrawer
+        // Adding custom Planet API key input
+        useCustomApiKey={useCustomApiKey}
+        setUseCustomPlanetApiKey={setUseCustomApiKey}
+        customPlanetApiKey={customPlanetApiKey}
+        setCustomPlanetApiKey={setCustomPlanetApiKey}
         // Adding blending mode opacity, and blending mode activation to pass downward
         blendingActivation={blendingActivation}
         setBlendingActivation={setBlendingActivation}

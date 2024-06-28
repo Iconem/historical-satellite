@@ -16,6 +16,7 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { MIN_DATE, MAX_DATE } from "./utilities";
+import CustomPlanetApiModal from "./custom-planet-api-modal";
 
 const style = {
   position: "absolute" as "absolute",
@@ -34,6 +35,8 @@ export default function SettingsModal(props: any) {
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
   const errorMessage = "start Date should be before end date!";
+  const setCustomPlanetApiKey = props.setCustomPlanetApiKey;
+  const setUseCustomPlanetApiKey = props.setUseCustomPlanetApiKey;
   
   const handleCollectionDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     props.setCollectionDateActivated( event.target.checked);
@@ -166,6 +169,10 @@ export default function SettingsModal(props: any) {
                 inputProps={{ 'aria-label': 'controlled' }}
               />
             }
+          />
+          <CustomPlanetApiModal
+            setCustomPlanetApiKey={setCustomPlanetApiKey}
+            setUseCustomPlanetApiKey={setUseCustomPlanetApiKey}
           />
         </Box>
       </Modal>
