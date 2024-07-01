@@ -44,18 +44,11 @@ function App() {
   //   subMonths(new Date(), 18)
   // );
 
-  const [customPlanetApiKey, setCustomPlanetApiKey] = useLocalStorage(
-    "customPlanetApiKey",
-    ""
-  );
-  const [useCustomApiKey, setUseCustomApiKey] = useLocalStorage(
-    "useCustomPlanetApiKey",
-    false
-  );
-  const [planetUrl, setPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), false));
-  useEffect(() => {
-    setPlanetUrl(planetBasemapUrl(clickedMap == "left" ? leftTimelineDate : rightTimelineDate, useCustomApiKey, customPlanetApiKey));
-  }, [useCustomApiKey]);
+    const [customPlanetApiKey, setCustomPlanetApiKey] = useLocalStorage(
+      "customPlanetApiKey",
+      import.meta.env.VITE_PLANET_BASEMAP_API_KEY
+    );
+
 
   const [leftTimelineDate, setLeftTimelineDate] = useLocalStorage(
     "leftTimelineDate",
@@ -65,6 +58,10 @@ function App() {
     "rightTimelineDate",
     subMonths(new Date(), 18)
   );
+  const [planetUrl, setPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), false));
+  useEffect(() => {
+    setPlanetUrl(planetBasemapUrl(clickedMap == "left" ? leftTimelineDate : rightTimelineDate, customPlanetApiKey));
+  }, [customPlanetApiKey, leftTimelineDate, rightTimelineDate]);
   // Like Mapbox gl compare https://docs.mapbox.com/mapbox-gl-js/example/mapbox-gl-compare/
   // const [splitPanelSizesPercent, setSplitPanelSizesPercent] = useState([75, 25]);
   const [splitPanelSizesPercent, setSplitPanelSizesPercent] = useLocalStorage(
@@ -522,8 +519,6 @@ function App() {
       </div>
       <ControlPanelDrawer
         // Adding custom Planet API key input
-        useCustomApiKey={useCustomApiKey}
-        setUseCustomPlanetApiKey={setUseCustomApiKey}
         customPlanetApiKey={customPlanetApiKey}
         setCustomPlanetApiKey={setCustomPlanetApiKey}
         // Adding blending mode opacity, and blending mode activation to pass downward
