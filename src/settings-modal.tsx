@@ -35,8 +35,6 @@ export default function SettingsModal(props: any) {
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
   const errorMessage = "start Date should be before end date!";
-  const setCustomPlanetApiKey = props.setCustomPlanetApiKey;
-  const setUseCustomPlanetApiKey = props.setUseCustomPlanetApiKey;
   
   const handleCollectionDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     props.setCollectionDateActivated( event.target.checked);
@@ -171,8 +169,8 @@ export default function SettingsModal(props: any) {
             }
           />
           <CustomPlanetApiModal
-            setCustomPlanetApiKey={setCustomPlanetApiKey}
-            setUseCustomPlanetApiKey={setUseCustomPlanetApiKey}
+            setCustomPlanetApiKey={props.setCustomPlanetApiKey}
+            customPlanetApiKey={props.customPlanetApiKey}
           />
         </Box>
       </Modal>

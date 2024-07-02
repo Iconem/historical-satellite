@@ -161,7 +161,6 @@ async function fetchTitilerFramesBatches(gdalTranslateCmds: any, aDiv: any) {
 function ControlPanelDrawer(props: any) {
   // const theme = useTheme();
   const [open, setOpen] = useState(true);
-  const setCustomPlanetApiKey = props.setCustomPlanetApiKey;
   const handleDrawerToggle = () => {
     setOpen(!open);
   };
@@ -226,7 +225,7 @@ function ControlPanelDrawer(props: any) {
         // Additional
         setLeftSelectedTms={props.setLeftSelectedTms}
         setRightSelectedTms={props.setRightSelectedTms}
-        setCustomPlanetApiKey={setCustomPlanetApiKey}
+        setCustomPlanetApiKey={props.setCustomPlanetApiKey}
         customPlanetApiKey={props.customPlanetApiKey}
       />
         
@@ -251,8 +250,6 @@ function ControlPanel(props:any) {
   const handleSliderChange = (_: Event, newValue: number) => {
     props.setTimelineDate(sliderValToDate(newValue, minDate));
   };
-
-  const setCustomPlanetApiKey = props.setCustomPlanetApiKey;
 
   // const [minDate, setMinDate] = useState<Date>(MIN_DATE);
   // const [maxDate, setMaxDate] = useState<Date>(MAX_DATE);
@@ -623,7 +620,7 @@ function ControlPanel(props:any) {
                 setMaxFrameResolution={setMaxFrameResolution}
                 collectionDateActivated={collectionDateActivated}
                 setCollectionDateActivated={setCollectionDateActivated}
-                setCustomPlanetApiKey={setCustomPlanetApiKey} 
+                setCustomPlanetApiKey={props.setCustomPlanetApiKey} 
                 customPlanetApiKey={props.customPlanetApiKey}
               />
             </Stack>

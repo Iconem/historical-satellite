@@ -465,8 +465,8 @@ function App() {
           mapStyle={rightMapboxMapStyle}
         >
           {
-            rightSelectedTms == BasemapsIds.Mapbox ? 
-            ( <></> ) : 
+            rightSelectedTms == BasemapsIds.Mapbox ? (
+             <></> ) : 
             rightSelectedTms == BasemapsIds.PlanetMonthly ? (
               <Source
                 id="planetbasemap-source"
