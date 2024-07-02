@@ -8,9 +8,7 @@ function CustomPlanetApiModal(props: any) {
     };
  
     return (
-        <div className='customApiModal'>
-            <TextField  value={`${props.customPlanetApiKey}` == 'undefined' ? `${props.customPlanetApiKey}` : props.customPlanetApiKey} onChange={handleInputChange} size={'small'} label="Planet Monthly Key" style={{ width: '86%' }} />
-        </div>
+        <TextField  value={`${props.customPlanetApiKey}` == 'undefined' ? `${props.customPlanetApiKey}` : props.customPlanetApiKey} onChange={handleInputChange} size={'small'} label="Planet Monthly Key" style={{ width: '340px' }} />
     );
 };
 

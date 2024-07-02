@@ -52,7 +52,7 @@ function App() {
 
   const [leftTimelineDate, setLeftTimelineDate] = useLocalStorage(
     "leftTimelineDate",
-    subMonths(new Date(), 1)
+    subMonths(new Date(), 2)
   );
   const [rightTimelineDate, setRightTimelineDate] = useLocalStorage(
     "rightTimelineDate",
@@ -173,7 +173,6 @@ function App() {
         left: 0 ,
         width: `100%`,
         clipPath: `polygon(${splitPanelSizesPercent[0]}% 0%, ${splitPanelSizesPercent[0]}% 100%, 100% 100%, 100% 0% )`,
-        // Adding blending mode
         mixBlendMode: (blendingActivation ? blendingMode : "normal"),
         opacity: opacity,
       } : 
@@ -181,9 +180,9 @@ function App() {
         left: `${splitPanelSizesPercent[0]}%`,
         width: `${splitPanelSizesPercent[1]}%`,
         clipPath: '', 
+        overflow: 'hidden',
         mixBlendMode: 'normal', 
         opacity: 1,
-        overflow: 'hidden',
       }
     ) 
   };
@@ -220,14 +219,6 @@ function App() {
     10, 
     false
   );
-  /*
-  c = document.querySelectorAll('canvas')
-  a = document.createElement('canvas')
-  document.body.appendChild(a)
-
-  cloneCanvas(c[0], a)
-  a.style = {position: 'absolute', top: 0, left: 0, width: '100%', height: '100%'}
-  */
 
   const leftMapboxMapStyle = useMemo(() => {
     return leftSelectedTms == BasemapsIds.Mapbox
