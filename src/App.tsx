@@ -52,11 +52,15 @@ function App() {
 
   const [leftTimelineDate, setLeftTimelineDate] = useLocalStorage(
     "leftTimelineDate",
-    subMonths(new Date(), 2)
+    subMonths(new Date(), 2),
+    true,
+    true
   );
   const [rightTimelineDate, setRightTimelineDate] = useLocalStorage(
     "rightTimelineDate",
-    subMonths(new Date(), 18)
+    subMonths(new Date(), 18),
+    true,
+    true
   );
   const [planetUrl, setPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), false));
   useEffect(() => {
@@ -108,7 +112,7 @@ function App() {
   const rightRuler = new RulerControl();
 
   if (!rulerOk) {
-    console.log("Adding ruler control");
+    // console.log("Adding ruler control");
     leftMapRef.current?.getMap()?.addControl(leftRuler, "top-left");
     rightMapRef.current?.getMap()?.addControl(rightRuler, "top-right");
     if (leftMapRef.current?.getMap()) {rulerOk=true;}
@@ -136,7 +140,7 @@ function App() {
   // This state specifies which map to use as the source of truth
   // It is set to the map that received user input last ('movestart')
   const [activeMap, setActiveMap] = useState<"left" | "right">("left");
-  const [clickedMap, setClickedMap] = useState<"left" | "right">("left");
+  const [clickedMap, setClickedMap] = useLocalStorage("ui_clicked_map", "left");
   // Initializing blending mode state
   const [blendingMode, setBlendingMode] = useState("difference");
   const [blendingActivation, setBlendingActivation] = useState(false);
@@ -190,6 +194,8 @@ function App() {
     resizeMaps();
   }, [splitScreenMode]);
 
+
+    
   // const mapBounds = leftMapRef?.current?.getMap()?.getBounds();
 
   // TODO: on playback, rightmap Moves so fires setActiveMap('right') on play, which is unwanted since it prevents further play
@@ -510,6 +516,7 @@ function App() {
       </div>
       <ControlPanelDrawer
         // Adding custom Planet API key input
+        clickedMap={clickedMap}
         customPlanetApiKey={customPlanetApiKey}
         setCustomPlanetApiKey={setCustomPlanetApiKey}
         // Adding blending mode opacity, and blending mode activation to pass downward
@@ -534,7 +541,6 @@ function App() {
         setSplitScreenMode={setSplitScreenMode}
         setSplitPanelSizesPercent={setSplitPanelSizesPercent}
         mapRef={leftMapRef}
-        clickedMap={clickedMap}
         // Additional
         setLeftSelectedTms= {setLeftSelectedTms}
         setRightSelectedTms= {setRightSelectedTms}

@@ -4,6 +4,7 @@ import {
   subMonths,
   format,
   eachYearOfInterval,
+  isDate,
 } from "date-fns";
 import { useState, useEffect } from "react";
 
@@ -166,11 +167,14 @@ function debounce(
 const useLocalStorage = (
   storageKey: string,
   fallbackState: any,
-  compareTypes = true
+  compareTypes = true,
+  isDate = false
 ): any => {
   const storedItem = localStorage.getItem(storageKey);
   let initValue = storedItem ? JSON.parse(storedItem) : fallbackState;
-
+  if (isDate) {
+    initValue = new Date(initValue);
+  }
   // If fallbackState is not null, then: if it has a type, check localStorage value has same type / or if type is object (and arrays are objects), check they have the same signature
   if (fallbackState && compareTypes) {
     if (

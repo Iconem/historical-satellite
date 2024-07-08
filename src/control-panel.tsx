@@ -445,7 +445,7 @@ function ControlPanel(props:any) {
       }
     } 
   }
-
+  // console.log(props.timelineDate, 'timelineDate')
   return (
     <div
       style={{
