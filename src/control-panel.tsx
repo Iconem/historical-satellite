@@ -38,6 +38,8 @@ import ExpandMore from '@mui/icons-material/ExpandMore';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 // import SwapHorizontalCircleIcon from '@mui/icons-material/SwapHorizontalCircle';
 
+import { useAtom } from "jotai";
+
 import { differenceInMonths, eachMonthOfInterval, isValid } from "date-fns";
 import {
   sliderValToDate,
@@ -53,6 +55,8 @@ import {
   getBingViewportDate,
   // convertLatlonTo3857,
 } from "./utilities";
+
+import { clickedMapAtom, leftTimelineDateAtom, rightTimelineDateAtom } from "./atoms";
 
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
 const MAX_FRAME_RESOLUTION = 512; // 1024 - 2048 TODO 512 FOR TESTING? 2048 BETTER
@@ -212,8 +216,10 @@ function ControlPanelDrawer(props: any) {
         setOpacity={props.setOpacity}
         blendingMode={props.blendingMode}
         setBlendingMode={props.setBlendingMode}
-        timelineDate={ props.timelineDate }
-        setTimelineDate={ props.setTimelineDate }
+        // timelineDate={ props.timelineDate }
+        // setTimelineDate={ props.setTimelineDate }
+
+
         selectedTms={props.selectedTms}
         setSelectedTms={ props.setSelectedTms }
         swapMapSources={props.swapMapSources}
@@ -221,7 +227,7 @@ function ControlPanelDrawer(props: any) {
         setSplitScreenMode={props.setSplitScreenMode}
         setSplitPanelSizesPercent={props.setSplitPanelSizesPercent}
         mapRef={props.mapRef}
-        clickedMap={props.clickedMap}
+        // clickedMap={props.clickedMap}
         // Additional
         setLeftSelectedTms={props.setLeftSelectedTms}
         setRightSelectedTms={props.setRightSelectedTms}
@@ -248,8 +254,10 @@ function ControlPanel(props:any) {
     2
   );
   const handleSliderChange = (_: Event, newValue: number) => {
-    props.setTimelineDate(sliderValToDate(newValue, minDate));
+    setTimelineDate(sliderValToDate(newValue, minDate));
   };
+  const [clickedMap, setClickedMap] = useAtom(clickedMapAtom);
+  const [timelineDate, setTimelineDate] = useAtom(clickedMap === "left" ? leftTimelineDateAtom : rightTimelineDateAtom);  
 
   // const [minDate, setMinDate] = useState<Date>(MIN_DATE);
   // const [maxDate, setMaxDate] = useState<Date>(MAX_DATE);
@@ -445,7 +453,6 @@ function ControlPanel(props:any) {
       }
     } 
   }
-  // console.log(props.timelineDate, 'timelineDate')
   return (
     <div
       style={{
@@ -551,9 +558,9 @@ function ControlPanel(props:any) {
                       format="YYYY/MM"
                       minDate={dayjs(validMinDate)}
                       maxDate={dayjs(validMaxDate)}
-                      value={dayjs(props.timelineDate)}
+                      value={dayjs(timelineDate)}
                       onChange={(newValue) =>
-                        props.setTimelineDate(new Date(newValue))
+                        setTimelineDate(new Date(newValue))
                       }
                     />
                   </LocalizationProvider>{" "}
@@ -658,7 +665,7 @@ function ControlPanel(props:any) {
         }
         {props.selectedTms == BasemapsIds.PlanetMonthly && (
           <PlayableSlider
-            setTimelineDate={props.setTimelineDate}
+            setTimelineDate={setTimelineDate}
             playbackSpeedFPS={playbackSpeedFPS}
             minDate={validMinDate}
             maxDate={validMaxDate}
@@ -667,7 +674,7 @@ function ControlPanel(props:any) {
             max={monthsCount}
             marks={marks}
             //
-            value={dateToSliderVal(props.timelineDate, validMinDate)}
+            value={dateToSliderVal(timelineDate, validMinDate)}
             onChange={handleSliderChange}
             valueLabelFormat={(value: any) =>
               valueLabelFormat(value, validMinDate)

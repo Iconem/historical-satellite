@@ -8,6 +8,7 @@ import { set, subMonths } from "date-fns";
 import Split from "react-split";
 import {RulerControl} from 'mapbox-gl-controls'
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
+import { useAtom } from "jotai";
 
 
 import {
@@ -19,10 +20,13 @@ import {
 } from "./utilities";
 import mapboxgl from "mapbox-gl";
 
+import { clickedMapAtom, leftTimelineDateAtom, rightTimelineDateAtom } from "./atoms";
+
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 let rulerOk = false;
 // TODO Avoid tile popping on setTiles of rasterTileSet imagery source
 // https://github.com/mapbox/mapbox-gl-js/issues/12707
+
 
 // APP COMPONENT
 function App() {
@@ -50,20 +54,24 @@ function App() {
     );
 
 
-  const [leftTimelineDate, setLeftTimelineDate] = useLocalStorage(
-    "leftTimelineDate",
-    subMonths(new Date(), 2),
-    true,
-    true
-  );
-  const [rightTimelineDate, setRightTimelineDate] = useLocalStorage(
-    "rightTimelineDate",
-    subMonths(new Date(), 18),
-    true,
-    true
-  );
-  const [planetUrl, setPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), false));
+  // const [leftTimelineDate, setLeftTimelineDate] = useLocalStorage(
+  //   "leftTimelineDate",
+  //   subMonths(new Date(), 2),
+  //   true,
+  //   true
+  // );
+  const [leftTimelineDate, setLeftTimelineDate] = useAtom(leftTimelineDateAtom);
+  // const [rightTimelineDate, setRightTimelineDate] = useLocalStorage(
+  //   "rightTimelineDate",
+  //   subMonths(new Date(), 18),
+  //   true,
+  //   true
+  // );
+  const [rightTimelineDate, setRightTimelineDate] = useAtom(rightTimelineDateAtom);
+
+  const [planetUrl, setPlanetUrl] = useState(planetBasemapUrl(subMonths(new Date(), 1)));
   useEffect(() => {
+    // console.log(leftTimelineDate, rightTimelineDate, 'dates')
     setPlanetUrl(planetBasemapUrl(clickedMap == "left" ? leftTimelineDate : rightTimelineDate, customPlanetApiKey));
   }, [customPlanetApiKey, leftTimelineDate, rightTimelineDate]);
   // Like Mapbox gl compare https://docs.mapbox.com/mapbox-gl-js/example/mapbox-gl-compare/
@@ -99,7 +107,8 @@ function App() {
   );
   const [rightSelectedTms, setRightSelectedTms]: [BasemapsIds, (e: BasemapsIds)=>void] = useLocalStorage(
     "ui_rightSelectedTms",
-    BasemapsIds.GoogleHybrid
+    BasemapsIds.GoogleHybrid,
+    false
   );
   // End of state variables
   function resizeMaps() {
@@ -140,7 +149,9 @@ function App() {
   // This state specifies which map to use as the source of truth
   // It is set to the map that received user input last ('movestart')
   const [activeMap, setActiveMap] = useState<"left" | "right">("left");
-  const [clickedMap, setClickedMap] = useLocalStorage("ui_clicked_map", "left");
+  // const [clickedMap, setClickedMap] = useLocalStorage("ui_clicked_map", "left");
+
+  const [clickedMap, setClickedMap] = useAtom(clickedMapAtom);
   // Initializing blending mode state
   const [blendingMode, setBlendingMode] = useState("difference");
   const [blendingActivation, setBlendingActivation] = useState(false);
@@ -516,7 +527,7 @@ function App() {
       </div>
       <ControlPanelDrawer
         // Adding custom Planet API key input
-        clickedMap={clickedMap}
+        // clickedMap={clickedMap}
         customPlanetApiKey={customPlanetApiKey}
         setCustomPlanetApiKey={setCustomPlanetApiKey}
         // Adding blending mode opacity, and blending mode activation to pass downward
@@ -526,12 +537,12 @@ function App() {
         setOpacity={setOpacity}
         blendingMode={blendingMode}
         setBlendingMode={setBlendingMode}
-        timelineDate={
-          clickedMap == "left" ? leftTimelineDate : rightTimelineDate
-        }
-        setTimelineDate={
-          clickedMap == "left" ? setLeftTimelineDate : setRightTimelineDate
-        }
+        // timelineDate={
+        //   clickedMap == "left" ? leftTimelineDate : rightTimelineDate
+        // }
+        // setTimelineDate={
+        //   clickedMap == "left" ? setLeftTimelineDate : setRightTimelineDate
+        // }
         selectedTms={clickedMap == "left" ? leftSelectedTms : rightSelectedTms}
         setSelectedTms={
           clickedMap == "left" ? setLeftSelectedTms : setRightSelectedTms
