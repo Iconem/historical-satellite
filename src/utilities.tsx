@@ -4,10 +4,9 @@ import {
   subMonths,
   format,
   eachYearOfInterval,
-  isDate,
 } from "date-fns";
 import { useState, useEffect } from "react";
-
+import { getWaybackItems } from '@vannizhang/wayback-core';
 import { lngLatToWorld } from "@math.gl/web-mercator";
 
 // Helper functions to convert between date for date-picker and slider-value
@@ -22,6 +21,25 @@ const formatDate = (date: Date) => format(date, "yyyy-MM");
 
 // PlanetMonthly URLS
 const PLANET_BASEMAP_API_KEY = import.meta.env.VITE_PLANET_BASEMAP_API_KEY;
+
+// Set min/max dates for planet monthly basemaps on component mount
+export const MIN_DATE = new Date("2016-01-01T00:00:00.000");
+export const MAX_DATE = subMonths(new Date(), 1);
+
+const wayBackItems = await getWaybackItems()
+const baseWaybackUrl = "https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/"
+
+export const  waybackUrl = (date:Date) => {
+  for (let i = wayBackItems.length - 1; i >= 0; i--) {
+    const item = wayBackItems[i];
+    if (new Date(item.releaseDatetime) > date) {
+      console.log("Found suitable item for date", date, item);
+      return baseWaybackUrl + item.releaseNum + "/{z}/{y}/{x}";
+    }
+  }
+  console.log("No suitable item found for date", date);
+  return undefined;
+};
 
 const planetBasemapUrl = (date: Date, customApi?:string) => {
   // basemap_date_str = "2019_01";
@@ -42,10 +60,6 @@ function getSliderMarks(minDate: Date, maxDate: Date) {
   }));
 }
 
-// Set min/max dates for planet monthly basemaps on component mount
-export const MIN_DATE = new Date("2016-01-01T00:00:00.000");
-export const MAX_DATE = subMonths(new Date(), 1);
-
 // const basemapsTmsUrls = {
 // Typescript was not accepting computed strings in enums, so used open Mapbox api token for simplicity
 enum BasemapsIds {
@@ -59,6 +73,7 @@ enum BasemapsIds {
   Apple,
   GoogleHybrid,
   OSM,
+  ESRIWayback
 }
 
 // Could find other TMS tile urls on NextGis QMS
@@ -111,6 +126,11 @@ const basemapsTmsSources: any = {
   // "Bing Sat"= "http://t0.tiles.virtualearth.net/tiles/a{q}.jpeg?g=854&amp;mkt=en-US&amp;token=Atq2nTytWfkqXjxxCDSsSPeT3PXjAl_ODeu3bnJRN44i3HKXs2DDCmQPA5u0M9z1",
   // "Google sat"= "https://mts1.google.com/vt/lyrs=s@186112443&amp;hl=en&amp;src=app&amp;s=Galile&amp;rlbl=1&amp;gl=AR&amp;key=AIzaSyARVMxmX0A7aRszJUjE33fSLQFMXAiMlxk&amp;z={Z}&amp;x={X}&amp;y={Y}",
   // "Heremaps Sat"= "http://1.aerial.maps.api.here.com/maptile/2.1/maptile/newest/satellite.day/{z}/{x}/{y}/256/png8?app_id=hBqHrthpuP0nRYifaTTT&amp;app_code=iA3EYhFlEcBztET4RuA7Bg",
+  // "Mapbox Sat"= "https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.webp?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA",
+  [BasemapsIds.ESRIWayback]: {
+    url: waybackUrl,
+    maxzoom: 19,
+  },
 };
 
 // Lighter to use this utility rather than import whole of proj4
@@ -171,6 +191,7 @@ const useLocalStorage = (
   isDate = false
 ): any => {
   const storedItem = localStorage.getItem(storageKey);
+  // console.log(storedItem, 'storedItem')
   let initValue = storedItem ? JSON.parse(storedItem) : fallbackState;
   if (isDate) {
     initValue = new Date(initValue);

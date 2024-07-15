@@ -538,7 +538,7 @@ function ControlPanel(props:any) {
                   {/* <MenuItem value={''}>Mapbox</MenuItem> */}
                 </Select>
               </FormControl>
-              {props.selectedTms == BasemapsIds.PlanetMonthly && (
+              {(props.selectedTms == BasemapsIds.PlanetMonthly || props.selectedTms == BasemapsIds.ESRIWayback) && (
                 <>
                   {" "}
                   <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="fr">
@@ -656,7 +656,7 @@ function ControlPanel(props:any) {
             </div>
           )
         }
-        {props.selectedTms == BasemapsIds.PlanetMonthly && (
+        {(props.selectedTms == BasemapsIds.PlanetMonthly || props.selectedTms == BasemapsIds.ESRIWayback) && (
           <PlayableSlider
             setTimelineDate={props.setTimelineDate}
             playbackSpeedFPS={playbackSpeedFPS}

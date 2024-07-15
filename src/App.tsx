@@ -9,13 +9,13 @@ import Split from "react-split";
 import {RulerControl} from 'mapbox-gl-controls'
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 
-
 import {
   planetBasemapUrl,
   BasemapsIds,
   basemapsTmsSources,
   debounce,
   useLocalStorage,
+  waybackUrl
 } from "./utilities";
 import mapboxgl from "mapbox-gl";
 
@@ -62,16 +62,38 @@ function App() {
     true,
     true
   );
-  const [planetUrl, setPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), false));
+  const [leftPlanetUrl, setleftPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), false));
+  const [rightPlanetUrl, setRightPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), false));
+
   useEffect(() => {
-    setPlanetUrl(planetBasemapUrl(clickedMap == "left" ? leftTimelineDate : rightTimelineDate, customPlanetApiKey));
-  }, [customPlanetApiKey, leftTimelineDate, rightTimelineDate]);
+    console.log(leftTimelineDate, 'leftTimelineDate', rightTimelineDate, 'rightTimelineDate') 
+    setleftPlanetUrl(planetBasemapUrl(leftTimelineDate, customPlanetApiKey));
+  }, [customPlanetApiKey, leftTimelineDate]);
+
+  useEffect(() => {
+    console.log(leftTimelineDate, 'leftTimelineDate', rightTimelineDate, 'rightTimelineDate') 
+    setRightPlanetUrl(planetBasemapUrl(rightTimelineDate, customPlanetApiKey));
+  }, [customPlanetApiKey, rightTimelineDate]);
+
+
   // Like Mapbox gl compare https://docs.mapbox.com/mapbox-gl-js/example/mapbox-gl-compare/
   // const [splitPanelSizesPercent, setSplitPanelSizesPercent] = useState([75, 25]);
   const [splitPanelSizesPercent, setSplitPanelSizesPercent] = useLocalStorage(
     "ui_splitPanelSizesPercent",
     [75, 25]
   );
+
+  const [leftWaybackUrl, setLeftWaybackUrl] = useState(waybackUrl(subMonths(new Date(), 18)));
+  const [rightWaybackUrl, setRightWaybackUrl] = useState(waybackUrl(subMonths(new Date(), 18)));
+
+  useEffect(() => {
+    setLeftWaybackUrl(waybackUrl(leftTimelineDate));
+  }, [leftTimelineDate]);
+
+  useEffect(() => {
+    setRightWaybackUrl(waybackUrl(rightTimelineDate));
+  }, [rightTimelineDate]);
+
   const hash = window.location.hash;
   let hashed_viewstate = hash
     .substring(1)
@@ -403,13 +425,27 @@ function App() {
             scheme="xyz"
             type="raster"
             // tiles={[]}
-            tiles={[planetUrl]}
+            tiles={[leftPlanetUrl]}
             tileSize={256}
             // key={"planetBasemap"}
             key={leftTimelineDate.toString()}
           >
             <Layer type="raster" layout={{}} paint={{}} />
           </Source>
+        ) : leftSelectedTms == BasemapsIds.ESRIWayback ? (
+
+          <Source
+            id="wayback-source"
+            scheme="xyz" 
+            type="raster"
+            tiles={[leftWaybackUrl]}
+            tileSize={256}
+            // key={"wayback"}
+            key={leftTimelineDate.toString().toLowerCase()}
+          >
+            <Layer type="raster" layout={{}} paint={{}} />
+          </Source>
+
         ) : (
           <Source
             id="tms-source"
@@ -469,13 +505,27 @@ function App() {
                 id="planetbasemap-source"
                 scheme="xyz"
                 type="raster"
-                tiles={[planetUrl]}                // tiles={[]}
+                tiles={[rightPlanetUrl]}                // tiles={[]}
                 tileSize={256}
                 // key={"planetBasemap"}
                 key={rightTimelineDate.toString()}
               >
                 <Layer type="raster" layout={{}} paint={{}} />
               </Source>
+            ) : rightSelectedTms == BasemapsIds.ESRIWayback ? (
+
+              <Source
+                id="wayback-source"
+                scheme="xyz" 
+                type="raster"
+                tiles={[rightWaybackUrl]}
+                tileSize={256}
+                // key={"wayback"}
+                key={rightTimelineDate.toString().toLowerCase()}
+              >
+                <Layer type="raster" layout={{}} paint={{}} />
+              </Source>
+    
             ) : (
               <Source
                 id="tms-source"
