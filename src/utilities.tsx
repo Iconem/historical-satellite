@@ -26,7 +26,10 @@ const PLANET_BASEMAP_API_KEY = import.meta.env.VITE_PLANET_BASEMAP_API_KEY;
 export const MIN_DATE = new Date("2016-01-01T00:00:00.000");
 export const MAX_DATE = subMonths(new Date(), 1);
 
-const wayBackItems = await getWaybackItems()
+const initWayBackItems = async () => {
+  return await getWaybackItems();
+}
+const wayBackItems = initWayBackItems();
 const baseWaybackUrl = "https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/"
 
 export const  waybackUrl = (date:Date) => {
