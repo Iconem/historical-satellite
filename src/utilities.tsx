@@ -26,23 +26,41 @@ const PLANET_BASEMAP_API_KEY = import.meta.env.VITE_PLANET_BASEMAP_API_KEY;
 export const MIN_DATE = new Date("2016-01-01T00:00:00.000");
 export const MAX_DATE = subMonths(new Date(), 1);
 
-const initWayBackItems = async () => {
-  return await getWaybackItems();
-}
-const wayBackItems = initWayBackItems();
-const baseWaybackUrl = "https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/"
 
-export const  waybackUrl = (date:Date) => {
-  for (let i = wayBackItems.length - 1; i >= 0; i--) {
-    const item = wayBackItems[i];
-    if (new Date(item.releaseDatetime) > date) {
-      console.log("Found suitable item for date", date, item);
-      return baseWaybackUrl + item.releaseNum + "/{z}/{y}/{x}";
+export function useWaybackUrl(date: Date) {
+  const [wayBackItems, setWaybackItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [url, setUrl] = useState(String);
+
+  useEffect(() => {
+    const initWayBackItems = async () => {
+      const items = await getWaybackItems();
+      setWaybackItems(items);
+      setLoading(false);
+    };
+    initWayBackItems();
+  }, []);
+
+  useEffect(() => {
+    const baseWaybackUrl = "https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/";
+    if (!loading) {
+      for (let i = wayBackItems.length - 1; i >= 0; i--) {
+        const item = wayBackItems[i];
+        if (new Date(item.releaseDatetime) > date) {
+          setUrl(baseWaybackUrl + item.releaseNum + "/{z}/{y}/{x}");
+          return;
+        }
+      }
+      // If no suitable item is found, you can set URL to undefined or a default value
+      setUrl(baseWaybackUrl + "239/{z}/{y}/{x}");
     }
-  }
-  console.log("No suitable item found for date", date);
-  return undefined;
-};
+    setUrl(baseWaybackUrl + "239/{z}/{y}/{x}");
+  }, [date, loading, wayBackItems]);
+
+  return { url, loading };
+}
+
+
 
 const planetBasemapUrl = (date: Date, customApi?:string) => {
   // basemap_date_str = "2019_01";
@@ -82,6 +100,7 @@ enum BasemapsIds {
 // Could find other TMS tile urls on NextGis QMS
 // https://qms.nextgis.com/
 // Which is what QuickMapServices Qgis plugin uses
+
 const basemapsTmsSources: any = {
   [BasemapsIds.PlanetMonthly]: {
     url: planetBasemapUrl(subMonths(new Date(), 2)),
@@ -131,9 +150,8 @@ const basemapsTmsSources: any = {
   // "Heremaps Sat"= "http://1.aerial.maps.api.here.com/maptile/2.1/maptile/newest/satellite.day/{z}/{x}/{y}/256/png8?app_id=hBqHrthpuP0nRYifaTTT&amp;app_code=iA3EYhFlEcBztET4RuA7Bg",
   // "Mapbox Sat"= "https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.webp?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA",
   [BasemapsIds.ESRIWayback]: {
-    url: waybackUrl,
     maxzoom: 19,
-  },
+  }
 };
 
 // Lighter to use this utility rather than import whole of proj4

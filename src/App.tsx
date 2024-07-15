@@ -15,7 +15,7 @@ import {
   basemapsTmsSources,
   debounce,
   useLocalStorage,
-  waybackUrl
+  useWaybackUrl
 } from "./utilities";
 import mapboxgl from "mapbox-gl";
 
@@ -29,6 +29,8 @@ function App() {
   // Maps refs
   const leftMapRef = useRef<MapRef>();
   const rightMapRef = useRef<MapRef>();
+
+
 
   // State variables
   const [backgroundBasemapStyle, setBackgroundBasemapStyle] = useState<any>(
@@ -66,12 +68,12 @@ function App() {
   const [rightPlanetUrl, setRightPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), false));
 
   useEffect(() => {
-    console.log(leftTimelineDate, 'leftTimelineDate', rightTimelineDate, 'rightTimelineDate') 
+    // console.log(leftTimelineDate, 'leftTimelineDate', rightTimelineDate, 'rightTimelineDate') 
     setleftPlanetUrl(planetBasemapUrl(leftTimelineDate, customPlanetApiKey));
   }, [customPlanetApiKey, leftTimelineDate]);
 
   useEffect(() => {
-    console.log(leftTimelineDate, 'leftTimelineDate', rightTimelineDate, 'rightTimelineDate') 
+    // console.log(leftTimelineDate, 'leftTimelineDate', rightTimelineDate, 'rightTimelineDate') 
     setRightPlanetUrl(planetBasemapUrl(rightTimelineDate, customPlanetApiKey));
   }, [customPlanetApiKey, rightTimelineDate]);
 
@@ -83,16 +85,8 @@ function App() {
     [75, 25]
   );
 
-  const [leftWaybackUrl, setLeftWaybackUrl] = useState(waybackUrl(subMonths(new Date(), 18)));
-  const [rightWaybackUrl, setRightWaybackUrl] = useState(waybackUrl(subMonths(new Date(), 18)));
-
-  useEffect(() => {
-    setLeftWaybackUrl(waybackUrl(leftTimelineDate));
-  }, [leftTimelineDate]);
-
-  useEffect(() => {
-    setRightWaybackUrl(waybackUrl(rightTimelineDate));
-  }, [rightTimelineDate]);
+const { url: leftWaybackUrl, loading: leftLoading } = useWaybackUrl(leftTimelineDate);
+const { url: rightWaybackUrl, loading: rightLoading } = useWaybackUrl(rightTimelineDate);
 
   const hash = window.location.hash;
   let hashed_viewstate = hash
