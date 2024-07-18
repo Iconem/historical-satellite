@@ -9,6 +9,18 @@ import { useState, useEffect } from "react";
 import { getWaybackItems } from '@vannizhang/wayback-core';
 import { lngLatToWorld } from "@math.gl/web-mercator";
 
+
+// Try to convert yandex from 3395 CRS to 3857 standard TMS tiles
+const TITILER_ENDPOINT = 'https://titiler.xyz'
+const tileMatrixSetId = 'WebMercatorQuad' // WebMercatorQuad or WorldMercatorWGS84Quad
+const gdalYandexWmsXml = '<GDAL_WMS><Service name="TMS"><ServerUrl>https://core-sat.maps.yandex.net/tiles?l=sat&amp;x=${x}&amp;y=${y}&amp;z=${z}&amp;scale=1&amp;lang=ru_RU</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY>  <TileLevel>20</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3395</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount></GDAL_WMS>'
+// gdalYandexWmsXml can be imported into qgis as an xml gdal_wms definition and has perfect superimposition with other TMS sources
+let yandex_url = "https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU"
+yandex_url = `${TITILER_ENDPOINT}/cog/tiles/${tileMatrixSetId}/{z}/{x}/{y}&url=${encodeURIComponent(
+  gdalYandexWmsXml
+)}`;  
+
+
 // Helper functions to convert between date for date-picker and slider-value
 // Conversion between slider value and datepicker date
 function sliderValToDate(val: number, minDate: Date) {
@@ -133,7 +145,8 @@ const basemapsTmsSources: any = {
   // "http://1.aerial.maps.cit.api.here.com/maptile/2.1/maptile/newest/satellite.day/{z}/{x}/{y}/256/png8?app_id=eAdkWGYRoc4RfxVo0Z4B&app_code=TrLJuXVK62IQk0vuXFzaig&lg=eng", // api key from qms
   // [BasemapsIds.Apple]: "https://sat-cdn1.apple-mapkit.com/tile?style=7&size=1&scale=1&z={z}&x={x}&y={y}&v=9431&accessKey=1683306701_8122033819977440435_%2F_m%2F7Yr2z8iJgCTZiqebq%2FqV4P%2FT9jhTh5lYjhJ%2FyA4IQ%3D", // api key from browser
   // [BasemapsIds.Yandex]: {
-  //   url: "https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU",
+  //   // url: "https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU",
+  //   url: yandex_url,
   //   maxzoom: 19,
   // },
   [BasemapsIds.OSM]: {
