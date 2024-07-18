@@ -12,13 +12,12 @@ import { lngLatToWorld } from "@math.gl/web-mercator";
 
 // Try to convert yandex from 3395 CRS to 3857 standard TMS tiles
 const TITILER_ENDPOINT = 'https://titiler.xyz'
-const tileMatrixSetId = 'WebMercatorQuad' // https://titiler.xyz/tileMatrixSets/WebMercatorQuad
+const tileMatrixSetId = 'WebMercatorQuad' // EPSG: 3857 https://titiler.xyz/tileMatrixSets/WebMercatorQuad
+// gdalYandexWmsXml can be imported into qgis as an xml gdal_wms definition and has perfect overlay with other TMS sources
 const yandexGdalWmsXml = '<GDAL_WMS><Service name="TMS"><ServerUrl>https://core-sat.maps.yandex.net/tiles?l=sat&amp;x=${x}&amp;y=${y}&amp;z=${z}&amp;scale=1&amp;lang=ru_RU</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>20</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3395</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount></GDAL_WMS>'
 const yandexGdalUrl = encodeURIComponent(yandexGdalWmsXml)
-console.log('yandexGdalUrl', yandexGdalUrl)
-// gdalYandexWmsXml can be imported into qgis as an xml gdal_wms definition and has perfect superimposition with other TMS sources
-let yandex_url = "https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU"
-yandex_url = `${TITILER_ENDPOINT}/cog/tiles/${tileMatrixSetId}/{z}/{x}/{y}?url=${yandexGdalUrl}`;  
+// const yandex_url = "https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU"
+const yandex_url = `${TITILER_ENDPOINT}/cog/tiles/${tileMatrixSetId}/{z}/{x}/{y}?url=${yandexGdalUrl}`;  
 
 
 // Helper functions to convert between date for date-picker and slider-value
