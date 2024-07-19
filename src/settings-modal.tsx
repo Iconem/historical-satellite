@@ -15,7 +15,7 @@ import { faGear } from "@fortawesome/free-solid-svg-icons";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
-import { MIN_DATE, MAX_DATE } from "./utilities";
+import { MIN_PLANET_DATE, MAX_PLANET_DATE } from "./utilities";
 import CustomPlanetApiModal from "./custom-planet-api-modal";
 
 const style = {
@@ -73,10 +73,10 @@ export default function SettingsModal(props: any) {
               views={["year", "month"]}
               label="Export start"
               format="YYYY/MM"
-              minDate={dayjs(MIN_DATE)}
+              minDate={dayjs(MIN_PLANET_DATE)}
               maxDate={dayjs(props.maxDate)}
               value={dayjs(props.minDate)}
-              onChange={(newValue) => props.setMinDate(new Date(newValue))}
+              onChange={(newValue) => props.setExportMinDate(new Date(newValue))}
             />
             {/* </Tooltip> */}
           </LocalizationProvider>
@@ -106,9 +106,9 @@ export default function SettingsModal(props: any) {
               label="Export end"
               format="YYYY/MM"
               minDate={dayjs(props.minDate)}
-              maxDate={dayjs(MAX_DATE)}
+              maxDate={dayjs(MAX_PLANET_DATE)}
               value={dayjs(props.maxDate)}
-              onChange={(newValue) => props.setMaxDate(new Date(newValue))}
+              onChange={(newValue) => props.setExportMaxDate(new Date(newValue))}
             />
             {/* </Tooltip> */}
           </LocalizationProvider>{" "}

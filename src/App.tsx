@@ -17,7 +17,6 @@ import {
   useLocalStorage,
   useWaybackUrl
 } from "./utilities";
-import mapboxgl from "mapbox-gl";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 let rulerOk = false;
@@ -421,25 +420,21 @@ const { url: rightWaybackUrl, loading: rightLoading } = useWaybackUrl(rightTimel
             // tiles={[]}
             tiles={[leftPlanetUrl]}
             tileSize={256}
-            // key={"planetBasemap"}
-            key={leftTimelineDate.toString()}
+            key={"planet" + leftTimelineDate.toString()}
           >
             <Layer type="raster" layout={{}} paint={{}} />
           </Source>
         ) : leftSelectedTms == BasemapsIds.ESRIWayback ? (
-
           <Source
             id="wayback-source"
             scheme="xyz" 
             type="raster"
             tiles={[leftWaybackUrl]}
             tileSize={256}
-            // key={"wayback"}
-            key={leftTimelineDate.toString().toLowerCase()}
+            key={"wayback" + leftTimelineDate.toString().toLowerCase()}
           >
             <Layer type="raster" layout={{}} paint={{}} />
           </Source>
-
         ) : (
           <Source
             id="tms-source"
@@ -499,27 +494,23 @@ const { url: rightWaybackUrl, loading: rightLoading } = useWaybackUrl(rightTimel
                 id="planetbasemap-source"
                 scheme="xyz"
                 type="raster"
-                tiles={[rightPlanetUrl]}                // tiles={[]}
+                tiles={[rightPlanetUrl]} // tiles={[]}
                 tileSize={256}
-                // key={"planetBasemap"}
-                key={rightTimelineDate.toString()}
+                key={"planet" + rightTimelineDate.toString()}
               >
                 <Layer type="raster" layout={{}} paint={{}} />
               </Source>
             ) : rightSelectedTms == BasemapsIds.ESRIWayback ? (
-
               <Source
                 id="wayback-source"
                 scheme="xyz" 
                 type="raster"
                 tiles={[rightWaybackUrl]}
                 tileSize={256}
-                // key={"wayback"}
-                key={rightTimelineDate.toString().toLowerCase()}
+                key={"wayback" + rightTimelineDate.toString().toLowerCase()}
               >
                 <Layer type="raster" layout={{}} paint={{}} />
               </Source>
-    
             ) : (
               <Source
                 id="tms-source"
@@ -588,6 +579,7 @@ const { url: rightWaybackUrl, loading: rightLoading } = useWaybackUrl(rightTimel
         // Additional
         setLeftSelectedTms= {setLeftSelectedTms}
         setRightSelectedTms= {setRightSelectedTms}
+        leftMapRef={leftMapRef}
       />
     </>
   );

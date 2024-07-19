@@ -10,7 +10,7 @@ import { getWaybackItems } from '@vannizhang/wayback-core';
 import { lngLatToWorld } from "@math.gl/web-mercator";
 
 
-// Try to convert yandex from 3395 CRS to 3857 standard TMS tiles
+// Convert yandex from 3395 CRS to 3857 standard TMS tiles
 const TITILER_ENDPOINT = 'https://titiler.xyz'
 const tileMatrixSetId = 'WebMercatorQuad' // EPSG: 3857 https://titiler.xyz/tileMatrixSets/WebMercatorQuad
 // gdalYandexWmsXml can be imported into qgis as an xml gdal_wms definition and has perfect overlay with other TMS sources
@@ -34,8 +34,8 @@ const formatDate = (date: Date) => format(date, "yyyy-MM");
 const PLANET_BASEMAP_API_KEY = import.meta.env.VITE_PLANET_BASEMAP_API_KEY;
 
 // Set min/max dates for planet monthly basemaps on component mount
-export const MIN_DATE = new Date("2016-01-01T00:00:00.000");
-export const MAX_DATE = subMonths(new Date(), 1);
+export const MIN_PLANET_DATE = new Date("2016-01-01T00:00:00.000");
+export const MAX_PLANET_DATE = subMonths(new Date(), 1);
 
 
 export function useWaybackUrl(date: Date) {
@@ -53,19 +53,29 @@ export function useWaybackUrl(date: Date) {
   }, []);
 
   useEffect(() => {
-    const baseWaybackUrl = "https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/";
-    if (!loading) {
-      for (let i = wayBackItems.length - 1; i >= 0; i--) {
-        const item = wayBackItems[i];
-        if (new Date(item.releaseDatetime) > date) {
-          setUrl(baseWaybackUrl + item.releaseNum + "/{z}/{y}/{x}");
-          return;
-        }
-      }
-      // If no suitable item is found, you can set URL to undefined or a default value
-      setUrl(baseWaybackUrl + "239/{z}/{y}/{x}");
+  
+    //         itemURL: itemURL.replace('{level}', '{z}').replace('{row}', '{y}').replace('{column}', '{y}'), 
+    //         releaseDatetime: new Date(releaseDatetime), 
+    //         releaseDateLabel, 
+    //         releaseNum
+
+    const sortedItems = Object.values(wayBackItems).sort( function (a, b) {
+      return a.releaseDatetime - b.releaseDatetime;
+    } )
+    const closestSuperior = sortedItems.find(
+      item => (new Date(item.releaseDatetime) > date), 
+      sortedItems
+    )
+    // console.log('ESRI Wayback testing ', sortedItems, closestSuperior, closestSuperior?.itemURL)
+    if (closestSuperior){
+      const closestUrl = closestSuperior?.itemURL
+        .replace('{level}', '{z}')
+        .replace('{row}', '{y}')
+        .replace('{col}', '{x}')
+      setUrl(closestUrl)
+    } else {
+      setUrl("https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/" + "239/{z}/{y}/{x}")
     }
-    setUrl(baseWaybackUrl + "239/{z}/{y}/{x}");
   }, [date, loading, wayBackItems]);
 
   return { url, loading };
@@ -82,14 +92,20 @@ const planetBasemapUrl = (date: Date, customApi?:string) => {
 };
 
 // Set custom slider marks for each beginning of year
-function getSliderMarks(minDate: Date, maxDate: Date) {
-  return eachYearOfInterval({
-    start: minDate <= maxDate ? minDate : maxDate,
-    end: minDate <= maxDate ? maxDate : minDate,
-  }).map((date: Date) => ({
+function getSliderMarks(dates_array: Date[], minDate: Date) {
+  return dates_array.map((date: Date) => ({
     value: dateToSliderVal(date, minDate),
     label: formatDate(date),
   }));
+}
+
+// Set custom slider marks for each beginning of year
+function getSliderMarksEveryYear(minDate: Date, maxDate: Date) {
+  const dates_array = eachYearOfInterval({
+    start: minDate <= maxDate ? minDate : maxDate,
+    end: minDate <= maxDate ? maxDate : minDate,
+  })
+  return getSliderMarks(dates_array, minDate);
 }
 
 // const basemapsTmsUrls = {
@@ -412,6 +428,7 @@ export {
   planetBasemapUrl,
   BasemapsIds,
   basemapsTmsSources,
+  getSliderMarksEveryYear,
   getSliderMarks,
   convertLatlonTo3857,
   debounce,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -7,6 +7,15 @@ import { LngLatBounds, LngLat } from "mapbox-gl";
 // import Slider from "@mui/material/Slider";
 // import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 // import PropTypes from 'prop-types'
+
+import { 
+  getWaybackItemsWithLocalChanges, 
+  // WaybackItem
+} from '@vannizhang/wayback-core';
+import {
+  addMonths,
+  subMonths,
+} from "date-fns";
 
 import PlayableSlider from "./playable-slider";
 import LinksSection from "./links-section";
@@ -47,8 +56,9 @@ import {
   BasemapsIds,
   basemapsTmsSources,
   getSliderMarks,
-  MIN_DATE,
-  MAX_DATE,
+  getSliderMarksEveryYear,
+  MIN_PLANET_DATE,
+  MAX_PLANET_DATE,
   useLocalStorage,
   getBingViewportDate,
   // convertLatlonTo3857,
@@ -205,34 +215,35 @@ function ControlPanelDrawer(props: any) {
       >
 
       <ControlPanel
-        // Adding blending mode opacity, and blending mode activation to pass downward
-        blendingActivation={props.blendingActivation}
-        setBlendingActivation={props.setBlendingActivation}
-        opacity={props.opacity}
-        setOpacity={props.setOpacity}
-        blendingMode={props.blendingMode}
-        setBlendingMode={props.setBlendingMode}
-        timelineDate={ props.timelineDate }
-        setTimelineDate={ props.setTimelineDate }
-        selectedTms={props.selectedTms}
-        setSelectedTms={ props.setSelectedTms }
-        swapMapSources={props.swapMapSources}
-        splitScreenMode={props.splitScreenMode}
-        setSplitScreenMode={props.setSplitScreenMode}
-        setSplitPanelSizesPercent={props.setSplitPanelSizesPercent}
-        mapRef={props.mapRef}
-        clickedMap={props.clickedMap}
-        // Additional
-        setLeftSelectedTms={props.setLeftSelectedTms}
-        setRightSelectedTms={props.setRightSelectedTms}
-        setCustomPlanetApiKey={props.setCustomPlanetApiKey}
-        customPlanetApiKey={props.customPlanetApiKey}
+        {...props}
+        // // Adding blending mode opacity, and blending mode activation to pass downward
+        // blendingActivation={props.blendingActivation}
+        // setBlendingActivation={props.setBlendingActivation}
+        // opacity={props.opacity}
+        // setOpacity={props.setOpacity}
+        // blendingMode={props.blendingMode}
+        // setBlendingMode={props.setBlendingMode}
+        // timelineDate={ props.timelineDate }
+        // setTimelineDate={ props.setTimelineDate }
+        // selectedTms={props.selectedTms}
+        // setSelectedTms={ props.setSelectedTms }
+        // swapMapSources={props.swapMapSources}
+        // splitScreenMode={props.splitScreenMode}
+        // setSplitScreenMode={props.setSplitScreenMode}
+        // setSplitPanelSizesPercent={props.setSplitPanelSizesPercent}
+        // mapRef={props.mapRef}
+        // clickedMap={props.clickedMap}
+        // // Additional
+        // setLeftSelectedTms={props.setLeftSelectedTms}
+        // setRightSelectedTms={props.setRightSelectedTms}
+        // setCustomPlanetApiKey={props.setCustomPlanetApiKey}
+        // customPlanetApiKey={props.customPlanetApiKey}
       />
-        
       </Drawer>
     </Box>
   );
 }
+
 
 
 // -----------------------------------------------------
@@ -251,14 +262,14 @@ function ControlPanel(props:any) {
     props.setTimelineDate(sliderValToDate(newValue, minDate));
   };
 
-  // const [minDate, setMinDate] = useState<Date>(MIN_DATE);
-  // const [maxDate, setMaxDate] = useState<Date>(MAX_DATE);
-  const [minDate, setMinDate] = useLocalStorage("export_minDate", MIN_DATE);
-  const [maxDate, setMaxDate] = useLocalStorage("export_maxDate", MAX_DATE);
-  const validMinDate = minDate && isValid(minDate) ? minDate : MIN_DATE;
-  const validMaxDate = maxDate && isValid(maxDate) ? maxDate : MAX_DATE;
+  // const [minDate, setMinDate] = useState<Date>(MIN_PLANET_DATE);
+  // const [maxDate, setMaxDate] = useState<Date>(MAX_PLANET_DATE);
+  const [minDate, setMinDate] = useLocalStorage("export_minDate", MIN_PLANET_DATE);
+  const [maxDate, setMaxDate] = useLocalStorage("export_maxDate", MAX_PLANET_DATE);
+  const validMinDate = minDate && isValid(minDate) ? minDate : MIN_PLANET_DATE;
+  const validMaxDate = maxDate && isValid(maxDate) ? maxDate : MAX_PLANET_DATE;
   const monthsCount = differenceInMonths(validMaxDate, validMinDate);
-  const marks = getSliderMarks(validMinDate, validMaxDate);
+  const [marks, setMarks] = useState(getSliderMarksEveryYear(validMinDate, validMaxDate));
   const [collectionDateStr, setCollectionDateStr] = useState('?');
 
   
@@ -306,8 +317,68 @@ function ControlPanel(props:any) {
   );
   const map = props.mapRef?.current?.getMap() as any;
 
+  
+  const onMoveEnd_esriWaybackMarks = useCallback((e) => {
+    console.log('MOVEEND - CONTROLPANEL - event type:', e.type, e);
+    // event type: boxzoomstart
+    const map = e.target
+    
+    // const esriOnMoveEnd = 
+    // ESRI Wayback Machine
+    // const map = leftMapRef.current?.getMap()
+    const center = map?.getCenter()
+    getWaybackItemsWithLocalChanges(
+      {
+        longitude: center?.lng || 0,
+        latitude: center?.lat || 0,
+      },
+      map?.getZoom() || 0
+    ).then(
+      (waybackItemsWithLocalChanges: any) => {
+        console.log('waybackItemsWithLocalChanges', waybackItemsWithLocalChanges)
+        // setEsriWaybackItemsChange(waybackItemsWithLocalChanges)
+        const parsedItemsWithLocalChanges = Object.values(waybackItemsWithLocalChanges).map((item: any) => {
+          const {itemURL, releaseDateLabel, releaseDatetime, releaseNum } = item
+          console.log(itemURL, releaseDateLabel, releaseDatetime, releaseNum)
+          return {
+            itemURL: itemURL.replace('{level}', '{z}').replace('{row}', '{y}').replace('{column}', '{y}'), 
+            releaseDatetime: new Date(releaseDatetime), 
+            releaseDateLabel, 
+            releaseNum
+          }
+        })
+        const localChangesDates = parsedItemsWithLocalChanges
+          .map(item => new Date(item.releaseDatetime))
+          .sort((a, b) => a - b);
+        // Offset a bit min and maxDates
+        const waybackMinDate = subMonths(localChangesDates[0], 12);
+        const waybackMaxDate = addMonths(localChangesDates[localChangesDates.length - 1], 12);
+        const esriWaybackMarks = getSliderMarks(localChangesDates, waybackMinDate)
+        setMinDate(waybackMinDate)
+        setMaxDate(waybackMaxDate)
+        setMarks(esriWaybackMarks) 
+      }
+    );
+  }, [])
+
   const handleBasemapChange = (event: SelectChangeEvent) => {
-    props.setSelectedTms(event.target.value as BasemapsIds); // as string
+    const selectedTms = event.target.value as BasemapsIds
+    props.setSelectedTms(selectedTms); // as string
+    const map = props.leftMapRef.current?.getMap()
+    map.off('moveend', onMoveEnd_esriWaybackMarks)
+
+    // TODO setSliderDatesArr (setMinDate and setMarkers)
+    if (selectedTms == BasemapsIds.PlanetMonthly) {
+      setMinDate(validMinDate <= MIN_PLANET_DATE ? MIN_PLANET_DATE : validMinDate)
+      setMaxDate(validMaxDate >= MAX_PLANET_DATE ? MAX_PLANET_DATE : validMaxDate)
+      const planetMarks = getSliderMarksEveryYear(validMinDate, validMaxDate)
+      setMarks(planetMarks) 
+    }
+    else if (selectedTms == BasemapsIds.ESRIWayback) {
+      // Will take care of setting slider marks on move end
+      map.on('moveend', onMoveEnd_esriWaybackMarks); 
+      onMoveEnd_esriWaybackMarks({target: map})
+    } 
   };
   // ------------------------------------------
   // HANDLE EXPORT SAVE TO DISK
@@ -339,7 +410,7 @@ function ControlPanel(props:any) {
       const bounds = mapRef?.current?.getMap()?.getBounds();
       // Loop through each monthly basemap and download
 
-      // const filteredDates =
+      // const filteredPlanetDates =
       //   props.selectedTms == BasemapsIds.PlanetMonthly
       //     ? Array.from({ length: monthsCount }, (value, index) =>
       //         sliderValToDate(index, minDate)
@@ -348,7 +419,7 @@ function ControlPanel(props:any) {
       //         (date, index) => index >= 0 && index <= 1000 && date.getMonth() >= 0
       //       )
       //     : [false];
-      const filteredDates =
+      const filteredPlanetDates =
           eachMonthOfInterval({
               start: validMinDate,
               end: validMaxDate,
@@ -370,7 +441,7 @@ function ControlPanel(props:any) {
         return { downloadUrl, batch_cmd, filename }
       }
       
-      const gdalTranslateCmds_planet = filteredDates.map((date) => {
+      const gdalTranslateCmds_planet = filteredPlanetDates.map((date) => {
         const tmsUrl = planetBasemapUrl(date);
         const date_YYYY_MM = formatDate(date);
         // TRYING METHOD 2
