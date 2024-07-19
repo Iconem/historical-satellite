@@ -144,8 +144,8 @@ const basemapsTmsSources: any = {
   },
   // "http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}.jpg",
   [BasemapsIds.Bing]: {
-    // url: "https://t.ssl.ak.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=13578&n=z&prx=1",
-    url: "http://a0.ortho.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=90",
+    // url: "http://a0.ortho.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=90",
+    url: 'https://t.ssl.ak.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=14603&n=z&prx=1',
     maxzoom: 21,
   }, // bing uses quadkey
   [BasemapsIds.Mapbox]: {

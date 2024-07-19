@@ -134,7 +134,6 @@ wmsUrl = "<GDAL_WMS><Service name='TMS'><ServerUrl>http://mt.google.com/vt/lyrs=
 a = `${titilerEndpoint}/cog/crop/${coords_str}&url=${encodeURIComponent(
     wmsUrl
   )}`;
-console.log(a) 
 */
 
 // -----------------------------------------------------
@@ -319,7 +318,6 @@ function ControlPanel(props:any) {
 
   
   const onMoveEnd_esriWaybackMarks = useCallback((e) => {
-    console.log('MOVEEND - CONTROLPANEL - event type:', e.type, e);
     // event type: boxzoomstart
     const map = e.target
     
@@ -335,11 +333,9 @@ function ControlPanel(props:any) {
       map?.getZoom() || 0
     ).then(
       (waybackItemsWithLocalChanges: any) => {
-        console.log('waybackItemsWithLocalChanges', waybackItemsWithLocalChanges)
         // setEsriWaybackItemsChange(waybackItemsWithLocalChanges)
         const parsedItemsWithLocalChanges = Object.values(waybackItemsWithLocalChanges).map((item: any) => {
           const {itemURL, releaseDateLabel, releaseDatetime, releaseNum } = item
-          console.log(itemURL, releaseDateLabel, releaseDatetime, releaseNum)
           return {
             itemURL: itemURL.replace('{level}', '{z}').replace('{row}', '{y}').replace('{column}', '{y}'), 
             releaseDatetime: new Date(releaseDatetime), 
