@@ -102,7 +102,7 @@ function App() {
       .split("/")
       .map((x) => parseFloat(x));
     if (hashed_viewstate.length !== 3) {
-      hashed_viewstate = [2, 10, 0];
+      hashed_viewstate = [3, 10, 0];
     }
     setViewState({
       zoom: hashed_viewstate[0],
