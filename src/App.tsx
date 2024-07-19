@@ -6,8 +6,10 @@ import GeocoderControl from "./geocoder-control";
 import ControlPanelDrawer, { type MapSplitMode } from "./control-panel";
 import { set, subMonths } from "date-fns";
 import Split from "react-split";
-import {RulerControl} from 'mapbox-gl-controls'
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
+import RulerControl from '@mapbox-controls/ruler';
+import '@mapbox-controls/ruler/src/index.css';
+
 
 import {
   planetBasemapUrl,
@@ -123,15 +125,11 @@ const { url: rightWaybackUrl, loading: rightLoading } = useWaybackUrl(rightTimel
     // rightMapRef.current.resize();
   }
 
-  const leftRuler = new RulerControl();
-  const rightRuler = new RulerControl();
-
-  if (!rulerOk) {
-    // console.log("Adding ruler control");
-    leftMapRef.current?.getMap()?.addControl(leftRuler, "top-left");
-    rightMapRef.current?.getMap()?.addControl(rightRuler, "top-right");
-    if (leftMapRef.current?.getMap()) {rulerOk=true;}
-    // setRulerOk(true);
+  function WrappedRulerControl(props) {
+    useControl(() => new RulerControl(props), {
+      position: props.position
+    });
+    return null;
   }
 
   // Update raster TMS source faster than react component remount on timelineDate state update
@@ -409,6 +407,9 @@ const { url: rightWaybackUrl, loading: rightLoading } = useWaybackUrl(rightTimel
           flyTo={false}
           mapRef={leftMapRef}
         />
+        <WrappedRulerControl
+          position="top-left"
+        />
 
         {leftSelectedTms == BasemapsIds.Mapbox ? (
           <></>
@@ -486,6 +487,9 @@ const { url: rightWaybackUrl, loading: rightLoading } = useWaybackUrl(rightTimel
           // style={RightMapStyle}
           mapStyle={rightMapboxMapStyle}
         >
+          <WrappedRulerControl
+            position="top-right"
+          />
           {
             rightSelectedTms == BasemapsIds.Mapbox ? (
              <></> ) : 
