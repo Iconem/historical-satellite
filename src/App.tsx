@@ -86,23 +86,32 @@ function App() {
     [75, 25]
   );
 
-const { url: leftWaybackUrl, loading: leftLoading } = useWaybackUrl(leftTimelineDate);
-const { url: rightWaybackUrl, loading: rightLoading } = useWaybackUrl(rightTimelineDate);
+  const { url: leftWaybackUrl, loading: leftLoading } = useWaybackUrl(leftTimelineDate);
+  const { url: rightWaybackUrl, loading: rightLoading } = useWaybackUrl(rightTimelineDate);
 
-  const hash = window.location.hash;
-  let hashed_viewstate = hash
-    .substring(1)
-    .split("/")
-    .map((x) => parseFloat(x));
-  if (hashed_viewstate.length !== 3) {
-    hashed_viewstate = [2, 10, 0];
-  }
   const [viewState, setViewState] = useState({
-    zoom: hashed_viewstate[0],
-    latitude: hashed_viewstate[1],
-    longitude: hashed_viewstate[2],
+    zoom: 3,
+    latitude: 0,
+    longitude: 0,
     pitch: 0,
   });
+  useEffect( () => {
+    const hash = window.location.hash;
+    let hashed_viewstate = hash
+      .substring(1)
+      .split("/")
+      .map((x) => parseFloat(x));
+    if (hashed_viewstate.length !== 3) {
+      hashed_viewstate = [2, 10, 0];
+    }
+    setViewState({
+      zoom: hashed_viewstate[0],
+      latitude: hashed_viewstate[1],
+      longitude: hashed_viewstate[2],
+      pitch: 0,
+    })
+  }, [])
+
 
   // const [leftSelectedTms, setLeftSelectedTms] = useState<BasemapsIds>(
   //   BasemapsIds.PlanetMonthly
