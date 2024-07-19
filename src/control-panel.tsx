@@ -268,7 +268,8 @@ function ControlPanel(props:any) {
   const validMinDate = minDate && isValid(minDate) ? minDate : MIN_PLANET_DATE;
   const validMaxDate = maxDate && isValid(maxDate) ? maxDate : MAX_PLANET_DATE;
   const monthsCount = differenceInMonths(validMaxDate, validMinDate);
-  const [marks, setMarks] = useState(getSliderMarksEveryYear(validMinDate, validMaxDate));
+  const [leftMarks, setLeftMarks] = useState(getSliderMarksEveryYear(validMinDate, validMaxDate));
+  const [rightMarks, setRightMarks] = useState(getSliderMarksEveryYear(validMinDate, validMaxDate));
   const [collectionDateStr, setCollectionDateStr] = useState('?');
 
   
@@ -352,7 +353,7 @@ function ControlPanel(props:any) {
         const esriWaybackMarks = getSliderMarks(localChangesDates, waybackMinDate)
         setMinDate(waybackMinDate)
         setMaxDate(waybackMaxDate)
-        setMarks(esriWaybackMarks) 
+        props.clickedMap == "left" ? setLeftMarks(esriWaybackMarks) : setRightMarks(esriWaybackMarks) 
       }
     );
   }, [])
@@ -368,7 +369,7 @@ function ControlPanel(props:any) {
       setMinDate(validMinDate <= MIN_PLANET_DATE ? MIN_PLANET_DATE : validMinDate)
       setMaxDate(validMaxDate >= MAX_PLANET_DATE ? MAX_PLANET_DATE : validMaxDate)
       const planetMarks = getSliderMarksEveryYear(validMinDate, validMaxDate)
-      setMarks(planetMarks) 
+      props.clickedMap == "left" ? setLeftMarks(planetMarks) : setRightMarks(planetMarks) 
     }
     else if (selectedTms == BasemapsIds.ESRIWayback) {
       // Will take care of setting slider marks on move end
@@ -732,7 +733,9 @@ function ControlPanel(props:any) {
             //
             min={0}
             max={monthsCount}
-            marks={marks}
+            marks={
+              props.clickedMap == "left" ? leftMarks : rightMarks 
+            }
             //
             value={dateToSliderVal(props.timelineDate, validMinDate)}
             onChange={handleSliderChange}
