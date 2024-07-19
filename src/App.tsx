@@ -243,6 +243,8 @@ function App() {
       const oldCanvas = leftMapRef.current?.getCanvas();
       const newCanvas = document.getElementById('leftMapCanvasClone')
       if (oldCanvas && newCanvas) cloneCanvas(oldCanvas as HTMLCanvasElement, newCanvas as HTMLCanvasElement)
+      // App in prod wont set hash auto although it was working in dev, so do it onMoveEnd
+      window.location.hash = `${viewState.zoom}/${viewState.latitude.toFixed(4)}/${viewState.longitude.toFixed(4)}-jojo`
     }, 
     10, 
     false
