@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -249,6 +249,11 @@ function ControlPanelDrawer(props: any) {
 // Component: ControlPanel
 // ------------------------------------------------------
 function ControlPanel(props:any) {
+
+
+  useEffect(() => {
+    console.log('yo rightSelectedTms changed', props.rightSelectedTms)
+  }, [props.rightSelectedTms])
   // ---------------------------
   // Slider control
   // For slider play/pause loops
@@ -258,25 +263,37 @@ function ControlPanel(props:any) {
     2
   );
   const handleSliderChange = (_: Event, newValue: number) => {
-    props.setTimelineDate(sliderValToDate(newValue, minDate));
+    props.setTimelineDate(sliderValToDate(newValue, validMinDate));
   };
 
   // const [minDate, setMinDate] = useState<Date>(MIN_PLANET_DATE);
   // const [maxDate, setMaxDate] = useState<Date>(MAX_PLANET_DATE);
-  const [minDate, setMinDate] = useLocalStorage("export_minDate", MIN_PLANET_DATE);
-  const [maxDate, setMaxDate] = useLocalStorage("export_maxDate", MAX_PLANET_DATE);
-  const validMinDate = minDate && isValid(minDate) ? minDate : MIN_PLANET_DATE;
-  const validMaxDate = maxDate && isValid(maxDate) ? maxDate : MAX_PLANET_DATE;
-  const monthsCount = differenceInMonths(validMaxDate, validMinDate);
-  const [leftMarks, setLeftMarks] = useState(getSliderMarksEveryYear(validMinDate, validMaxDate));
-  const [rightMarks, setRightMarks] = useState(getSliderMarksEveryYear(validMinDate, validMaxDate));
+  const [minLeftDate, setLeftMinDate] = useLocalStorage("export_minDate", MIN_PLANET_DATE);
+  const [maxLeftDate, setLeftMaxDate] = useLocalStorage("export_maxDate", MAX_PLANET_DATE);
+  const [minRightDate, setRightMinDate] = useLocalStorage("export_minDate", MIN_PLANET_DATE);
+  const [maxRightDate, setRightMaxDate] = useLocalStorage("export_maxDate", MAX_PLANET_DATE);
   const [collectionDateStr, setCollectionDateStr] = useState('?');
 
+  const validLeftMinDate = minLeftDate && isValid(minLeftDate) ? minLeftDate : MIN_PLANET_DATE;
+  const validLeftMaxDate = maxLeftDate && isValid(maxLeftDate) ? maxLeftDate : MAX_PLANET_DATE;
+  const validRightMinDate = minRightDate && isValid(minRightDate) ? minRightDate : MIN_PLANET_DATE;
+  const validRightMaxDate = maxRightDate && isValid(maxRightDate) ? maxRightDate : MAX_PLANET_DATE;
+  const monthsCountLeft = differenceInMonths(validLeftMaxDate, validLeftMinDate);
+  const monthsCountRight = differenceInMonths(validRightMaxDate, validRightMinDate);
+  const [leftMarks, setLeftMarks] = useState(getSliderMarksEveryYear(validLeftMinDate, validLeftMaxDate));
+  const [rightMarks, setRightMarks] = useState(getSliderMarksEveryYear(validRightMinDate, validRightMaxDate));
+  
+  const validMinDate = props.clickedMap == "left" ? validLeftMinDate : validRightMinDate 
+  const validMaxDate = props.clickedMap == "left" ? validLeftMaxDate : validRightMaxDate 
+  const marks = props.clickedMap == "left" ? leftMarks : rightMarks 
+  const monthsCount = props.clickedMap == "left" ? monthsCountLeft : monthsCountRight 
+  const setMinDate = props.clickedMap == "left" ? setLeftMinDate : setRightMinDate 
+  const setMaxDate = props.clickedMap == "left" ? setLeftMaxDate : setRightMaxDate 
   
   const collectionDateRetrievable: BasemapsIds[] = [BasemapsIds.Bing, BasemapsIds.PlanetMonthly]
   async function getCollectionDateViewport(selectedTms: BasemapsIds) {
     setCollectionDateStr('')
-    let collectionDate = {minDate: '?', maxDate: '?'};
+    let collectionDate = {validMinDate: '?', maxDate: '?'};
     const map = props.mapRef?.current?.getMap() as any;
 
     switch (+selectedTms) {
@@ -319,6 +336,7 @@ function ControlPanel(props:any) {
 
   
   const onMoveEnd_esriWaybackMarks = useCallback((e) => {
+  // const onMoveEnd_esriWaybackMarks = (e) => {
     // event type: boxzoomstart
     const map = e.target
     
@@ -351,17 +369,29 @@ function ControlPanel(props:any) {
         const waybackMinDate = subMonths(localChangesDates[0], 12);
         const waybackMaxDate = addMonths(localChangesDates[localChangesDates.length - 1], 12);
         const esriWaybackMarks = getSliderMarks(localChangesDates, waybackMinDate)
-        setMinDate(waybackMinDate)
-        setMaxDate(waybackMaxDate)
-        props.clickedMap == "left" ? setLeftMarks(esriWaybackMarks) : setRightMarks(esriWaybackMarks) 
+        console.log('onMoveEnd_esriWaybackMarks ', center, map.getZoom(), esriWaybackMarks, localChangesDates, props.leftSelectedTms, props.rightSelectedTms)
+        if (props.leftSelectedTms == BasemapsIds.ESRIWayback) {
+          console.log('leftSelectedTms == ESRIWayback')
+          setLeftMinDate(waybackMinDate)
+          setLeftMaxDate(waybackMaxDate)
+          setLeftMarks(esriWaybackMarks) 
+        } 
+        if (props.rightSelectedTms == BasemapsIds.ESRIWayback) {
+          // TODO props.rightSelectedTms won't get changed since useCallback when changing selectedTms afterwards
+          console.log('rightSelectedTms == ESRIWayback')
+          setRightMinDate(waybackMinDate)
+          setRightMaxDate(waybackMaxDate)
+          setRightMarks(esriWaybackMarks) 
+        } 
       }
     );
-  }, [])
+  }
+  , [props.clickedMap, props.rightSelectedTms, props.leftSelectedTms])
 
   const handleBasemapChange = (event: SelectChangeEvent) => {
     const selectedTms = event.target.value as BasemapsIds
     props.setSelectedTms(selectedTms); // as string
-    const map = props.leftMapRef.current?.getMap()
+    const map = props.mapRef.current?.getMap()
     map.off('moveend', onMoveEnd_esriWaybackMarks)
 
     // TODO setSliderDatesArr (setMinDate and setMarkers)
@@ -675,9 +705,9 @@ function ControlPanel(props:any) {
               <SettingsModal
                 playbackSpeedFPS={playbackSpeedFPS}
                 setPlaybackSpeedFPS={setPlaybackSpeedFPS}
-                minDate={minDate}
+                minDate={validMinDate}
                 setMinDate={setMinDate}
-                maxDate={maxDate}
+                maxDate={validMaxDate}
                 setMaxDate={setMaxDate}
                 exportInterval={exportInterval}
                 setExportInterval={setExportInterval}
@@ -733,9 +763,7 @@ function ControlPanel(props:any) {
             //
             min={0}
             max={monthsCount}
-            marks={
-              props.clickedMap == "left" ? leftMarks : rightMarks 
-            }
+            marks={ marks }
             //
             value={dateToSliderVal(props.timelineDate, validMinDate)}
             onChange={handleSliderChange}

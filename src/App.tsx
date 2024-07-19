@@ -244,7 +244,7 @@ function App() {
       const newCanvas = document.getElementById('leftMapCanvasClone')
       if (oldCanvas && newCanvas) cloneCanvas(oldCanvas as HTMLCanvasElement, newCanvas as HTMLCanvasElement)
       // App in prod wont set hash auto although it was working in dev, so do it onMoveEnd
-      window.location.hash = `${viewState.zoom}/${viewState.latitude.toFixed(4)}/${viewState.longitude.toFixed(4)}-jojo`
+      window.location.hash = `${viewState.zoom.toFixed(2)}/${viewState.latitude.toFixed(4)}/${viewState.longitude.toFixed(4)}`
     }, 
     10, 
     false
@@ -401,7 +401,10 @@ function App() {
         // Left/Right Maps Sync
         id="left-map"
         ref={leftMapRef}
-        onClick={() => setClickedMap("left")}
+        onClick={() => {
+          setClickedMap("left")
+          // setLeftMa
+        }}
         onMoveStart={onLeftMoveStart}
         // onMove={activeMap === "left" ? onMove : () => ({})}
         onMove={activeMap === "left" ? onMoveDebounce : () => ({})}
@@ -583,6 +586,8 @@ function App() {
           clickedMap == "left" ? setLeftTimelineDate : setRightTimelineDate
         }
         selectedTms={clickedMap == "left" ? leftSelectedTms : rightSelectedTms}
+        leftSelectedTms={leftSelectedTms}
+        rightSelectedTms={rightSelectedTms}
         setSelectedTms={
           clickedMap == "left" ? setLeftSelectedTms : setRightSelectedTms
         }
@@ -590,7 +595,7 @@ function App() {
         splitScreenMode={splitScreenMode}
         setSplitScreenMode={setSplitScreenMode}
         setSplitPanelSizesPercent={setSplitPanelSizesPercent}
-        mapRef={leftMapRef}
+        mapRef={clickedMap == "left" ? leftMapRef : rightMapRef}
         // Additional
         setLeftSelectedTms= {setLeftSelectedTms}
         setRightSelectedTms= {setRightSelectedTms}
