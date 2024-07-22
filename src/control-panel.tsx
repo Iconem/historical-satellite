@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -249,8 +249,6 @@ function ControlPanelDrawer(props: any) {
 // Component: ControlPanel
 // ------------------------------------------------------
 function ControlPanel(props:any) {
-
-
   useEffect(() => {
     console.log('yo rightSelectedTms changed', props.rightSelectedTms)
   }, [props.rightSelectedTms])
@@ -335,10 +333,13 @@ function ControlPanel(props:any) {
   const map = props.mapRef?.current?.getMap() as any;
 
   
-  const onMoveEnd_esriWaybackMarks = useCallback((e) => {
-  // const onMoveEnd_esriWaybackMarks = (e) => {
+  // const onMoveEnd_esriWaybackMarks = useCallback((props_: any) => (e: any) => {
+  // const onMoveEnd_esriWaybackMarks = (clickedMap: any) => (e: any) => {
+  //   console.log('1. onMoveEnd_esriWaybackMarks clickedMap & props left/right selectedTms', clickedMap) // , props.leftSelectedTms, 
+  const onMoveEnd_esriWaybackMarks = useCallback( (e: any) => {
+    console.log('1. onMoveEnd_esriWaybackMarks clickedMapRef.current', clickedMapRef.current) // , props.leftSelectedTms, props.rightSelectedTms)
+    // const onMoveEnd_esriWaybackMarks = (e) => {
     // event type: boxzoomstart
-    const map = e.target
     
     // const esriOnMoveEnd = 
     // ESRI Wayback Machine
@@ -352,6 +353,7 @@ function ControlPanel(props:any) {
       map?.getZoom() || 0
     ).then(
       (waybackItemsWithLocalChanges: any) => {
+        // console.log('2. onMoveEnd_esriWaybackMarks props left/right selectedTms', clickedMap, props.leftSelectedTms, props.rightSelectedTms)
         // setEsriWaybackItemsChange(waybackItemsWithLocalChanges)
         const parsedItemsWithLocalChanges = Object.values(waybackItemsWithLocalChanges).map((item: any) => {
           const {itemURL, releaseDateLabel, releaseDatetime, releaseNum } = item
@@ -369,15 +371,21 @@ function ControlPanel(props:any) {
         const waybackMinDate = subMonths(localChangesDates[0], 12);
         const waybackMaxDate = addMonths(localChangesDates[localChangesDates.length - 1], 12);
         const esriWaybackMarks = getSliderMarks(localChangesDates, waybackMinDate)
-        console.log('onMoveEnd_esriWaybackMarks ', center, map.getZoom(), esriWaybackMarks, localChangesDates, props.leftSelectedTms, props.rightSelectedTms)
-        if (props.leftSelectedTms == BasemapsIds.ESRIWayback) {
+        // console.log('3. onMoveEnd_esriWaybackMarks ', center, map.getZoom(), clickedMap, esriWaybackMarks, localChangesDates, props.leftSelectedTms, props.rightSelectedTms)
+        // It should happen that this callback is remembered, and was setup when clickedMap was set to left or right
+        // It is not updated via state/props
+        if (clickedMapRef.current == 'left') {
+        // if (clickedMap == 'left') {
+        // if (+props_.leftSelectedTms == +BasemapsIds.ESRIWayback) {
           console.log('leftSelectedTms == ESRIWayback')
           setLeftMinDate(waybackMinDate)
           setLeftMaxDate(waybackMaxDate)
           setLeftMarks(esriWaybackMarks) 
         } 
-        if (props.rightSelectedTms == BasemapsIds.ESRIWayback) {
-          // TODO props.rightSelectedTms won't get changed since useCallback when changing selectedTms afterwards
+        if (clickedMapRef.current == 'right') {
+        // if (clickedMap == 'right') {
+        // if (+props_.rightSelectedTms == +BasemapsIds.ESRIWayback) {
+          // TODO props_.rightSelectedTms won't get changed since useCallback when changing selectedTms afterwards
           console.log('rightSelectedTms == ESRIWayback')
           setRightMinDate(waybackMinDate)
           setRightMaxDate(waybackMaxDate)
@@ -386,26 +394,33 @@ function ControlPanel(props:any) {
       }
     );
   }
-  , [props.clickedMap, props.rightSelectedTms, props.leftSelectedTms])
+  , [])
+
+  const clickedMapRef = useRef(props.clickedMap)
+  useEffect( 
+    () => {
+      const map = props.mapRef.current?.getMap()
+      clickedMapRef.current = props.clickedMap
+      if (map)
+        map.off('moveend', onMoveEnd_esriWaybackMarks)
+
+      if (props.selectedTms == BasemapsIds.PlanetMonthly) {
+        setMinDate(validMinDate <= MIN_PLANET_DATE ? MIN_PLANET_DATE : validMinDate)
+        setMaxDate(validMaxDate >= MAX_PLANET_DATE ? MAX_PLANET_DATE : validMaxDate)
+        const planetMarks = getSliderMarksEveryYear(validMinDate, validMaxDate)
+        props.clickedMap == "left" ? setLeftMarks(planetMarks) : setRightMarks(planetMarks) 
+      }
+      else if (props.selectedTms == BasemapsIds.ESRIWayback) {
+        map.on('moveend', onMoveEnd_esriWaybackMarks); 
+        onMoveEnd_esriWaybackMarks({target: map}) 
+      }
+    }, 
+    [props.clickedMap, props.selectedTms, props.mapRef]
+  )
 
   const handleBasemapChange = (event: SelectChangeEvent) => {
     const selectedTms = event.target.value as BasemapsIds
     props.setSelectedTms(selectedTms); // as string
-    const map = props.mapRef.current?.getMap()
-    map.off('moveend', onMoveEnd_esriWaybackMarks)
-
-    // TODO setSliderDatesArr (setMinDate and setMarkers)
-    if (selectedTms == BasemapsIds.PlanetMonthly) {
-      setMinDate(validMinDate <= MIN_PLANET_DATE ? MIN_PLANET_DATE : validMinDate)
-      setMaxDate(validMaxDate >= MAX_PLANET_DATE ? MAX_PLANET_DATE : validMaxDate)
-      const planetMarks = getSliderMarksEveryYear(validMinDate, validMaxDate)
-      props.clickedMap == "left" ? setLeftMarks(planetMarks) : setRightMarks(planetMarks) 
-    }
-    else if (selectedTms == BasemapsIds.ESRIWayback) {
-      // Will take care of setting slider marks on move end
-      map.on('moveend', onMoveEnd_esriWaybackMarks); 
-      onMoveEnd_esriWaybackMarks({target: map})
-    } 
   };
   // ------------------------------------------
   // HANDLE EXPORT SAVE TO DISK
