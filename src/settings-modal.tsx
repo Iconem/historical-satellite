@@ -16,7 +16,6 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { MIN_PLANET_DATE, MAX_PLANET_DATE } from "./utilities";
-import CustomPlanetApiModal from "./custom-planet-api-modal";
 
 const style = {
   position: "absolute" as "absolute",
@@ -39,6 +38,10 @@ export default function SettingsModal(props: any) {
   const handleCollectionDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     props.setCollectionDateActivated( event.target.checked);
   };
+  
+  const handlePlanetApiInputChange = (event:any) => {
+    props.setCustomPlanetApiKey(event.target.value);
+};
 
   return (
     <Fragment>
@@ -168,10 +171,11 @@ export default function SettingsModal(props: any) {
               />
             }
           />
-          <CustomPlanetApiModal
-            setCustomPlanetApiKey={props.setCustomPlanetApiKey}
-            customPlanetApiKey={props.customPlanetApiKey}
-          />
+          
+          <div className='customApiModal'>
+              <TextField  value={props.customPlanetApiKey} onChange={handlePlanetApiInputChange} size={'small'} label="Planet Monthly Key" style={{ width: '86%' }} />
+          </div>
+
         </Box>
       </Modal>
     </Fragment>

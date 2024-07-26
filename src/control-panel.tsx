@@ -21,9 +21,6 @@ import PlayableSlider from "./playable-slider";
 import LinksSection from "./links-section";
 import {ExportSplitButton, ExportButtonOptions} from "./export-split-button";
 import SettingsModal from "./settings-modal";
-import BlendingControl from "./blending-control";
-import OpacitySlider from "./opacity-slider";
-import BlendingActivator from "./blending-activator";
 import { toPng } from 'html-to-image';
 
 import {
@@ -38,7 +35,9 @@ import {
   IconButton,
   Divider,
   Box, 
-  Drawer
+  Drawer, 
+  Slider, 
+  Checkbox
 } from "@mui/material";
 
 
@@ -167,6 +166,82 @@ async function fetchTitilerFramesBatches(gdalTranslateCmds: any, aDiv: any) {
   }
 }
 
+
+
+// -----------------------------------------------------
+// Mini-Components only used in ControlPanel
+// ------------------------------------------------------
+const OpacitySlider = (props:any) => {
+  const handleOpacityChange = (event:any) => {
+    props.setOpacity(event.target.value);
+  };
+  return (
+    <Slider
+      style={{width: '10vw'}}
+      value={props.opacity}
+      step={0.005}
+      // aria-label='Always visible'
+      size="small"
+      min={0}
+      max={1}
+      valueLabelDisplay='auto'
+      onChange={handleOpacityChange}
+      getAriaValueText={v => `Opacity: ${Math.round(v * 100)} %`}
+      valueLabelFormat={v => `Opacity: ${Math.round(v * 100)} %`}
+    />
+  );
+}
+
+const BlendingActivator = (props:any) => {
+  const handleCheckboxChange = (event:any) => {
+      props.setBlendingActivation(event.target.checked);
+  }
+  return (
+  <Checkbox
+      checked={props.blendingActivation}
+      onChange={handleCheckboxChange}
+      inputProps={{ 'aria-label': 'controlled' }}
+      />
+  );
+}
+
+const BlendingControl = (props:any) => {
+  const blendingModes = [
+    'difference', 'exclusion', 'color-burn', 'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten',
+    'color-dodge', 'hard-light', 'soft-light', 'hue', 'saturation', 'color', 'luminosity'
+  ];
+
+  const handleBlendingModeChange = (event:any) => {
+    const mode = event.target.value;
+    props.setBlendingMode(mode);
+    if (mode !== 'normal') props.setBlendingActivation(true)
+  };
+
+  return (
+    <FormControl sx={{ m: 0, minWidth: 200, textAlign: "left" }} size="small">
+      <InputLabel id="select-label">Blending Mode</InputLabel>
+      <Select
+        labelId="select-label"
+        id="demo-select-small"
+        value={props.blendingMode}
+        label="Blending Mode"
+        onChange={handleBlendingModeChange}
+      >
+        {blendingModes.map((mode) => (
+          <MenuItem key={mode} value={mode}>
+            {mode}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  );
+};
+
+  
+
+// -----------------------------------------------------
+// Component: ControlPanelDrawer
+// ------------------------------------------------------
 function ControlPanelDrawer(props: any) {
   // const theme = useTheme();
   const [open, setOpen] = useState(true);
