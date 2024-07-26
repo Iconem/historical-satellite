@@ -165,10 +165,10 @@ const basemapsTmsSources: any = {
     maxzoom: 20,
   },
   // Apple requires a changing accessKey
-  [BasemapsIds.Apple]: {
-    url: "https://sat-cdn3.apple-mapkit.com/tile?style=7&size=1&scale=1&z={z}&x={x}&y={y}&v=9801&accessKey=1721982180_2825845599881494057_%2F_UvNg5jEboEb8eMslp86Eeymjt%2FfRcTunBvgsiAiEb6Q%3D",
-    maxzoom: 20,
-  },
+  // [BasemapsIds.Apple]: {
+  //   url: "https://sat-cdn3.apple-mapkit.com/tile?style=7&size=1&scale=1&z={z}&x={x}&y={y}&v=9801&accessKey=1721982180_2825845599881494057_%2F_UvNg5jEboEb8eMslp86Eeymjt%2FfRcTunBvgsiAiEb6Q%3D",
+  //   maxzoom: 20,
+  // },
   [BasemapsIds.Yandex]: {
     // url: "https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU",
     url: yandex_url,
@@ -448,7 +448,7 @@ async function retrieveAppleAccessToken() {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
     'Referer': 'https://beta.maps.apple.com',
     'Origin': 'https://beta.maps.apple.com',
-    'x-requested-with': 'https://beta.maps.apple.com',
+    // 'x-requested-with': 'https://beta.maps.apple.com',
   }
   const appleMapsHtml = await ky.get(
     proxiedUrl,
