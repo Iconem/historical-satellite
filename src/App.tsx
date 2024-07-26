@@ -1,15 +1,13 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 
 import "./App.css";
-import Map, { type MapRef, Source, Layer, ScaleControl, useControl } from "react-map-gl";
-import GeocoderControl from "./geocoder-control";
+import Map, { type MapRef, Source, Layer, ScaleControl } from "react-map-gl";
 import ControlPanelDrawer, { type MapSplitMode } from "./control-panel";
 import { set, subMonths } from "date-fns";
 import Split from "react-split";
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
-import RulerControl from '@mapbox-controls/ruler';
 import '@mapbox-controls/ruler/src/index.css';
-
+import MapControls, {WrappedRulerControl} from './map-controls'
 
 import {
   planetBasemapUrl,
@@ -132,13 +130,6 @@ function App() {
     leftMapRef.current?.getMap()?.resize();
     rightMapRef.current?.getMap()?.resize();
     // rightMapRef.current.resize();
-  }
-
-  function WrappedRulerControl(props) {
-    useControl(() => new RulerControl(props), {
-      position: props.position
-    });
-    return null;
   }
 
   // Update raster TMS source faster than react component remount on timelineDate state update
@@ -415,15 +406,11 @@ function App() {
 
         // projection={"naturalEarth"} // globe mercator naturalEarth equalEarth  // TODO: eventually make projection controllable
       >
-        <GeocoderControl
-          mapboxAccessToken={MAPBOX_TOKEN}
-          position="top-left"
-          flyTo={false}
+        <MapControls 
           mapRef={leftMapRef}
+          mapboxAccessToken={MAPBOX_TOKEN}
         />
-        <WrappedRulerControl
-          position="top-left"
-        />
+
 
         {leftSelectedTms == BasemapsIds.Mapbox ? (
           <></>
@@ -483,7 +470,6 @@ function App() {
           </Source> 
         } */}
         {/* beforeId={"GROUP_"} */}
-        <ScaleControl maxWidth={60} unit="metric" position={'top-left'}/>
       </Map>
       <div
         style={RightMapStyle}
