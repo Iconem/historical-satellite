@@ -8,6 +8,7 @@ import {
 import { useState, useEffect } from "react";
 import { getWaybackItems } from '@vannizhang/wayback-core';
 import { lngLatToWorld } from "@math.gl/web-mercator";
+import ky from 'ky'
 
 
 // Convert yandex from 3395 CRS to 3857 standard TMS tiles
@@ -163,6 +164,7 @@ const basemapsTmsSources: any = {
     url: "https://2.aerial.maps.ls.hereapi.com/maptile/2.1/maptile/newest/satellite.day/{z}/{x}/{y}/256/png8?app_id=eAdkWGYRoc4RfxVo0Z4B&app_code=TrLJuXVK62IQk0vuXFzaig&lg=eng",
     maxzoom: 20,
   },
+  // Apple requires a changing accessKey
   [BasemapsIds.Apple]: {
     url: "https://sat-cdn3.apple-mapkit.com/tile?style=7&size=1&scale=1&z={z}&x={x}&y={y}&v=9801&accessKey=1721982180_2825845599881494057_%2F_UvNg5jEboEb8eMslp86Eeymjt%2FfRcTunBvgsiAiEb6Q%3D",
     maxzoom: 20,
@@ -429,6 +431,53 @@ async function getBingViewportDate(map: any) {
 }
 
 
+// 1. Get a Bearer which is for now transmitted in plain text in file https://beta.maps.apple.com which has to be requested with User-Agent like `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36`
+// 1. look for script tag with `data-initial-token` in html head, like so: `<script src="/static/maps-app-web-client/mapkitjs/mapkit.core.js?appVersion=1.0.672" data-dist-url="/static/maps-app-web-client/mapkitjs" data-libraries="services,overlays,spi,spi-services,spi-annotations,spi-webgl-layers" data-callback="mapkitCallback" data-initial-token="eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkdKNUdaREZMODkifQ.eyJpc3MiOiJDNVU4OTI3MzZZIiwib3JpZ2luIjoiaHR0cHM6Ly9iZXRhLm1hcHMuYXBwbGUuY29tIiwiaWF0IjoxNzIyMDAzMjY1LCJleHAiOjE3MjIwMDUwNjV9.qNjJ4YinkmFej6Bp4qNgHx5WbuvYCh7QoMBmr86G3gLgsoEmtrLE-0oDPuaTmTpeP0hWzW9RE36IRSlk2_cBUA" async></script>`
+// 1. This Bearer can be used to build an API GET request to https://cdn.apple-mapkit.com/ma/bootstrap with `Authorization Bearer` in http header. 
+// 1. This request returns a JSON object which includes `"accessKey": "1722005505_3938378975598212411_/_0m2SvW3sxJ28bz3fDCXW1B7m/7QQnyDeQmdZQUldt+Q=",`
+const CORS_SH_API_KEY = 'temp_78f9d3a11671a9218d571d74f34ee3f3'
+async function retrieveAppleAccessToken() {
+  console.log('retrieveAppleAccessToken 2')
+  const appleMapsUrl = 'https://beta.maps.apple.com'
+  // const proxiedUrl = 'https://corsproxy.io/?https%3A%2F%2Fbeta.maps.apple.com'
+  // const proxiedUrl = 'https://crossorigin.me/https://beta.maps.apple.com'
+  // const proxiedUrl = 'https://api.cors.lol/url=https:/beta.maps.apple.com'
+  const proxiedUrl = `https://proxy.cors.sh/${appleMapsUrl}`
+  const appleMapsHtml = await ky.get(
+    proxiedUrl,
+    {
+      headers: {
+        'x-cors-api-key': CORS_SH_API_KEY,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+        'Referer': 'https://beta.maps.apple.com',
+        'Origin': 'https://beta.maps.apple.com',
+      },
+    }
+  ).text()
+  const htmlDoc = new DOMParser().parseFromString(appleMapsHtml, 'text/html')
+  // const scriptWithInitialToken = Array.from(htmlDoc.head.childNodes).find(c => (c as HTMLElement).hasAttribute('data-initial-token'))
+  const scriptWithInitialToken = htmlDoc.evaluate('//*[@data-initial-token]', htmlDoc, null, XPathResult.ANY_TYPE, null).iterateNext() as HTMLElement;
+  const initialToken = scriptWithInitialToken?.getAttribute('data-initial-token')
+  console.log('initialToken', initialToken)
+  // const initialToken = 'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkdKNUdaREZMODkifQ.eyJpc3MiOiJDNVU4OTI3MzZZIiwib3JpZ2luIjoiaHR0cHM6Ly9iZXRhLm1hcHMuYXBwbGUuY29tIiwiaWF0IjoxNzIyMDA4MTY3LCJleHAiOjE3MjIwMDk5Njd9.I27CNo6aB2I2a-UkLcfltyhntvoQyJQoMfwt04Ph41LxTO7NFZV0in_VhCyWCzH9YvS4btE8A--QbtXiMu3Hjg'
+
+  const appleApiJson = await ky.get(
+    `https://proxy.cors.sh/https://cdn.apple-mapkit.com/ma/bootstrap`,
+    {
+      headers: {
+        'x-cors-api-key': CORS_SH_API_KEY,
+        'Authorization': `Bearer ${initialToken}`,
+        'Referer': 'https://beta.maps.apple.com',
+        'Origin': 'https://beta.maps.apple.com',
+      },
+    }
+  ).json()
+  console.log('json', appleApiJson)
+  const accessKey = appleApiJson?.accessKey
+  console.log('accessKey', accessKey)
+}
+
+
 export {
   sliderValToDate,
   dateToSliderVal,
@@ -442,4 +491,5 @@ export {
   debounce,
   useLocalStorage,
   getBingViewportDate,
+  retrieveAppleAccessToken,
 };

@@ -60,6 +60,7 @@ import {
   MAX_PLANET_DATE,
   useLocalStorage,
   getBingViewportDate,
+  retrieveAppleAccessToken,
   // convertLatlonTo3857,
 } from "./utilities";
 
@@ -486,6 +487,9 @@ function ControlPanel(props: any) {
       else if (props.selectedTms == BasemapsIds.ESRIWayback) {
         map.on('moveend', onMoveEnd_esriWaybackMarks);
         onMoveEnd_esriWaybackMarks({ target: map })
+      }
+      else if (props.selectedTms == BasemapsIds.Apple) {
+        retrieveAppleAccessToken()
       }
     },
     [props.clickedMap, props.selectedTms, props.mapRef]
