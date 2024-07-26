@@ -7,7 +7,7 @@ import { set, subMonths } from "date-fns";
 import Split from "react-split";
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import '@mapbox-controls/ruler/src/index.css';
-import MapControls, {WrappedRulerControl} from './map-controls'
+import MapControls, { WrappedRulerControl } from './map-controls'
 
 import {
   planetBasemapUrl,
@@ -263,6 +263,51 @@ function App() {
     preserveDrawingBuffer : true
   };
 
+  const [geojsonFeatures, setGeojsonFeatures]: [GeoJSON.FeatureCollection, Function] = useState({
+    type: 'FeatureCollection', features: []
+  })
+
+  function GeojsonLayer() {
+    return (
+      <Source
+        id="geojson-data"
+        type="geojson"
+        data={geojsonFeatures}
+      >
+        <Layer
+          id='geojson-points'
+          type='circle'
+          paint={{
+            'circle-radius': 10,
+            'circle-color': '#007cbf'
+          }}
+          filter={['==', '$type', 'Point']}
+        />
+        <Layer
+          id='geojson-line'
+          type='line'
+          paint={{
+            'line-color': '#ff0000',
+            'line-opacity': 0.8,
+            'line-width': 3
+          }}
+          // filter={['==', '$type', 'Polygon']}
+          filter={["any", ['==', '$type', 'LineString'], ['==', '$type', 'Polygon']]}
+        />
+        <Layer
+          id='geojson-fill'
+          type='fill'
+          paint={{
+            'fill-color': '#fff',
+            'fill-opacity': 0.2,
+          }}
+          filter={['==', '$type', 'Polygon']}
+        // filter={["in", '$type', ['Polygon', 'Polyline']]}
+        />
+      </Source>
+    );
+  }
+
   const handleSplitScreenChange = (
     event: React.MouseEvent<HTMLElement>,
     splitScreenMode: MapSplitMode
@@ -446,6 +491,7 @@ function App() {
             maxzoom={basemapsTmsSources[leftSelectedTms].maxzoom || 20}
             tileSize={256}
             key={leftSelectedTms}
+          <GeojsonLayer />
             // https://github.com/maptiler/tilejson-spec/tree/custom-projection/2.2.0
             // yandex is in CRS/SRS EPSG:3395 but mapbox source only supports CRS 3857 atm
             // crs={"EPSG:3395"}
