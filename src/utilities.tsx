@@ -119,17 +119,17 @@ function getSliderMarksEveryYear(minDate: Date, maxDate: Date) {
 // const basemapsTmsUrls = {
 // Typescript was not accepting computed strings in enums, so used open Mapbox api token for simplicity
 enum BasemapsIds {
+  ESRIWayback,
   PlanetMonthly,
   GoogleSat,
   Bing,
-  Mapbox,
   ESRI,
+  Mapbox,
   Heremaps,
   Yandex,
   Apple,
   GoogleHybrid,
   OSM,
-  ESRIWayback
 }
 
 // Could find other TMS tile urls on NextGis QMS
@@ -137,7 +137,10 @@ enum BasemapsIds {
 // Which is what QuickMapServices Qgis plugin uses
 
 const basemapsTmsSources: any = {
-  [BasemapsIds.PlanetMonthly]: {
+  [BasemapsIds.ESRIWayback]: {
+    maxzoom: 19,
+  },
+  [(BasemapsIds.PlanetMonthly)]: {
     url: planetBasemapUrl(subMonths(new Date(), 2)),
     maxzoom: 20,
   },
@@ -187,9 +190,6 @@ const basemapsTmsSources: any = {
   // "Google sat"= "https://mts1.google.com/vt/lyrs=s@186112443&amp;hl=en&amp;src=app&amp;s=Galile&amp;rlbl=1&amp;gl=AR&amp;key=AIzaSyARVMxmX0A7aRszJUjE33fSLQFMXAiMlxk&amp;z={Z}&amp;x={X}&amp;y={Y}",
   // "Heremaps Sat"= "http://1.aerial.maps.api.here.com/maptile/2.1/maptile/newest/satellite.day/{z}/{x}/{y}/256/png8?app_id=hBqHrthpuP0nRYifaTTT&amp;app_code=iA3EYhFlEcBztET4RuA7Bg",
   // "Mapbox Sat"= "https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.webp?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA",
-  [BasemapsIds.ESRIWayback]: {
-    maxzoom: 19,
-  }
 };
 
 // Lighter to use this utility rather than import whole of proj4
@@ -393,17 +393,33 @@ async function getBingDatesFromUrl(url: string) {
   return dates ?? "error on fetch ?";
 }
 
+function getMinMaxDates(datesArr) {
+  const min = Math.min(...(datesArr as any))
+  console.log(min)
+  const minDate = new Date(
+    min
+  )
+    .toISOString()
+    .slice(0, 10);
+  const maxDate = new Date(
+    Math.max(...(datesArr as any))
+  )
+    .toISOString()
+    .slice(0, 10);
+  console.log("yaya", datesArr, "\n", minDate, maxDate);
+  return { minDate, maxDate }
+}
 async function getBingViewportDate(map: any) {
-  const urlArray = getVisibleTilesXYZ(map, 256); // source.tileSize)
-  console.log(urlArray);
-  const quadkeysArray = urlArray.map((xyz: any) => toQuad(xyz.x, xyz.y, xyz.z));
+  const xyzArray = getVisibleTilesXYZ(map, 256); // source.tileSize)
+  console.log(xyzArray);
+  const quadkeysArray = xyzArray.map((xyz: any) => toQuad(xyz.x, xyz.y, xyz.z));
   console.log(quadkeysArray);
   const bingUrls = quadkeysArray.map((quadkey: string) => getBingUrl(quadkey));
   console.log(bingUrls);
 
-  const promArray = bingUrls.map(async (url) => {
-    return await getBingDatesFromUrl(url);
-  });
+  // const promArray = bingUrls.map(async (url) => {
+  //   return await getBingDatesFromUrl(url);
+  // });
   // console.log("promArray", promArray);
   // Promise.all(promArray).then((dates) => {
   //   console.log("after promise.all", dates);
@@ -416,18 +432,44 @@ async function getBingViewportDate(map: any) {
   const tilesDates = await Promise.all(
     bingUrls.map(async (url) => await getBingDatesFromUrl(url))
   );
-  const minDate = new Date(
-    Math.min(...(tilesDates as any).map((d: number[]) => d[0]))
-  )
-    .toISOString()
-    .slice(0, 10);
-  const maxDate = new Date(
-    Math.max(...(tilesDates as any).map((d: number[]) => d[1]))
-  )
-    .toISOString()
-    .slice(0, 10);
-  console.log("yaya", tilesDates, "\n", minDate, maxDate);
-  return { minDate, maxDate }
+  console.log(tilesDates)
+  // Each bing dates elements has a min and max date, stored in a 2 tuple array. Can be flattened for easier min/max computation
+  return getMinMaxDates(tilesDates.flat())
+}
+async function getEsriViewportDate(map: any) {
+  const ESRI_MAPSERVER_URL = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/16/query'
+  const esriUrl = new URL(ESRI_MAPSERVER_URL)
+  const bounds = map.getBounds();
+  const [xmax, ymin] = bounds.getSouthEast().toArray()
+  const [xmin, ymax] = bounds.getNorthWest().toArray()
+  console.log('bounds', bounds)
+
+  esriUrl.search = new URLSearchParams({
+    f: 'json',
+    geometry: JSON.stringify({ xmin, ymin, xmax, ymax }),
+    maxAllowableOffset: '0',
+    outFields: 'NICE_DESC,NICE_NAME,OBJECTID,SAMP_RES,SRC_ACC,SRC_DATE2',
+    spatialRel: 'esriSpatialRelIntersects',
+    where: '1=1',
+    geometryType: 'esriGeometryEnvelope',
+    inSR: '4326',
+    outSR: '4326',
+  }) as any
+
+  const esriResultsRaw = await ky
+    .get(esriUrl.toString(), {}).json()
+
+  console.log(esriResultsRaw)
+
+  const esriDates = esriResultsRaw?.features.map(f => {
+    const dateEpoch = f.attributes['SRC_DATE2']
+    const date = dateEpoch ?
+      new Date(dateEpoch)
+      : '?'
+    return date
+  })
+  console.log('esriDates', esriDates)
+  return getMinMaxDates(esriDates)
 }
 
 
@@ -489,5 +531,6 @@ export {
   debounce,
   useLocalStorage,
   getBingViewportDate,
+  getEsriViewportDate,
   retrieveAppleAccessToken,
 };

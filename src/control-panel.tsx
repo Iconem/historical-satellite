@@ -60,6 +60,7 @@ import {
   MAX_PLANET_DATE,
   useLocalStorage,
   getBingViewportDate,
+  getEsriViewportDate,
   retrieveAppleAccessToken,
   // convertLatlonTo3857,
 } from "./utilities";
@@ -361,15 +362,18 @@ function ControlPanel(props: any) {
   const setMinDate = props.clickedMap == "left" ? setLeftMinDate : setRightMinDate
   const setMaxDate = props.clickedMap == "left" ? setLeftMaxDate : setRightMaxDate
 
-  const collectionDateRetrievable: BasemapsIds[] = [BasemapsIds.Bing, BasemapsIds.PlanetMonthly]
+  const collectionDateRetrievable: BasemapsIds[] = [+BasemapsIds.Bing, +BasemapsIds.ESRI]
   async function getCollectionDateViewport(selectedTms: BasemapsIds) {
     setCollectionDateStr('')
-    let collectionDate = { validMinDate: '?', maxDate: '?' };
+    let collectionDate = { minDate: '?', maxDate: '?' };
     const map = props.mapRef?.current?.getMap() as any;
 
     switch (+selectedTms) {
       case BasemapsIds.Bing:
         collectionDate = await getBingViewportDate(map)
+        break;
+      case BasemapsIds.ESRI:
+        collectionDate = await getEsriViewportDate(map)
         break;
 
       default:
@@ -634,6 +638,11 @@ function ControlPanel(props: any) {
       }
     }
   }
+
+  const timeControlled = (tms: any) => [+BasemapsIds.ESRIWayback, +BasemapsIds.PlanetMonthly].includes(+tms)
+  const collectionDateAvailable = (tms: any) => collectionDateRetrievable.includes(+tms)
+  // (props.selectedTms == BasemapsIds.PlanetMonthly || props.selectedTms == BasemapsIds.ESRIWayback)
+
   // console.log(props.timelineDate, 'timelineDate')
   return (
     <div
@@ -720,14 +729,14 @@ function ControlPanel(props: any) {
                     https://mui.com/material-ui/react-autocomplete/#creatable
                   */}
                   {Object.entries(basemapsTmsSources).map(([key, value]) => (
-                    <MenuItem value={key} key={key}>
-                      {BasemapsIds[key]}
+                    <MenuItem value={key} key={key} >
+                      {BasemapsIds[key] + (timeControlled(key) ? ' 📅' : collectionDateAvailable(key) ? ' 🕒' : '')}
                     </MenuItem>
                   ))}
                   {/* <MenuItem value={''}>Mapbox</MenuItem> */}
                 </Select>
               </FormControl>
-              {(props.selectedTms == BasemapsIds.PlanetMonthly || props.selectedTms == BasemapsIds.ESRIWayback) && (
+              {timeControlled(props.selectedTms) && (
                 <>
                   {" "}
                   <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="fr">
@@ -828,15 +837,14 @@ function ControlPanel(props: any) {
                 minHeight: '31px'
               }}
             >
-              {(collectionDateActivated && props.selectedTms == BasemapsIds.Bing) ? (
-                // {(( collectionDateActivated  && collectionDateRetrievable.includes((props.selectedTms as BasemapsIds)) )) && ( 
+              {(collectionDateActivated && collectionDateAvailable(+props.selectedTms)) ? (
                 <Tooltip title={"Caution, Beta feature, only for Bing for now, Seems inacurate"}>
                   <Button
                     variant="outlined" // outlined or text
                     size="small"
                     sx={{ display: 'true' }}
                     onClick={() => {
-                      getCollectionDateViewport(props.selectedTms, map)
+                      getCollectionDateViewport(props.selectedTms)
                     }}>
                     Collection Date: {collectionDateStr}
                   </Button>
