@@ -17,7 +17,7 @@ const tileMatrixSetId = 'WebMercatorQuad' // EPSG: 3857 https://titiler.xyz/tile
 const yandexGdalWmsXml = '<GDAL_WMS><Service name="TMS"><ServerUrl>https://core-sat.maps.yandex.net/tiles?l=sat&amp;x=${x}&amp;y=${y}&amp;z=${z}&amp;scale=1&amp;lang=ru_RU</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>20</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3395</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount></GDAL_WMS>'
 const yandexGdalUrl = encodeURIComponent(yandexGdalWmsXml)
 // const yandex_url = "https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU"
-const yandex_url = `${TITILER_ENDPOINT}/cog/tiles/${tileMatrixSetId}/{z}/{x}/{y}?url=${yandexGdalUrl}`;  
+const yandex_url = `${TITILER_ENDPOINT}/cog/tiles/${tileMatrixSetId}/{z}/{x}/{y}?url=${yandexGdalUrl}`;
 
 
 // Helper functions to convert between date for date-picker and slider-value
@@ -38,7 +38,7 @@ export const MIN_PLANET_DATE = new Date("2016-01-01T00:00:00.000");
 export const MAX_PLANET_DATE = subMonths(new Date(), 1);
 
 
-export function useWaybackUrl(date: Date) {
+export function useWaybackUrl(date: Date, waybackItemsWithLocalChanges: Array<any>) {
   const [wayBackItems, setWaybackItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [url, setUrl] = useState(String);
@@ -53,21 +53,28 @@ export function useWaybackUrl(date: Date) {
   }, []);
 
   useEffect(() => {
-  
+
     //         itemURL: itemURL.replace('{level}', '{z}').replace('{row}', '{y}').replace('{column}', '{y}'), 
     //         releaseDatetime: new Date(releaseDatetime), 
     //         releaseDateLabel, 
     //         releaseNum
 
-    const sortedItems = Object.values(wayBackItems).sort( function (a, b) {
+    let waybackItems_: Array<any>;
+    if (waybackItemsWithLocalChanges && waybackItemsWithLocalChanges.length > 0) {
+      waybackItems_ = waybackItemsWithLocalChanges
+    } else {
+      waybackItems_ = wayBackItems
+    }
+
+    const sortedItems = Object.values(waybackItems_).sort(function (a, b) {
       return a.releaseDatetime - b.releaseDatetime;
-    } )
+    })
     const closestSuperior = sortedItems.find(
-      item => (new Date(item.releaseDatetime) > date), 
+      item => (new Date(item.releaseDatetime) > date),
       sortedItems
     )
     // console.log('ESRI Wayback testing ', sortedItems, closestSuperior, closestSuperior?.itemURL)
-    if (closestSuperior){
+    if (closestSuperior) {
       const closestUrl = closestSuperior?.itemURL
         .replace('{level}', '{z}')
         .replace('{row}', '{y}')
@@ -83,7 +90,7 @@ export function useWaybackUrl(date: Date) {
 
 
 
-const planetBasemapUrl = (date: Date, customApi?:string) => {
+const planetBasemapUrl = (date: Date, customApi?: string) => {
   // basemap_date_str = "2019_01";
   return `https://tiles.planet.com/basemaps/v1/planet-tiles/global_monthly_${format(
     date,
@@ -157,7 +164,7 @@ const basemapsTmsSources: any = {
     maxzoom: 20,
   },
   [BasemapsIds.Apple]: {
-    url: "https://sat-cdn3.apple-mapkit.com/tile?style=7&size=1&scale=1&z={z}&x={x}&y={y}&v=9801&accessKey=1721982180_2825845599881494057_%2F_UvNg5jEboEb8eMslp86Eeymjt%2FfRcTunBvgsiAiEb6Q%3D", 
+    url: "https://sat-cdn3.apple-mapkit.com/tile?style=7&size=1&scale=1&z={z}&x={x}&y={y}&v=9801&accessKey=1721982180_2825845599881494057_%2F_UvNg5jEboEb8eMslp86Eeymjt%2FfRcTunBvgsiAiEb6Q%3D",
     maxzoom: 20,
   },
   [BasemapsIds.Yandex]: {
@@ -292,134 +299,134 @@ function objectsHaveSameKeys(...objects: any): boolean {
 }
 
 
-  // For bing Aerial, can retrieve the imagery tile collection date min/max properties - and aggregate into a viewport min/max
-  // Could also be displayed on top of each tile, in a corner, so no aggregation needed.
-  //  type mapboxgl.TransformRequestFunction = (url: string, resourceType: mapboxgl.ResourceType) => mapboxgl.RequestParameters
-  let numTilesLoaded = 0;
-  const tiles_dates = []
-  const transformRequest = function (
-    url: string,
-    resourceType: mapboxgl.ResourceType
+// For bing Aerial, can retrieve the imagery tile collection date min/max properties - and aggregate into a viewport min/max
+// Could also be displayed on top of each tile, in a corner, so no aggregation needed.
+//  type mapboxgl.TransformRequestFunction = (url: string, resourceType: mapboxgl.ResourceType) => mapboxgl.RequestParameters
+let numTilesLoaded = 0;
+const tiles_dates = []
+const transformRequest = function (
+  url: string,
+  resourceType: mapboxgl.ResourceType
+) {
+  if (numTilesLoaded === undefined) numTilesLoaded = 0;
+  if (resourceType == "Tile") {
+    numTilesLoaded++;
+    console.log(
+      "numTilesLoaded from beginning/component load",
+      numTilesLoaded
+    );
+
+    if (url.includes("virtualearth.net")) getBingDatesFromUrl(url);
+  }
+  return { url };
+} as mapboxgl.TransformRequestFunction;
+
+function getBingDatesFromResponse(response: Response) {
+  const dates_str = response.headers
+    .get("X-Ve-Tilemeta-Capturedatesrange")
+    ?.split("-");
+  const dates = dates_str?.map((s) => new Date(s));
+  return dates;
+}
+function getVisibleTilesXYZ(map: mapboxgl.Map, tileSize: number) {
+  const tiles = [];
+  const zoom = Math.floor(map.getZoom()) + 1;
+  const bounds = map.getBounds();
+  // const topLeft = map.project(bounds.getNorthWest());
+  // const bottomRight = map.project(bounds.getSouthEast());
+  const topLeft = lngLatToWorld(bounds.getNorthWest().toArray()).map(
+    (x) => (x / 512) * 2 ** zoom
+  );
+  const bottomRight = lngLatToWorld(bounds.getSouthEast().toArray()).map(
+    (x) => (x / 512) * 2 ** zoom
+  );
+  console.log("getVisibleTilesXYZ", map, zoom, bounds, topLeft, bottomRight);
+
+  for (
+    let x = Math.floor(topLeft[0]); // .x
+    x <= Math.floor(bottomRight[0]);
+    x++
   ) {
-    if (numTilesLoaded === undefined) numTilesLoaded = 0;
-    if (resourceType == "Tile") {
-      numTilesLoaded++;
-      console.log(
-        "numTilesLoaded from beginning/component load",
-        numTilesLoaded
-      );
-
-      if (url.includes("virtualearth.net")) getBingDatesFromUrl(url);
-    }
-    return { url };
-  } as mapboxgl.TransformRequestFunction;
-
-  function getBingDatesFromResponse(response: Response) {
-    const dates_str = response.headers
-      .get("X-Ve-Tilemeta-Capturedatesrange")
-      ?.split("-");
-    const dates = dates_str?.map((s) => new Date(s));
-    return dates;
-  }
-  function getVisibleTilesXYZ(map: mapboxgl.Map, tileSize: number) {
-    const tiles = [];
-    const zoom = Math.floor(map.getZoom()) + 1;
-    const bounds = map.getBounds();
-    // const topLeft = map.project(bounds.getNorthWest());
-    // const bottomRight = map.project(bounds.getSouthEast());
-    const topLeft = lngLatToWorld(bounds.getNorthWest().toArray()).map(
-      (x) => (x / 512) * 2 ** zoom
-    );
-    const bottomRight = lngLatToWorld(bounds.getSouthEast().toArray()).map(
-      (x) => (x / 512) * 2 ** zoom
-    );
-    console.log("getVisibleTilesXYZ", map, zoom, bounds, topLeft, bottomRight);
-
     for (
-      let x = Math.floor(topLeft[0]); // .x
-      x <= Math.floor(bottomRight[0]);
-      x++
+      let y = Math.floor(topLeft[1]); // .y
+      y >= Math.floor(bottomRight[1]);
+      y--
     ) {
-      for (
-        let y = Math.floor(topLeft[1]); // .y
-        y >= Math.floor(bottomRight[1]);
-        y--
-      ) {
-        tiles.push({ x, y, z: zoom });
-      }
+      tiles.push({ x, y, z: zoom });
     }
-
-    return tiles;
   }
-  function toQuad(x: number, y: number, z: number) {
-    var quadkey = "";
-    for (var i = z; i >= 0; --i) {
-      var bitmask = 1 << i;
-      var digit = 0;
-      if ((x & bitmask) !== 0) {
-        digit |= 1;
-      }
-      if ((y & bitmask) !== 0) {
-        digit |= 2;
-      }
-      quadkey += digit;
+
+  return tiles;
+}
+function toQuad(x: number, y: number, z: number) {
+  var quadkey = "";
+  for (var i = z; i >= 0; --i) {
+    var bitmask = 1 << i;
+    var digit = 0;
+    if ((x & bitmask) !== 0) {
+      digit |= 1;
     }
-    return quadkey;
+    if ((y & bitmask) !== 0) {
+      digit |= 2;
+    }
+    quadkey += digit;
   }
-  function getBingUrl(quadkey: string) {
-    // return "https://t.ssl.ak.tiles.virtualearth.net/tiles/a12022010003311020210.jpeg?g=13578&n=z&prx=1";
-    return basemapsTmsSources[BasemapsIds.Bing].url.replace(
-      "{quadkey}",
-      quadkey
-    );
-  }
-  async function getBingDatesFromUrl(url: string) {
-    const dates = await fetch(url).then(function (response) {
-      // In the bing case, can look for a response header property
-      console.log(url, response.headers);
-      const dates = getBingDatesFromResponse(response);
-      console.log("getBingDatesFromUrl, in fetch", dates);
-      return dates;
-    });
-    return dates ?? "error on fetch ?";
-  }
+  return quadkey;
+}
+function getBingUrl(quadkey: string) {
+  // return "https://t.ssl.ak.tiles.virtualearth.net/tiles/a12022010003311020210.jpeg?g=13578&n=z&prx=1";
+  return basemapsTmsSources[BasemapsIds.Bing].url.replace(
+    "{quadkey}",
+    quadkey
+  );
+}
+async function getBingDatesFromUrl(url: string) {
+  const dates = await fetch(url).then(function (response) {
+    // In the bing case, can look for a response header property
+    console.log(url, response.headers);
+    const dates = getBingDatesFromResponse(response);
+    console.log("getBingDatesFromUrl, in fetch", dates);
+    return dates;
+  });
+  return dates ?? "error on fetch ?";
+}
 
-  async function getBingViewportDate(map: any) {
-    const urlArray = getVisibleTilesXYZ(map, 256); // source.tileSize)
-    console.log(urlArray);
-    const quadkeysArray = urlArray.map((xyz: any) => toQuad(xyz.x, xyz.y, xyz.z));
-    console.log(quadkeysArray);
-    const bingUrls = quadkeysArray.map((quadkey: string) => getBingUrl(quadkey));
-    console.log(bingUrls);
+async function getBingViewportDate(map: any) {
+  const urlArray = getVisibleTilesXYZ(map, 256); // source.tileSize)
+  console.log(urlArray);
+  const quadkeysArray = urlArray.map((xyz: any) => toQuad(xyz.x, xyz.y, xyz.z));
+  console.log(quadkeysArray);
+  const bingUrls = quadkeysArray.map((quadkey: string) => getBingUrl(quadkey));
+  console.log(bingUrls);
 
-    const promArray = bingUrls.map(async (url) => {
-      return await getBingDatesFromUrl(url);
-    });
-    // console.log("promArray", promArray);
-    // Promise.all(promArray).then((dates) => {
-    //   console.log("after promise.all", dates);
-    //   const minDate = Math.min(...(dates as any).map((d: number[]) => d[0]));
-    //   const maxDate = Math.max(...(dates as any).map((d: number[]) => d[1]));
-    //   console.log(dates, minDate, maxDate);
-    //   document.a = dates;
-    // });
+  const promArray = bingUrls.map(async (url) => {
+    return await getBingDatesFromUrl(url);
+  });
+  // console.log("promArray", promArray);
+  // Promise.all(promArray).then((dates) => {
+  //   console.log("after promise.all", dates);
+  //   const minDate = Math.min(...(dates as any).map((d: number[]) => d[0]));
+  //   const maxDate = Math.max(...(dates as any).map((d: number[]) => d[1]));
+  //   console.log(dates, minDate, maxDate);
+  //   document.a = dates;
+  // });
 
-    const tilesDates = await Promise.all(
-      bingUrls.map(async (url) => await getBingDatesFromUrl(url))
-    );
-    const minDate = new Date(
-      Math.min(...(tilesDates as any).map((d: number[]) => d[0]))
-    )
-      .toISOString()
-      .slice(0, 10);
-    const maxDate = new Date(
-      Math.max(...(tilesDates as any).map((d: number[]) => d[1]))
-    )
-      .toISOString()
-      .slice(0, 10);
-    console.log("yaya", tilesDates, "\n", minDate, maxDate);
-    return {minDate, maxDate}
-  }
+  const tilesDates = await Promise.all(
+    bingUrls.map(async (url) => await getBingDatesFromUrl(url))
+  );
+  const minDate = new Date(
+    Math.min(...(tilesDates as any).map((d: number[]) => d[0]))
+  )
+    .toISOString()
+    .slice(0, 10);
+  const maxDate = new Date(
+    Math.max(...(tilesDates as any).map((d: number[]) => d[1]))
+  )
+    .toISOString()
+    .slice(0, 10);
+  console.log("yaya", tilesDates, "\n", minDate, maxDate);
+  return { minDate, maxDate }
+}
 
 
 export {

@@ -8,8 +8,8 @@ import { LngLatBounds, LngLat } from "mapbox-gl";
 // import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 // import PropTypes from 'prop-types'
 
-import { 
-  getWaybackItemsWithLocalChanges, 
+import {
+  getWaybackItemsWithLocalChanges,
   // WaybackItem
 } from '@vannizhang/wayback-core';
 import {
@@ -19,7 +19,7 @@ import {
 
 import PlayableSlider from "./playable-slider";
 import LinksSection from "./links-section";
-import {ExportSplitButton, ExportButtonOptions} from "./export-split-button";
+import { ExportSplitButton, ExportButtonOptions } from "./export-split-button";
 import SettingsModal from "./settings-modal";
 import { toPng } from 'html-to-image';
 
@@ -34,9 +34,9 @@ import {
   Stack,
   IconButton,
   Divider,
-  Box, 
-  Drawer, 
-  Slider, 
+  Box,
+  Drawer,
+  Slider,
   Checkbox
 } from "@mui/material";
 
@@ -92,14 +92,14 @@ const escapeTmsUrl = (url: string) =>
     .replace("{y}", "${y}")
     .replace("{z}", "${z}")
     .replace("{quadkey}", "${quadkey}")
-    .replaceAll("&", "&amp;"); 
+    .replaceAll("&", "&amp;");
 // const unescapeTmsUrl = (url: string) =>
 //   url.replace("${x}", "{x}").replace("${y}", "{y}").replace("${z}", "{z}");
 function buildGdalWmsXml(tmsUrl: string) {
-  return (!tmsUrl.includes('quadkey')) ? 
-  `<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl( tmsUrl )}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>`
-  : 
-  `<GDAL_WMS><Service name='VirtualEarth'><ServerUrl>${escapeTmsUrl( tmsUrl )}</ServerUrl></Service><MaxConnections>4</MaxConnections><Cache/></GDAL_WMS>`;
+  return (!tmsUrl.includes('quadkey')) ?
+    `<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(tmsUrl)}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>`
+    :
+    `<GDAL_WMS><Service name='VirtualEarth'><ServerUrl>${escapeTmsUrl(tmsUrl)}</ServerUrl></Service><MaxConnections>4</MaxConnections><Cache/></GDAL_WMS>`;
 }
 
 // See discussion here https://github.com/developmentseed/titiler/discussions/640
@@ -116,7 +116,7 @@ function titilerCropUrl(
   // const ll_3857 = convertLatlonTo3857(bounds.getSouthWest());
   // const ur_3857 = convertLatlonTo3857(bounds.getNorthEast());
   // const coords_str = `${ll_3857.x},${ll_3857.y},${ur_3857.x},${ur_3857.y}.tif?max_size=${MAX_FRAME_SIZE}&coord-crs=epsg:3857`; // 3857
-  
+
   // pre 0.15.0, endpoint is /cog/crop/ like on app.ico titiler endpoint at commit day
   // post 0.15.0 included, endpoint is /cog/bbox/
   const bbox_crop_endpoint = titilerEndpoint.toLowerCase().includes('app.iconem') ? 'crop' : 'bbox';
@@ -171,13 +171,13 @@ async function fetchTitilerFramesBatches(gdalTranslateCmds: any, aDiv: any) {
 // -----------------------------------------------------
 // Mini-Components only used in ControlPanel
 // ------------------------------------------------------
-const OpacitySlider = (props:any) => {
-  const handleOpacityChange = (event:any) => {
+const OpacitySlider = (props: any) => {
+  const handleOpacityChange = (event: any) => {
     props.setOpacity(event.target.value);
   };
   return (
     <Slider
-      style={{width: '10vw'}}
+      style={{ width: '10vw' }}
       value={props.opacity}
       step={0.005}
       // aria-label='Always visible'
@@ -192,26 +192,26 @@ const OpacitySlider = (props:any) => {
   );
 }
 
-const BlendingActivator = (props:any) => {
-  const handleCheckboxChange = (event:any) => {
-      props.setBlendingActivation(event.target.checked);
+const BlendingActivator = (props: any) => {
+  const handleCheckboxChange = (event: any) => {
+    props.setBlendingActivation(event.target.checked);
   }
   return (
-  <Checkbox
+    <Checkbox
       checked={props.blendingActivation}
       onChange={handleCheckboxChange}
       inputProps={{ 'aria-label': 'controlled' }}
-      />
+    />
   );
 }
 
-const BlendingControl = (props:any) => {
+const BlendingControl = (props: any) => {
   const blendingModes = [
     'difference', 'exclusion', 'color-burn', 'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten',
     'color-dodge', 'hard-light', 'soft-light', 'hue', 'saturation', 'color', 'luminosity'
   ];
 
-  const handleBlendingModeChange = (event:any) => {
+  const handleBlendingModeChange = (event: any) => {
     const mode = event.target.value;
     props.setBlendingMode(mode);
     if (mode !== 'normal') props.setBlendingActivation(true)
@@ -237,7 +237,7 @@ const BlendingControl = (props:any) => {
   );
 };
 
-  
+
 
 // -----------------------------------------------------
 // Component: ControlPanelDrawer
@@ -250,10 +250,10 @@ function ControlPanelDrawer(props: any) {
   };
 
   return (
-    <Box sx={{ 
-      display: 'flex', 
-      height: 0, 
-      alignItems: 'flex-end', 
+    <Box sx={{
+      display: 'flex',
+      height: 0,
+      alignItems: 'flex-end',
       flexDirection: 'row-reverse'
     }}>
       <IconButton
@@ -261,8 +261,8 @@ function ControlPanelDrawer(props: any) {
         aria-label="open settings"
         onClick={handleDrawerToggle}
         edge="start"
-        sx={{ 
-          m: 2, 
+        sx={{
+          m: 2,
           backgroundColor: 'rgb(200 200 200 / 57%)',
           color: open ? 'grey' : 'white',
           zIndex: 2000,
@@ -288,8 +288,8 @@ function ControlPanelDrawer(props: any) {
         open={open}
       >
 
-      <ControlPanel
-        {...props}
+        <ControlPanel
+          {...props}
         // // Adding blending mode opacity, and blending mode activation to pass downward
         // blendingActivation={props.blendingActivation}
         // setBlendingActivation={props.setBlendingActivation}
@@ -312,7 +312,7 @@ function ControlPanelDrawer(props: any) {
         // setRightSelectedTms={props.setRightSelectedTms}
         // setCustomPlanetApiKey={props.setCustomPlanetApiKey}
         // customPlanetApiKey={props.customPlanetApiKey}
-      />
+        />
       </Drawer>
     </Box>
   );
@@ -323,10 +323,7 @@ function ControlPanelDrawer(props: any) {
 // -----------------------------------------------------
 // Component: ControlPanel
 // ------------------------------------------------------
-function ControlPanel(props:any) {
-  useEffect(() => {
-    console.log('yo rightSelectedTms changed', props.rightSelectedTms)
-  }, [props.rightSelectedTms])
+function ControlPanel(props: any) {
   // ---------------------------
   // Slider control
   // For slider play/pause loops
@@ -355,24 +352,24 @@ function ControlPanel(props:any) {
   const monthsCountRight = differenceInMonths(validRightMaxDate, validRightMinDate);
   const [leftMarks, setLeftMarks] = useState(getSliderMarksEveryYear(validLeftMinDate, validLeftMaxDate));
   const [rightMarks, setRightMarks] = useState(getSliderMarksEveryYear(validRightMinDate, validRightMaxDate));
-  
-  const validMinDate = props.clickedMap == "left" ? validLeftMinDate : validRightMinDate 
-  const validMaxDate = props.clickedMap == "left" ? validLeftMaxDate : validRightMaxDate 
-  const marks = props.clickedMap == "left" ? leftMarks : rightMarks 
-  const monthsCount = props.clickedMap == "left" ? monthsCountLeft : monthsCountRight 
-  const setMinDate = props.clickedMap == "left" ? setLeftMinDate : setRightMinDate 
-  const setMaxDate = props.clickedMap == "left" ? setLeftMaxDate : setRightMaxDate 
-  
+
+  const validMinDate = props.clickedMap == "left" ? validLeftMinDate : validRightMinDate
+  const validMaxDate = props.clickedMap == "left" ? validLeftMaxDate : validRightMaxDate
+  const marks = props.clickedMap == "left" ? leftMarks : rightMarks
+  const monthsCount = props.clickedMap == "left" ? monthsCountLeft : monthsCountRight
+  const setMinDate = props.clickedMap == "left" ? setLeftMinDate : setRightMinDate
+  const setMaxDate = props.clickedMap == "left" ? setLeftMaxDate : setRightMaxDate
+
   const collectionDateRetrievable: BasemapsIds[] = [BasemapsIds.Bing, BasemapsIds.PlanetMonthly]
   async function getCollectionDateViewport(selectedTms: BasemapsIds) {
     setCollectionDateStr('')
-    let collectionDate = {validMinDate: '?', maxDate: '?'};
+    let collectionDate = { validMinDate: '?', maxDate: '?' };
     const map = props.mapRef?.current?.getMap() as any;
 
     switch (+selectedTms) {
-      case BasemapsIds.Bing: 
-      collectionDate = await getBingViewportDate(map)
-       break;
+      case BasemapsIds.Bing:
+        collectionDate = await getBingViewportDate(map)
+        break;
 
       default:
         console.log(`Cannot retrieve collection date for ${selectedTms}.`);
@@ -407,15 +404,15 @@ function ControlPanel(props:any) {
   );
   const map = props.mapRef?.current?.getMap() as any;
 
-  
+
   // const onMoveEnd_esriWaybackMarks = useCallback((props_: any) => (e: any) => {
   // const onMoveEnd_esriWaybackMarks = (clickedMap: any) => (e: any) => {
   //   console.log('1. onMoveEnd_esriWaybackMarks clickedMap & props left/right selectedTms', clickedMap) // , props.leftSelectedTms, 
-  const onMoveEnd_esriWaybackMarks = useCallback( (e: any) => {
+  const onMoveEnd_esriWaybackMarks = useCallback((e: any) => {
     console.log('1. onMoveEnd_esriWaybackMarks clickedMapRef.current', clickedMapRef.current) // , props.leftSelectedTms, props.rightSelectedTms)
     // const onMoveEnd_esriWaybackMarks = (e) => {
     // event type: boxzoomstart
-    
+
     // const esriOnMoveEnd = 
     // ESRI Wayback Machine
     // const map = leftMapRef.current?.getMap()
@@ -430,12 +427,13 @@ function ControlPanel(props:any) {
       (waybackItemsWithLocalChanges: any) => {
         // console.log('2. onMoveEnd_esriWaybackMarks props left/right selectedTms', clickedMap, props.leftSelectedTms, props.rightSelectedTms)
         // setEsriWaybackItemsChange(waybackItemsWithLocalChanges)
+        props.setWaybackItemsWithLocalChanges(waybackItemsWithLocalChanges)
         const parsedItemsWithLocalChanges = Object.values(waybackItemsWithLocalChanges).map((item: any) => {
-          const {itemURL, releaseDateLabel, releaseDatetime, releaseNum } = item
+          const { itemURL, releaseDateLabel, releaseDatetime, releaseNum } = item
           return {
-            itemURL: itemURL.replace('{level}', '{z}').replace('{row}', '{y}').replace('{column}', '{y}'), 
-            releaseDatetime: new Date(releaseDatetime), 
-            releaseDateLabel, 
+            itemURL: itemURL.replace('{level}', '{z}').replace('{row}', '{y}').replace('{column}', '{y}'),
+            releaseDatetime: new Date(releaseDatetime),
+            releaseDateLabel,
             releaseNum
           }
         })
@@ -450,29 +448,29 @@ function ControlPanel(props:any) {
         // It should happen that this callback is remembered, and was setup when clickedMap was set to left or right
         // It is not updated via state/props
         if (clickedMapRef.current == 'left') {
-        // if (clickedMap == 'left') {
-        // if (+props_.leftSelectedTms == +BasemapsIds.ESRIWayback) {
+          // if (clickedMap == 'left') {
+          // if (+props_.leftSelectedTms == +BasemapsIds.ESRIWayback) {
           console.log('leftSelectedTms == ESRIWayback')
           setLeftMinDate(waybackMinDate)
           setLeftMaxDate(waybackMaxDate)
-          setLeftMarks(esriWaybackMarks) 
-        } 
+          setLeftMarks(esriWaybackMarks)
+        }
         if (clickedMapRef.current == 'right') {
-        // if (clickedMap == 'right') {
-        // if (+props_.rightSelectedTms == +BasemapsIds.ESRIWayback) {
+          // if (clickedMap == 'right') {
+          // if (+props_.rightSelectedTms == +BasemapsIds.ESRIWayback) {
           // TODO props_.rightSelectedTms won't get changed since useCallback when changing selectedTms afterwards
           console.log('rightSelectedTms == ESRIWayback')
           setRightMinDate(waybackMinDate)
           setRightMaxDate(waybackMaxDate)
-          setRightMarks(esriWaybackMarks) 
-        } 
+          setRightMarks(esriWaybackMarks)
+        }
       }
     );
   }
-  , [])
+    , [])
 
   const clickedMapRef = useRef(props.clickedMap)
-  useEffect( 
+  useEffect(
     () => {
       const map = props.mapRef.current?.getMap()
       clickedMapRef.current = props.clickedMap
@@ -483,13 +481,13 @@ function ControlPanel(props:any) {
         setMinDate(validMinDate <= MIN_PLANET_DATE ? MIN_PLANET_DATE : validMinDate)
         setMaxDate(validMaxDate >= MAX_PLANET_DATE ? MAX_PLANET_DATE : validMaxDate)
         const planetMarks = getSliderMarksEveryYear(validMinDate, validMaxDate)
-        props.clickedMap == "left" ? setLeftMarks(planetMarks) : setRightMarks(planetMarks) 
+        props.clickedMap == "left" ? setLeftMarks(planetMarks) : setRightMarks(planetMarks)
       }
       else if (props.selectedTms == BasemapsIds.ESRIWayback) {
-        map.on('moveend', onMoveEnd_esriWaybackMarks); 
-        onMoveEnd_esriWaybackMarks({target: map}) 
+        map.on('moveend', onMoveEnd_esriWaybackMarks);
+        onMoveEnd_esriWaybackMarks({ target: map })
       }
-    }, 
+    },
     [props.clickedMap, props.selectedTms, props.mapRef]
   )
 
@@ -508,17 +506,17 @@ function ControlPanel(props:any) {
     // Note html2canvas cannot export with mixBlendModes and clipPath yet, see https://github.com/niklasvh/html2canvas/issues/580
     if (exportFramesMode == ExportButtonOptions.COMPOSITED) {
       toPng(document.getElementById('mapsParent') || document.body)
-      .then(function (dataUrl) {
-        const a = document.createElement('a')
-        a.setAttribute('download', 'composited.png')
-        a.setAttribute('href', dataUrl)
-        a.click()
-      })
-      .catch(function (error) {
-        console.error('Error with downloading of composited image!', error);
-      });
+        .then(function (dataUrl) {
+          const a = document.createElement('a')
+          a.setAttribute('download', 'composited.png')
+          a.setAttribute('href', dataUrl)
+          a.click()
+        })
+        .catch(function (error) {
+          console.error('Error with downloading of composited image!', error);
+        });
     }
-    
+
     else {
       const aDiv = document.getElementById(
         "downloadFramesDiv"
@@ -537,13 +535,13 @@ function ControlPanel(props:any) {
       //       )
       //     : [false];
       const filteredPlanetDates =
-          eachMonthOfInterval({
-              start: validMinDate,
-              end: validMaxDate,
-            }).filter((_: Date, i: number) => i % exportInterval == 0)
+        eachMonthOfInterval({
+          start: validMinDate,
+          end: validMaxDate,
+        }).filter((_: Date, i: number) => i % exportInterval == 0)
 
-         
-      function get_batch_cmd (tmsUrl: string, bounds, filename: string,) {
+
+      function get_batch_cmd(tmsUrl: string, bounds, filename: string,) {
         const downloadUrl = titilerCropUrl(
           bounds,
           tmsUrl,
@@ -551,13 +549,12 @@ function ControlPanel(props:any) {
           titilerEndpoint
         );
         const batch_cmd = `REM ${filename}\nREM ${downloadUrl}\n` +
-        // gdal_translate command
-        `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "${buildGdalWmsXml(tmsUrl)}" %DOWNLOAD_FOLDER%\\${
-          filename + "_gdal.tif"
-        }`;
+          // gdal_translate command
+          `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "${buildGdalWmsXml(tmsUrl)}" %DOWNLOAD_FOLDER%\\${filename + "_gdal.tif"
+          }`;
         return { downloadUrl, batch_cmd, filename }
       }
-      
+
       const gdalTranslateCmds_planet = filteredPlanetDates.map((date) => {
         const tmsUrl = planetBasemapUrl(date);
         const date_YYYY_MM = formatDate(date);
@@ -579,9 +576,9 @@ function ControlPanel(props:any) {
           const tmsUrl = basemapsTmsSources[key].url
           const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
           return cmd_obj;
-      })
+        })
 
-      const gdalTranslateCmds = [...gdalTranslateCmds_other, ...gdalTranslateCmds_planet ]
+      const gdalTranslateCmds = [...gdalTranslateCmds_other, ...gdalTranslateCmds_planet]
       // const gdalTranslateCmds = [...gdalTranslateCmds_planet ]
 
       // Write gdal_translate command to batch script with indices to original location of cropped version
@@ -631,7 +628,7 @@ function ControlPanel(props:any) {
         console.log('exportFramesMode == ExportButtonOptions.ALL_FRAMES')
         fetchTitilerFramesBatches(gdalTranslateCmds, aDiv);
       }
-    } 
+    }
   }
   // console.log(props.timelineDate, 'timelineDate')
   return (
@@ -664,28 +661,28 @@ function ControlPanel(props:any) {
           height: "auto",
         }}
       >
-        <div 
+        <div
           style={{
             display: "flex",
             width: "60vw",
             marginInline: "auto",
             marginBottom: "15px",
             justifyContent: "space-evenly"
-        }}
+          }}
         >
-          <Stack 
-            spacing={2} 
-            direction="row" 
-            sx={{ mb: 1 }} 
+          <Stack
+            spacing={2}
+            direction="row"
+            sx={{ mb: 1 }}
             alignItems="center"
             divider={<Divider orientation="vertical" flexItem />}
             useFlexGap flexWrap="wrap"
           >
 
-            <Stack 
-              spacing={2} 
-              direction="row" 
-              sx={{ mb: 1, flexGrow: 1, }} 
+            <Stack
+              spacing={2}
+              direction="row"
+              sx={{ mb: 1, flexGrow: 1, }}
               alignItems="center"
             >
               <FormControl
@@ -751,12 +748,12 @@ function ControlPanel(props:any) {
                 <SwapHorizIcon onClick={props.swapMapSources} />
               </IconButton>
             </Stack>
-            
+
             {/* {props.splitScreenMode === "split-screen" && ( */}
-            <Stack 
-              spacing={2} 
-              direction="row" 
-              sx={{ mb: 1, flexGrow: 1, }} 
+            <Stack
+              spacing={2}
+              direction="row"
+              sx={{ mb: 1, flexGrow: 1, }}
               alignItems="center"
             >
               <BlendingActivator
@@ -774,10 +771,10 @@ function ControlPanel(props:any) {
               />
             </Stack>
             {/* )} */}
-            <Stack 
-              spacing={2} 
-              direction="row" 
-              sx={{ mb: 1, flexGrow: 1,  }} 
+            <Stack
+              spacing={2}
+              direction="row"
+              sx={{ mb: 1, flexGrow: 1, }}
               alignItems="center"
             >
               <ExportSplitButton
@@ -791,7 +788,7 @@ function ControlPanel(props:any) {
                 target="_blank"
                 download=""
               />
-          
+
               <SettingsModal
                 playbackSpeedFPS={playbackSpeedFPS}
                 setPlaybackSpeedFPS={setPlaybackSpeedFPS}
@@ -808,16 +805,16 @@ function ControlPanel(props:any) {
                 setMaxFrameResolution={setMaxFrameResolution}
                 collectionDateActivated={collectionDateActivated}
                 setCollectionDateActivated={setCollectionDateActivated}
-                setCustomPlanetApiKey={props.setCustomPlanetApiKey} 
+                setCustomPlanetApiKey={props.setCustomPlanetApiKey}
                 customPlanetApiKey={props.customPlanetApiKey}
               />
             </Stack>
           </Stack>
         </div>
         {
-          +props.selectedTms !== BasemapsIds.PlanetMonthly && 
+          +props.selectedTms !== BasemapsIds.PlanetMonthly &&
           (
-            <div 
+            <div
               style={{
                 display: "flex",
                 width: "60vw",
@@ -827,20 +824,20 @@ function ControlPanel(props:any) {
                 minHeight: '31px'
               }}
             >
-              {( collectionDateActivated  && props.selectedTms == BasemapsIds.Bing ) ? ( 
-              // {(( collectionDateActivated  && collectionDateRetrievable.includes((props.selectedTms as BasemapsIds)) )) && ( 
+              {(collectionDateActivated && props.selectedTms == BasemapsIds.Bing) ? (
+                // {(( collectionDateActivated  && collectionDateRetrievable.includes((props.selectedTms as BasemapsIds)) )) && ( 
                 <Tooltip title={"Caution, Beta feature, only for Bing for now, Seems inacurate"}>
-                  <Button 
+                  <Button
                     variant="outlined" // outlined or text
                     size="small"
-                    sx={{display: 'true'}}
+                    sx={{ display: 'true' }}
                     onClick={() => {
                       getCollectionDateViewport(props.selectedTms, map)
-                    }}> 
-                      Collection Date: {collectionDateStr} 
-                    </Button>
-                  </Tooltip>
-              ) : <>{" "}</>} 
+                    }}>
+                    Collection Date: {collectionDateStr}
+                  </Button>
+                </Tooltip>
+              ) : <>{" "}</>}
             </div>
           )
         }
@@ -853,7 +850,7 @@ function ControlPanel(props:any) {
             //
             min={0}
             max={monthsCount}
-            marks={ marks }
+            marks={marks}
             //
             value={dateToSliderVal(props.timelineDate, validMinDate)}
             onChange={handleSliderChange}

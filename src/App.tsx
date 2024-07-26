@@ -29,8 +29,6 @@ function App() {
   const leftMapRef = useRef<MapRef>();
   const rightMapRef = useRef<MapRef>();
 
-
-
   // State variables
   const [backgroundBasemapStyle, setBackgroundBasemapStyle] = useState<any>(
     // "satellite-streets-v12"
@@ -38,6 +36,11 @@ function App() {
       version: 8, sources: {}, layers: [], glyphs: "mapbox://fonts/mapbox/{fontstack}/{range}.pbf"
     }
   );
+  const [customPlanetApiKey, setCustomPlanetApiKey] = useLocalStorage(
+    "customPlanetApiKey",
+    import.meta.env.VITE_PLANET_BASEMAP_API_KEY
+  );
+
   // const backgroundBasemapStyle = "satellite-streets-v12";
   // const [leftTimelineDate, setLeftTimelineDate] = useState<Date>(
   //   subMonths(new Date(), 1)
@@ -45,13 +48,6 @@ function App() {
   // const [rightTimelineDate, setRightTimelineDate] = useState<Date>(
   //   subMonths(new Date(), 18)
   // );
-
-  const [customPlanetApiKey, setCustomPlanetApiKey] = useLocalStorage(
-    "customPlanetApiKey",
-    import.meta.env.VITE_PLANET_BASEMAP_API_KEY
-  );
-
-
   const [leftTimelineDate, setLeftTimelineDate] = useLocalStorage(
     "leftTimelineDate",
     subMonths(new Date(), 2),
@@ -71,12 +67,10 @@ function App() {
     // console.log(leftTimelineDate, 'leftTimelineDate', rightTimelineDate, 'rightTimelineDate') 
     setleftPlanetUrl(planetBasemapUrl(leftTimelineDate, customPlanetApiKey));
   }, [customPlanetApiKey, leftTimelineDate]);
-
   useEffect(() => {
     // console.log(leftTimelineDate, 'leftTimelineDate', rightTimelineDate, 'rightTimelineDate') 
     setRightPlanetUrl(planetBasemapUrl(rightTimelineDate, customPlanetApiKey));
   }, [customPlanetApiKey, rightTimelineDate]);
-
 
   // Like Mapbox gl compare https://docs.mapbox.com/mapbox-gl-js/example/mapbox-gl-compare/
   // const [splitPanelSizesPercent, setSplitPanelSizesPercent] = useState([75, 25]);
@@ -85,8 +79,10 @@ function App() {
     [75, 25]
   );
 
-  const { url: leftWaybackUrl, loading: leftLoading } = useWaybackUrl(leftTimelineDate);
-  const { url: rightWaybackUrl, loading: rightLoading } = useWaybackUrl(rightTimelineDate);
+  const [waybackItemsWithLocalChanges, setWaybackItemsWithLocalChanges] = useState([]);
+  const { url: leftWaybackUrl, loading: leftLoading } = useWaybackUrl(leftTimelineDate, waybackItemsWithLocalChanges);
+  const { url: rightWaybackUrl, loading: rightLoading } = useWaybackUrl(rightTimelineDate, waybackItemsWithLocalChanges);
+
 
   const [viewState, setViewState] = useState({
     zoom: 3,
@@ -482,7 +478,8 @@ function App() {
               type="raster"
               tiles={[leftWaybackUrl]}
               tileSize={256}
-              key={"wayback" + leftTimelineDate.toString().toLowerCase()}
+              // key={"wayback" + leftTimelineDate.toString().toLowerCase()}
+              key={"wayback-" + leftWaybackUrl.split('/').reverse()[3]}
             >
               <Layer type="raster" layout={{}} paint={{}} />
             </Source>
@@ -563,7 +560,8 @@ function App() {
                     type="raster"
                     tiles={[rightWaybackUrl]}
                     tileSize={256}
-                    key={"wayback" + rightTimelineDate.toString().toLowerCase()}
+                    // key={"wayback" + rightTimelineDate.toString().toLowerCase()}
+                    key={"wayback-" + rightWaybackUrl.split('/').reverse()[3]}
                   >
                     <Layer type="raster" layout={{}} paint={{}} />
                   </Source>
@@ -639,6 +637,7 @@ function App() {
         setLeftSelectedTms={setLeftSelectedTms}
         setRightSelectedTms={setRightSelectedTms}
         leftMapRef={leftMapRef}
+        setWaybackItemsWithLocalChanges={setWaybackItemsWithLocalChanges}
       />
     </>
   );
