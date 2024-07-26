@@ -34,8 +34,9 @@ function App() {
   // State variables
   const [backgroundBasemapStyle, setBackgroundBasemapStyle] = useState<any>(
     // "satellite-streets-v12"
-    { version: 8, sources: {}, layers: [], glyphs:"mapbox://fonts/mapbox/{fontstack}/{range}.pbf"
-  }
+    {
+      version: 8, sources: {}, layers: [], glyphs: "mapbox://fonts/mapbox/{fontstack}/{range}.pbf"
+    }
   );
   // const backgroundBasemapStyle = "satellite-streets-v12";
   // const [leftTimelineDate, setLeftTimelineDate] = useState<Date>(
@@ -45,10 +46,10 @@ function App() {
   //   subMonths(new Date(), 18)
   // );
 
-    const [customPlanetApiKey, setCustomPlanetApiKey] = useLocalStorage(
-      "customPlanetApiKey",
-      import.meta.env.VITE_PLANET_BASEMAP_API_KEY
-    );
+  const [customPlanetApiKey, setCustomPlanetApiKey] = useLocalStorage(
+    "customPlanetApiKey",
+    import.meta.env.VITE_PLANET_BASEMAP_API_KEY
+  );
 
 
   const [leftTimelineDate, setLeftTimelineDate] = useLocalStorage(
@@ -93,7 +94,7 @@ function App() {
     longitude: 0,
     pitch: 0,
   });
-  useEffect( () => {
+  useEffect(() => {
     const hash = window.location.hash;
     let hashed_viewstate = hash
       .substring(1)
@@ -117,11 +118,11 @@ function App() {
   // const [rightSelectedTms, setRightSelectedTms] = useState<BasemapsIds>(
   //   BasemapsIds.GoogleHybrid
   // );
-  const [leftSelectedTms, setLeftSelectedTms]: [BasemapsIds, (e: BasemapsIds)=>void] = useLocalStorage(
+  const [leftSelectedTms, setLeftSelectedTms]: [BasemapsIds, (e: BasemapsIds) => void] = useLocalStorage(
     "ui_leftSelectedTms",
     BasemapsIds.PlanetMonthly
   );
-  const [rightSelectedTms, setRightSelectedTms]: [BasemapsIds, (e: BasemapsIds)=>void] = useLocalStorage(
+  const [rightSelectedTms, setRightSelectedTms]: [BasemapsIds, (e: BasemapsIds) => void] = useLocalStorage(
     "ui_rightSelectedTms",
     BasemapsIds.GoogleHybrid
   );
@@ -183,32 +184,32 @@ function App() {
     right: 0,
     bottom: 0,
     height: "100%",
-    
-    ...( 
-      splitScreenMode === "split-screen" ? 
-      {
-        left: 0 ,
-        width: `100%`,
-        clipPath: `polygon(${splitPanelSizesPercent[0]}% 0%, ${splitPanelSizesPercent[0]}% 100%, 100% 100%, 100% 0% )`,
-        mixBlendMode: (blendingActivation ? blendingMode : "normal"),
-        opacity: opacity,
-      } : 
-      {
-        left: `${splitPanelSizesPercent[0]}%`,
-        width: `${splitPanelSizesPercent[1]}%`,
-        clipPath: '', 
-        overflow: 'hidden',
-        mixBlendMode: 'normal', 
-        opacity: 1,
-      }
-    ) 
+
+    ...(
+      splitScreenMode === "split-screen" ?
+        {
+          left: 0,
+          width: `100%`,
+          clipPath: `polygon(${splitPanelSizesPercent[0]}% 0%, ${splitPanelSizesPercent[0]}% 100%, 100% 100%, 100% 0% )`,
+          mixBlendMode: (blendingActivation ? blendingMode : "normal"),
+          opacity: opacity,
+        } :
+        {
+          left: `${splitPanelSizesPercent[0]}%`,
+          width: `${splitPanelSizesPercent[1]}%`,
+          clipPath: '',
+          overflow: 'hidden',
+          mixBlendMode: 'normal',
+          opacity: 1,
+        }
+    )
   };
   useEffect(() => {
     resizeMaps();
   }, [splitScreenMode]);
 
 
-    
+
   // const mapBounds = leftMapRef?.current?.getMap()?.getBounds();
 
   // TODO: on playback, rightmap Moves so fires setActiveMap('right') on play, which is unwanted since it prevents further play
@@ -219,12 +220,12 @@ function App() {
   const onMove = useCallback((evt: any) => setViewState(evt.viewState), []);
   const onMoveDebounce = debounce(onMove, 10, false);
 
-  
-  function cloneCanvas(oldCanvas: HTMLCanvasElement, newCanvas: HTMLCanvasElement) {    
+
+  function cloneCanvas(oldCanvas: HTMLCanvasElement, newCanvas: HTMLCanvasElement) {
     //set dimensions
     newCanvas.width = oldCanvas.width;
     newCanvas.height = oldCanvas.height;
-    
+
     //apply the old canvas to the new one
     newCanvas.getContext('2d')?.drawImage(oldCanvas, 0, 0);
     return newCanvas;
@@ -236,8 +237,8 @@ function App() {
       if (oldCanvas && newCanvas) cloneCanvas(oldCanvas as HTMLCanvasElement, newCanvas as HTMLCanvasElement)
       // App in prod wont set hash auto although it was working in dev, so do it onMoveEnd
       window.location.hash = `${viewState.zoom.toFixed(2)}/${viewState.latitude.toFixed(4)}/${viewState.longitude.toFixed(4)}`
-    }, 
-    10, 
+    },
+    10,
     false
   );
 
@@ -259,8 +260,8 @@ function App() {
     dragRotate: false,
     width: "100%",
     height: "100%",
-    projection:"naturalEarth", // naturalEarth preferred, mercator possible
-    preserveDrawingBuffer : true
+    projection: "naturalEarth", // naturalEarth preferred, mercator possible
+    preserveDrawingBuffer: true
   };
 
   const [geojsonFeatures, setGeojsonFeatures]: [GeoJSON.FeatureCollection, Function] = useState({
@@ -430,77 +431,79 @@ function App() {
           ></div>
         </Split>
       </div>
-      <div style={{position: 'absolute', inset: '0'}} id={'mapsParent'} >
-      <Map
-        {...sharedMapsProps}
-        hash={true}
-        // Left/Right Maps Sync
-        id="left-map"
-        ref={leftMapRef}
-        onClick={() => {
-          setClickedMap("left")
-          // setLeftMa
-        }}
-        onMoveStart={onLeftMoveStart}
-        // onMove={activeMap === "left" ? onMove : () => ({})}
-        onMove={activeMap === "left" ? onMoveDebounce : () => ({})}
-        onMoveEnd={onMoveEnd}
-        style={LeftMapStyle}
-        mapStyle={leftMapboxMapStyle}
+      <div style={{ position: 'absolute', inset: '0' }} id={'mapsParent'} >
+        <Map
+          {...sharedMapsProps}
+          hash={true}
+          // Left/Right Maps Sync
+          id="left-map"
+          ref={leftMapRef}
+          onClick={() => {
+            setClickedMap("left")
+            // setLeftMa
+          }}
+          onMoveStart={onLeftMoveStart}
+          // onMove={activeMap === "left" ? onMove : () => ({})}
+          onMove={activeMap === "left" ? onMoveDebounce : () => ({})}
+          onMoveEnd={onMoveEnd}
+          style={LeftMapStyle}
+          mapStyle={leftMapboxMapStyle}
         // transformRequest={transformRequest}
 
         // projection={"naturalEarth"} // globe mercator naturalEarth equalEarth  // TODO: eventually make projection controllable
-      >
-        <MapControls 
-          mapRef={leftMapRef}
-          mapboxAccessToken={MAPBOX_TOKEN}
-        />
+        >
+          <MapControls
+            mapRef={leftMapRef}
+            mapboxAccessToken={MAPBOX_TOKEN}
+            setGeojsonFeatures={setGeojsonFeatures}
+          />
 
-
-        {leftSelectedTms == BasemapsIds.Mapbox ? (
-          <></>
-        ) : leftSelectedTms == BasemapsIds.PlanetMonthly ? (
-          <Source
-            id="planetbasemap-source"
-            scheme="xyz"
-            type="raster"
-            // tiles={[]}
-            tiles={[leftPlanetUrl]}
-            tileSize={256}
-            key={"planet" + leftTimelineDate.toString()}
-          >
-            <Layer type="raster" layout={{}} paint={{}} />
-          </Source>
-        ) : leftSelectedTms == BasemapsIds.ESRIWayback ? (
-          <Source
-            id="wayback-source"
-            scheme="xyz" 
-            type="raster"
-            tiles={[leftWaybackUrl]}
-            tileSize={256}
-            key={"wayback" + leftTimelineDate.toString().toLowerCase()}
-          >
-            <Layer type="raster" layout={{}} paint={{}} />
-          </Source>
-        ) : (
-          <Source
-            id="tms-source"
-            scheme="xyz"
-            type="raster"
-            tiles={[basemapsTmsSources[leftSelectedTms].url]}
-            maxzoom={basemapsTmsSources[leftSelectedTms].maxzoom || 20}
-            tileSize={256}
-            key={leftSelectedTms}
           <GeojsonLayer />
+
+
+          {leftSelectedTms == BasemapsIds.Mapbox ? (
+            <></>
+          ) : leftSelectedTms == BasemapsIds.PlanetMonthly ? (
+            <Source
+              id="planetbasemap-source"
+              scheme="xyz"
+              type="raster"
+              // tiles={[]}
+              tiles={[leftPlanetUrl]}
+              tileSize={256}
+              key={"planet" + leftTimelineDate.toString()}
+            >
+              <Layer type="raster" layout={{}} paint={{}} />
+            </Source>
+          ) : leftSelectedTms == BasemapsIds.ESRIWayback ? (
+            <Source
+              id="wayback-source"
+              scheme="xyz"
+              type="raster"
+              tiles={[leftWaybackUrl]}
+              tileSize={256}
+              key={"wayback" + leftTimelineDate.toString().toLowerCase()}
+            >
+              <Layer type="raster" layout={{}} paint={{}} />
+            </Source>
+          ) : (
+            <Source
+              id="tms-source"
+              scheme="xyz"
+              type="raster"
+              tiles={[basemapsTmsSources[leftSelectedTms].url]}
+              maxzoom={basemapsTmsSources[leftSelectedTms].maxzoom || 20}
+              tileSize={256}
+              key={leftSelectedTms}
             // https://github.com/maptiler/tilejson-spec/tree/custom-projection/2.2.0
             // yandex is in CRS/SRS EPSG:3395 but mapbox source only supports CRS 3857 atm
             // crs={"EPSG:3395"}
-          >
-            <Layer type="raster" layout={{}} paint={{}} />
-          </Source>
-        )}
+            >
+              <Layer type="raster" layout={{}} paint={{}} />
+            </Source>
+          )}
 
-        {/* {
+          {/* {
         Array.from({ length: monthsCount }, (value, index) =>
           sliderValToDate(index)
         ).map(date => 
@@ -515,85 +518,89 @@ function App() {
             <Layer type="raster" layout={{}} paint={{}} />
           </Source> 
         } */}
-        {/* beforeId={"GROUP_"} */}
-      </Map>
-      <div
-        style={RightMapStyle}
-      >
-        <Map
-          {...sharedMapsProps}
-          // Left/Right Maps Sync
-          id="right-map"
-          ref={rightMapRef}
-          onClick={() => setClickedMap("right")}
-          onMoveStart={onRightMoveStart}
-          // onMove={activeMap === "right" ? onMove : () => ({})}
-          onMove={activeMap === "right" ? onMoveDebounce : () => ({})}
-          onMoveEnd={onMoveEnd}
-          // style={RightMapStyle}
-          mapStyle={rightMapboxMapStyle}
-        >
-          <WrappedRulerControl
-            position="top-right"
-          />
-          {
-            rightSelectedTms == BasemapsIds.Mapbox ? (
-             <></> ) : 
-            rightSelectedTms == BasemapsIds.PlanetMonthly ? (
-              <Source
-                id="planetbasemap-source"
-                scheme="xyz"
-                type="raster"
-                tiles={[rightPlanetUrl]} // tiles={[]}
-                tileSize={256}
-                key={"planet" + rightTimelineDate.toString()}
-              >
-                <Layer type="raster" layout={{}} paint={{}} />
-              </Source>
-            ) : rightSelectedTms == BasemapsIds.ESRIWayback ? (
-              <Source
-                id="wayback-source"
-                scheme="xyz" 
-                type="raster"
-                tiles={[rightWaybackUrl]}
-                tileSize={256}
-                key={"wayback" + rightTimelineDate.toString().toLowerCase()}
-              >
-                <Layer type="raster" layout={{}} paint={{}} />
-              </Source>
-            ) : (
-              <Source
-                id="tms-source"
-                scheme="xyz"
-                type="raster"
-                tiles={[basemapsTmsSources[rightSelectedTms].url]}
-                maxzoom={basemapsTmsSources[rightSelectedTms].maxzoom || 20}
-                tileSize={256}
-                key={rightSelectedTms}
-              >
-                <Layer type="raster" layout={{}} paint={{}} />
-              </Source>
-            )
-          }
-          <ScaleControl maxWidth={60} unit="metric" position={'top-right'}/>
+          {/* beforeId={"GROUP_"} */}
         </Map>
-        {(splitScreenMode !== "split-screen") && (
-          <canvas 
-            style={
-              {...RightMapStyle, 
-                pointerEvents: 'none',
-                // backgroundColor: 'red',
-                mixBlendMode: blendingActivation ? blendingMode : "normal",
-                opacity: blendingMode !== 'normal' ? opacity : 0,
-                display: blendingActivation ? 'block' : 'none', 
-                ...{top: 0, bottom: 0, left: 0, right: 0, }, 
-                margin: '0 auto',
-                height: '100%',
-                width: 'auto',
-                left: splitPanelSizesPercent[0] <= 50 ? 0 : `${50 - 50 * (splitPanelSizesPercent[0] / splitPanelSizesPercent[1] || 0)}%`
+        <div
+          style={RightMapStyle}
+        >
+          <Map
+            {...sharedMapsProps}
+            // Left/Right Maps Sync
+            id="right-map"
+            ref={rightMapRef}
+            onClick={() => setClickedMap("right")}
+            onMoveStart={onRightMoveStart}
+            // onMove={activeMap === "right" ? onMove : () => ({})}
+            onMove={activeMap === "right" ? onMoveDebounce : () => ({})}
+            onMoveEnd={onMoveEnd}
+            // style={RightMapStyle}
+            mapStyle={rightMapboxMapStyle}
+          >
+            <WrappedRulerControl
+              position="top-right"
+            />
+
+            <GeojsonLayer />
+
+            {
+              rightSelectedTms == BasemapsIds.Mapbox ? (
+                <></>) :
+                rightSelectedTms == BasemapsIds.PlanetMonthly ? (
+                  <Source
+                    id="planetbasemap-source"
+                    scheme="xyz"
+                    type="raster"
+                    tiles={[rightPlanetUrl]} // tiles={[]}
+                    tileSize={256}
+                    key={"planet" + rightTimelineDate.toString()}
+                  >
+                    <Layer type="raster" layout={{}} paint={{}} />
+                  </Source>
+                ) : rightSelectedTms == BasemapsIds.ESRIWayback ? (
+                  <Source
+                    id="wayback-source"
+                    scheme="xyz"
+                    type="raster"
+                    tiles={[rightWaybackUrl]}
+                    tileSize={256}
+                    key={"wayback" + rightTimelineDate.toString().toLowerCase()}
+                  >
+                    <Layer type="raster" layout={{}} paint={{}} />
+                  </Source>
+                ) : (
+                  <Source
+                    id="tms-source"
+                    scheme="xyz"
+                    type="raster"
+                    tiles={[basemapsTmsSources[rightSelectedTms].url]}
+                    maxzoom={basemapsTmsSources[rightSelectedTms].maxzoom || 20}
+                    tileSize={256}
+                    key={rightSelectedTms}
+                  >
+                    <Layer type="raster" layout={{}} paint={{}} />
+                  </Source>
+                )
+            }
+            <ScaleControl maxWidth={60} unit="metric" position={'top-right'} />
+          </Map>
+          {(splitScreenMode !== "split-screen") && (
+            <canvas
+              style={
+                {
+                  ...RightMapStyle,
+                  pointerEvents: 'none',
+                  // backgroundColor: 'red',
+                  mixBlendMode: blendingActivation ? blendingMode : "normal",
+                  opacity: blendingMode !== 'normal' ? opacity : 0,
+                  display: blendingActivation ? 'block' : 'none',
+                  ...{ top: 0, bottom: 0, left: 0, right: 0, },
+                  margin: '0 auto',
+                  height: '100%',
+                  width: 'auto',
+                  left: splitPanelSizesPercent[0] <= 50 ? 0 : `${50 - 50 * (splitPanelSizesPercent[0] / splitPanelSizesPercent[1] || 0)}%`
+                }
               }
-            } 
-            id={'leftMapCanvasClone'}>
+              id={'leftMapCanvasClone'}>
 
             </canvas>
           )}
@@ -623,14 +630,14 @@ function App() {
         setSelectedTms={
           clickedMap == "left" ? setLeftSelectedTms : setRightSelectedTms
         }
-        swapMapSources={() => {setLeftSelectedTms(rightSelectedTms); setRightSelectedTms(leftSelectedTms)}}
+        swapMapSources={() => { setLeftSelectedTms(rightSelectedTms); setRightSelectedTms(leftSelectedTms) }}
         splitScreenMode={splitScreenMode}
         setSplitScreenMode={setSplitScreenMode}
         setSplitPanelSizesPercent={setSplitPanelSizesPercent}
         mapRef={clickedMap == "left" ? leftMapRef : rightMapRef}
         // Additional
-        setLeftSelectedTms= {setLeftSelectedTms}
-        setRightSelectedTms= {setRightSelectedTms}
+        setLeftSelectedTms={setLeftSelectedTms}
+        setRightSelectedTms={setRightSelectedTms}
         leftMapRef={leftMapRef}
       />
     </>

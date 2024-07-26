@@ -24,12 +24,11 @@ export function WrappedRulerControl(props: any) {
 // 500k https://www.npmjs.com/package/@zip.js/zip.js https://gildas-lormeau.github.io/zip.js/
 
 function FileInput(props: any): ReactElement {
-
+  // Helper to zoom to bounds and use setter for geojsonFeature
   function updateGeojsonFeatures(geojsonFeatures: any) {
-
     const bounds = bbox(geojsonFeatures)
     const [minLng, minLat, maxLng, maxLat] = bounds
-    console.log('mapRef', props)
+    // console.log('mapRef', props)
     props.mapRef.current.fitBounds(
       [
         [minLng, minLat],
@@ -41,47 +40,40 @@ function FileInput(props: any): ReactElement {
         center: [0.5 * (minLng + maxLng), 0.5 * (minLat + maxLat)],
       }
     )
-    console.log('bounds fitted, props in onload, setting setGeojsonFeatures to', props, geojsonFeatures)
+    console.log('bounds fitted, geojsonFeatures set to file input')
     props.setGeojsonFeatures(geojsonFeatures)
   }
 
   function handleFileUpload(event): void {
-    event.preventDefault()
+    // event.preventDefault()
     const inputFile = event.target.files[0]
     const filename = inputFile.name
-    console.log('inputFile info', inputFile, 'ext')
-    console.log('props in handleFileUpload', props)
+    console.log('inputFile info', inputFile)
     const reader = new FileReader()
     reader.onload = async (e) => {
-      const fileContent: string = e.target?.result as string
       const fileExt = filename.split('.').pop().toLowerCase();
-      console.log('fileExt', fileExt)
-      let geojsonFeatures: FeatureCollection = {
-        type: 'FeatureCollection',
-        features: [
-          { type: 'Feature', geometry: { type: 'Point', coordinates: [-122.4, 37.8] } }
-        ]
-      };
       // Handle zip differently because it has async operations
       if (fileExt == 'kmz') {
         console.log('input file is KMZ')
         // var new_zip = new JSZip();
         JSZip.loadAsync(inputFile)
           .then(function (zipContent) {
-            // you now have every files contained in the loaded zipContent
-            console.log('zipContent', zipContent)
-            return zipContent.file("doc.kml")?.async("string"); // a promise of "Hello World\n"
+            // console.log('zipContent', zipContent)
+            return zipContent.file("doc.kml")?.async("string");
           }).then(function (kmlString): void {
-            console.log('after zip', kmlString);
+            console.log('doc.kml file content', kmlString);
             const xmlDoc = new DOMParser().parseFromString(kmlString, 'text/xml')
             geojsonFeatures = kml(xmlDoc)
             updateGeojsonFeatures(geojsonFeatures)
           });
-
-        const xmlDoc = new DOMParser().parseFromString(fileContent, 'text/xml')
-        geojsonFeatures = kml(xmlDoc)
       }
       else {
+        const fileContent: string = e.target?.result as string
+        let geojsonFeatures: FeatureCollection = {
+          type: 'FeatureCollection',
+          features: [
+          ]
+        };
         if (fileExt == 'kml') {
           console.log('input file is KML')
           const xmlDoc = new DOMParser().parseFromString(fileContent, 'text/xml')
@@ -91,14 +83,12 @@ function FileInput(props: any): ReactElement {
           console.log('input file is GEOJSON')
           geojsonFeatures = JSON.parse(fileContent);
         }
-
-        console.log('geojsonFeatures from input file', geojsonFeatures)
-
         // Focus Zoom on imported geo features
+        console.log('geojsonFeatures from input file', geojsonFeatures)
         updateGeojsonFeatures(geojsonFeatures)
       }
     }
-    reader.readAsText(event.target.files[0], 'UTF-8')
+    reader.readAsText(inputFile, 'UTF-8')
   }
 
   return (
