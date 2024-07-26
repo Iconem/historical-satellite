@@ -435,7 +435,7 @@ async function getBingViewportDate(map: any) {
 // 1. look for script tag with `data-initial-token` in html head, like so: `<script src="/static/maps-app-web-client/mapkitjs/mapkit.core.js?appVersion=1.0.672" data-dist-url="/static/maps-app-web-client/mapkitjs" data-libraries="services,overlays,spi,spi-services,spi-annotations,spi-webgl-layers" data-callback="mapkitCallback" data-initial-token="eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkdKNUdaREZMODkifQ.eyJpc3MiOiJDNVU4OTI3MzZZIiwib3JpZ2luIjoiaHR0cHM6Ly9iZXRhLm1hcHMuYXBwbGUuY29tIiwiaWF0IjoxNzIyMDAzMjY1LCJleHAiOjE3MjIwMDUwNjV9.qNjJ4YinkmFej6Bp4qNgHx5WbuvYCh7QoMBmr86G3gLgsoEmtrLE-0oDPuaTmTpeP0hWzW9RE36IRSlk2_cBUA" async></script>`
 // 1. This Bearer can be used to build an API GET request to https://cdn.apple-mapkit.com/ma/bootstrap with `Authorization Bearer` in http header. 
 // 1. This request returns a JSON object which includes `"accessKey": "1722005505_3938378975598212411_/_0m2SvW3sxJ28bz3fDCXW1B7m/7QQnyDeQmdZQUldt+Q=",`
-const CORS_SH_API_KEY = 'temp_78f9d3a11671a9218d571d74f34ee3f3'
+const CORS_SH_API_KEY = 'temp_78f9d3a11671a9218d571d74f34ee3f3' // This cors.sh key will only be valid 3 days, up to 2024-07-26
 async function retrieveAppleAccessToken() {
   console.log('retrieveAppleAccessToken 2')
   const appleMapsUrl = 'https://beta.maps.apple.com'
@@ -443,32 +443,30 @@ async function retrieveAppleAccessToken() {
   // const proxiedUrl = 'https://crossorigin.me/https://beta.maps.apple.com'
   // const proxiedUrl = 'https://api.cors.lol/url=https:/beta.maps.apple.com'
   const proxiedUrl = `https://proxy.cors.sh/${appleMapsUrl}`
+  const apple_headers = {
+    'x-cors-api-key': CORS_SH_API_KEY,
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+    'Referer': 'https://beta.maps.apple.com',
+    'Origin': 'https://beta.maps.apple.com',
+    'x-requested-with': 'https://beta.maps.apple.com',
+  }
   const appleMapsHtml = await ky.get(
     proxiedUrl,
-    {
-      headers: {
-        'x-cors-api-key': CORS_SH_API_KEY,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-        'Referer': 'https://beta.maps.apple.com',
-        'Origin': 'https://beta.maps.apple.com',
-      },
-    }
+    { headers: apple_headers, }
   ).text()
   const htmlDoc = new DOMParser().parseFromString(appleMapsHtml, 'text/html')
   // const scriptWithInitialToken = Array.from(htmlDoc.head.childNodes).find(c => (c as HTMLElement).hasAttribute('data-initial-token'))
   const scriptWithInitialToken = htmlDoc.evaluate('//*[@data-initial-token]', htmlDoc, null, XPathResult.ANY_TYPE, null).iterateNext() as HTMLElement;
-  const initialToken = scriptWithInitialToken?.getAttribute('data-initial-token')
+  // const initialToken = scriptWithInitialToken?.getAttribute('data-initial-token')
+  const initialToken = 'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkdKNUdaREZMODkifQ.eyJpc3MiOiJDNVU4OTI3MzZZIiwib3JpZ2luIjoiaHR0cHM6Ly9iZXRhLm1hcHMuYXBwbGUuY29tIiwiaWF0IjoxNzIyMDA4OTE5LCJleHAiOjE3MjIwMTA3MTl9.fOyPu_YY1qQvwHy6xFPnkQa1ssQ_sNiDiwEvuk_-xSg1H4hWopG3cDGwF2g1G0htQ2H1jiRFlJEpggvqbLLj-A'
   console.log('initialToken', initialToken)
-  // const initialToken = 'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkdKNUdaREZMODkifQ.eyJpc3MiOiJDNVU4OTI3MzZZIiwib3JpZ2luIjoiaHR0cHM6Ly9iZXRhLm1hcHMuYXBwbGUuY29tIiwiaWF0IjoxNzIyMDA4MTY3LCJleHAiOjE3MjIwMDk5Njd9.I27CNo6aB2I2a-UkLcfltyhntvoQyJQoMfwt04Ph41LxTO7NFZV0in_VhCyWCzH9YvS4btE8A--QbtXiMu3Hjg'
 
   const appleApiJson = await ky.get(
     `https://proxy.cors.sh/https://cdn.apple-mapkit.com/ma/bootstrap`,
     {
       headers: {
-        'x-cors-api-key': CORS_SH_API_KEY,
-        'Authorization': `Bearer ${initialToken}`,
-        'Referer': 'https://beta.maps.apple.com',
-        'Origin': 'https://beta.maps.apple.com',
+        ...apple_headers,
+        'Authorization': `Bearer ${initialToken}`
       },
     }
   ).json()
