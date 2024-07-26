@@ -54,6 +54,10 @@ References:
 - Qiusheng Wu [Geemap Timelapse](https://giswqs.medium.com/a-streamlit-app-for-creating-timelapse-of-annual-landsat-imagery-1984-2021-3db407a8ac32=)
 - Kyle Barron [cog-mosaic post](https://kylebarron.dev/blog/cog-mosaic/overview)
 - SentinelHub `How to Make the Perfect Time-Lapse of the Earth` [great post](https://medium.com/sentinel-hub/how-to-make-the-perfect-time-lapse-of-the-earth-351f214527f6) shared by Andras Zlinszky
+- [Azavea 2020 blog](https://www.azavea.com/blog/2020/01/02/how-to-find-the-most-recent-satellite-imagery/) distinguishing between Free vs Paid Browsable vs Downloadable data
+
+Also useful; EsriWayback integrated within [iD OSM Editor](https://github.com/OpenHistoricalMap/iD/pull/181) from OpenHistoricalMap as well as within [facebook/Rapid](https://github.com/facebook/Rapid/issues/1209) and [here](https://github.com/facebook/Rapid/pull/1351), both of which are tools really worth digging into
+
 
 ## Consume temporal TMS in QGIS
 
