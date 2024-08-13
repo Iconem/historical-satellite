@@ -158,7 +158,9 @@ const basemapsTmsSources: any = {
     // url: "http://a0.ortho.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=90",
     url: 'https://t.ssl.ak.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=14603&n=z&prx=1',
     maxzoom: 21,
-  }, // bing uses quadkey
+  },
+  // Mapbox relies on Maxar (z 13-16) and Vexcel Imagery (z16+)
+  // https://docs.mapbox.com/data/tilesets/reference/mapbox-satellite/#data-sources
   [BasemapsIds.Mapbox]: {
     url: `https://api.mapbox.com/v4/mapbox.satellite//{z}/{x}/{y}.webp?sku=101OD9Bs4ngtD&access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA`,
     maxzoom: 22,
@@ -484,31 +486,49 @@ async function retrieveAppleAccessToken() {
   // const proxiedUrl = 'https://corsproxy.io/?https%3A%2F%2Fbeta.maps.apple.com'
   // const proxiedUrl = 'https://crossorigin.me/https://beta.maps.apple.com'
   // const proxiedUrl = 'https://api.cors.lol/url=https:/beta.maps.apple.com'
-  const proxiedUrl = `https://proxy.cors.sh/${appleMapsUrl}`
+  // const proxiedUrl = `https://proxy.cors.sh/${appleMapsUrl}`
+  // const proxiedUrl = `https://corsproxy.io/?https://beta.maps.apple.com`
+  const proxiedUrl = `https://beta.maps.apple.com`
   const apple_headers = {
-    'x-cors-api-key': CORS_SH_API_KEY,
+    // 'x-cors-api-key': CORS_SH_API_KEY,
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
     'Referer': 'https://beta.maps.apple.com',
     'Origin': 'https://beta.maps.apple.com',
     // 'x-requested-with': 'https://beta.maps.apple.com',
   }
+  /**/
+  // Cannot make this work even with proxies or allow-cors plugin
   const appleMapsHtml = await ky.get(
     proxiedUrl,
     { headers: apple_headers, }
   ).text()
   const htmlDoc = new DOMParser().parseFromString(appleMapsHtml, 'text/html')
-  // const scriptWithInitialToken = Array.from(htmlDoc.head.childNodes).find(c => (c as HTMLElement).hasAttribute('data-initial-token'))
-  const scriptWithInitialToken = htmlDoc.evaluate('//*[@data-initial-token]', htmlDoc, null, XPathResult.ANY_TYPE, null).iterateNext() as HTMLElement;
-  // const initialToken = scriptWithInitialToken?.getAttribute('data-initial-token')
-  const initialToken = 'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkdKNUdaREZMODkifQ.eyJpc3MiOiJDNVU4OTI3MzZZIiwib3JpZ2luIjoiaHR0cHM6Ly9iZXRhLm1hcHMuYXBwbGUuY29tIiwiaWF0IjoxNzIyMDA4OTE5LCJleHAiOjE3MjIwMTA3MTl9.fOyPu_YY1qQvwHy6xFPnkQa1ssQ_sNiDiwEvuk_-xSg1H4hWopG3cDGwF2g1G0htQ2H1jiRFlJEpggvqbLLj-A'
+  const scriptWithInitialToken = Array.from(htmlDoc.head.childNodes).find(c => (c as HTMLElement).hasAttribute('data-initial-token'))
+  // const scriptWithInitialToken = htmlDoc.evaluate('//*[@data-initial-token]', htmlDoc, null, XPathResult.ANY_TYPE, null).iterateNext() as HTMLElement;
+  const initialToken = scriptWithInitialToken?.getAttribute('data-initial-token')
+  /**/
+  // const initialToken = 'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkdKNUdaREZMODkifQ.eyJpc3MiOiJDNVU4OTI3MzZZIiwib3JpZ2luIjoiaHR0cHM6Ly9iZXRhLm1hcHMuYXBwbGUuY29tIiwiaWF0IjoxNzIzNTU1MDU1LCJleHAiOjE3MjM1NTY4NTV9.qirsNrHJ8mICtPALtF6PfdCOd4gVOLjNXhikEmqMgBrBePP5nAk9kpqXvUFEM0TocjunLxzYzl_z1KPoLQvUPg'
   console.log('initialToken', initialToken)
 
   const appleApiJson = await ky.get(
     `https://proxy.cors.sh/https://cdn.apple-mapkit.com/ma/bootstrap`,
     {
       headers: {
-        ...apple_headers,
-        'Authorization': `Bearer ${initialToken}`
+        // ...apple_headers,
+        'Authorization': `Bearer ${initialToken}`,
+        //
+        'X-Requested-With': 'https://beta.maps.apple.com',
+        'x-cors-api-key': 'temp_78f9d3a11671a9218d571d74f34ee3f3',
+        //
+        // Origin is actually not set so cannot send request frmo localhost/custom domain when apple expects beta.maps.apple.com
+        // { "error": { "message": "Not Authorized",
+        //   "details": [ {
+        //     "errorType": "ORIGIN_CHECK_FAILURE",
+        //     "message": "Origin does not match - expected: https://beta.maps.apple.com, actual: https://localhost:5173"
+        // } ] } }
+        'Origin': 'https://beta.maps.apple.com',
+        'Referer': 'https://beta.maps.apple.com',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
       },
     }
   ).json()
