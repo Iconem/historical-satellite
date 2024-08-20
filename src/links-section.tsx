@@ -20,10 +20,9 @@ function LinksSection(props: { mapRef: any }) {
       </Link>
       {" (with Historical imagery or "}
       <Link
-        href={`https://earth.google.com/web/@${center?.lat},${center?.lng},0a,${
-          ((38000 * 4096) / Math.pow(2, zoom)) *
+        href={`https://earth.google.com/web/@${center?.lat},${center?.lng},0a,${((38000 * 4096) / Math.pow(2, zoom)) *
           Math.cos((center?.lat * Math.PI) / 180)
-        }d,35y,0h,0t,0r`}
+          }d,35y,0h,0t,0r`}
         target={"_blank"}
       >
         Web
@@ -61,6 +60,10 @@ function LinksSection(props: { mapRef: any }) {
       {" | Made by "}
       <Link href={`https://iconem.com`} target={"_blank"}>
         Iconem
+      </Link>
+      {" | Qiusheng Wu"}
+      <Link href={`https://huggingface.co/spaces/giswqs/Streamlit`} target={"_blank"}>
+        Landsat/Sentinel Timelapse
       </Link>
     </Typography>
   );
