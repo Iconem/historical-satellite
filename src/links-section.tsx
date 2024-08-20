@@ -61,8 +61,8 @@ function LinksSection(props: { mapRef: any }) {
       <Link href={`https://iconem.com`} target={"_blank"}>
         Iconem
       </Link>
-      {" | Qiusheng Wu"}
-      <Link href={`https://huggingface.co/spaces/giswqs/Streamlit`} target={"_blank"}>
+      {" | Qiusheng Wu "}
+      <Link href={`https://giswqs-streamlit.hf.space/Timelapse`} target={"_blank"}>
         Landsat/Sentinel Timelapse
       </Link>
     </Typography>
