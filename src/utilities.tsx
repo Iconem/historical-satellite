@@ -353,35 +353,11 @@ function getVisibleTilesXYZ(map: mapboxgl.Map, tileSize: number) {
       tiles.push({ x, y, z: zoom, ym: 2 ** zoom - y - 1 });
     }
   }
+  // Below are 2 buggy impl, see commit history
   // const topLeft = map.project(bounds.getNorthWest());
   // const bottomRight = map.project(bounds.getSouthEast());
   // https://visgl.github.io/math.gl/docs/modules/web-mercator/api-reference/web-mercator-utils#lnglattoworldlnglat
   // lngLatToWorld Projects a coordinate on sphere onto the 512x512 Web Mercator plane.
-  // const topLeft = lngLatToWorld(bounds.getNorthWest().toArray()).map(
-  //   (x) => (x / 512) * 2 ** zoom
-  // );
-  // // console.log('zoom', zoom, lngLatToWorld(bounds.getNorthWest().toArray()), topLeft)
-  // const bottomRight = lngLatToWorld(bounds.getSouthEast().toArray()).map(
-  //   (x) => (x / 512) * 2 ** zoom
-  // );
-
-  // for (
-  //   let x = Math.floor(topLeft[0]); // .x
-  //   x <= Math.floor(bottomRight[0]);
-  //   x++
-  // ) {
-  //   for (
-  //     let y = Math.floor(topLeft[1] / 2); // .y probable lngLatToWorld has a rect 2x1 coordinate system
-  //     y >= Math.floor(bottomRight[1] / 2);
-  //     y--
-  //     // 
-  //     // let y = 2 ** zoom - 1 - Math.floor(topLeft[1] / 2); // .y
-  //     // y <= 2 ** zoom - 1 - Math.floor(bottomRight[1] / 2);
-  //     // y++
-  //   ) {
-  //     tiles.push({ x, y, z: zoom, ym: 2 ** zoom - y - 1 });
-  //   }
-  // }
 
   return tiles;
 }

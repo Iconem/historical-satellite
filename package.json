@@ -16,6 +16,7 @@
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@mapbox-controls/ruler": "^2.1.0",
     "@mapbox/mapbox-gl-geocoder": "^5.0.1",
+    "@mapbox/sphericalmercator": "^1.2.0",
     "@math.gl/web-mercator": "^3.6.3",
     "@mui/icons-material": "^5.15.20",
     "@mui/material": "^5.12.3",
