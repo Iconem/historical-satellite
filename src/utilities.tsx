@@ -6,7 +6,7 @@ import {
   eachYearOfInterval,
 } from "date-fns";
 import { useState, useEffect } from "react";
-import { getWaybackItems } from '@vannizhang/wayback-core';
+import { getWaybackItems, getMetadata as getWaybackMetadata } from '@vannizhang/wayback-core';
 import { lngLatToWorld } from "@math.gl/web-mercator";
 import ky from 'ky'
 
@@ -47,6 +47,9 @@ export function useWaybackUrl(date: Date, waybackItemsWithLocalChanges: Array<an
   useEffect(() => {
     const initWayBackItems = async () => {
       const items = await getWaybackItems();
+      // Returns a list of WaybackItem for all World Imagery Wayback releases/versions from the Wayback archive
+      // The output list is sorted by release date in descending order (newest release is the first item).
+      mostRecentReleaseNumber = items[0].releaseNum
       setWaybackItems(items);
       setLoading(false);
     };
@@ -334,13 +337,17 @@ function getBingDatesFromResponse(response: Response) {
 }
 function getVisibleTilesXYZ(map: mapboxgl.Map, tileSize: number) {
   const tiles = [];
-  const zoom = Math.floor(map.getZoom()) + 1;
+  const zoom = Math.floor(map.getZoom()) + 2;
   const bounds = map.getBounds();
   // const topLeft = map.project(bounds.getNorthWest());
   // const bottomRight = map.project(bounds.getSouthEast());
+  // https://visgl.github.io/math.gl/docs/modules/web-mercator/api-reference/web-mercator-utils#lnglattoworldlnglat
+  // lngLatToWorld Projects a coordinate on sphere onto the 512x512 Web Mercator plane.
+  // console.log('BOUNDS', bounds, bounds.getNorthWest(), bounds.getNorthWest().toArray(), 'should be [lng,lat] ok')
   const topLeft = lngLatToWorld(bounds.getNorthWest().toArray()).map(
     (x) => (x / 512) * 2 ** zoom
   );
+  // console.log('zoom', zoom, lngLatToWorld(bounds.getNorthWest().toArray()), topLeft)
   const bottomRight = lngLatToWorld(bounds.getSouthEast().toArray()).map(
     (x) => (x / 512) * 2 ** zoom
   );
@@ -352,11 +359,15 @@ function getVisibleTilesXYZ(map: mapboxgl.Map, tileSize: number) {
     x++
   ) {
     for (
-      let y = Math.floor(topLeft[1]); // .y
-      y >= Math.floor(bottomRight[1]);
+      let y = Math.floor(topLeft[1] / 2); // .y probable lngLatToWorld has a rect 2x1 coordinate system
+      y >= Math.floor(bottomRight[1] / 2);
       y--
+      // 
+      // let y = 2 ** zoom - 1 - Math.floor(topLeft[1] / 2); // .y
+      // y <= 2 ** zoom - 1 - Math.floor(bottomRight[1] / 2);
+      // y++
     ) {
-      tiles.push({ x, y, z: zoom });
+      tiles.push({ x, y, z: zoom, ym: 2 ** zoom - y - 1 });
     }
   }
 
@@ -377,6 +388,25 @@ function toQuad(x: number, y: number, z: number) {
   }
   return quadkey;
 }
+
+function toQuad2(x: number, y: number, z: number) {
+  var quadKey = [];
+  for (var i = z; i > 0; i--) {
+    var digit = 0;
+    var mask = 1 << (i - 1);
+    if ((x & mask) != 0) {
+      digit++;
+    }
+    if ((y & mask) != 0) {
+      digit++;
+      digit++;
+    }
+    quadKey.push(digit);
+  }
+  return quadKey.join('');
+}
+
+
 function getBingUrl(quadkey: string) {
   // return "https://t.ssl.ak.tiles.virtualearth.net/tiles/a12022010003311020210.jpeg?g=13578&n=z&prx=1";
   return basemapsTmsSources[BasemapsIds.Bing].url.replace(
@@ -387,9 +417,9 @@ function getBingUrl(quadkey: string) {
 async function getBingDatesFromUrl(url: string) {
   const dates = await fetch(url).then(function (response) {
     // In the bing case, can look for a response header property
-    console.log(url, response.headers);
+    // console.log(url, response.headers);
     const dates = getBingDatesFromResponse(response);
-    console.log("getBingDatesFromUrl, in fetch", dates);
+    // console.log("getBingDatesFromUrl, in fetch", dates);
     return dates;
   });
   return dates ?? "error on fetch ?";
@@ -414,10 +444,11 @@ function getMinMaxDates(datesArr) {
 async function getBingViewportDate(map: any) {
   const xyzArray = getVisibleTilesXYZ(map, 256); // source.tileSize)
   console.log(xyzArray);
-  const quadkeysArray = xyzArray.map((xyz: any) => toQuad(xyz.x, xyz.y, xyz.z));
+  const quadkeysArray = xyzArray.map((xyz: any) => toQuad2(xyz.x, xyz.y, xyz.z));
+  // const quadkeysArray = xyzArray.map((xyz: any) => toQuad(xyz.x, 2 ** xyz.z - 1 - xyz.y, xyz.z));
   console.log(quadkeysArray);
   const bingUrls = quadkeysArray.map((quadkey: string) => getBingUrl(quadkey));
-  console.log(bingUrls);
+  // console.log(bingUrls);
 
   // const promArray = bingUrls.map(async (url) => {
   //   return await getBingDatesFromUrl(url);
@@ -438,7 +469,7 @@ async function getBingViewportDate(map: any) {
   // Each bing dates elements has a min and max date, stored in a 2 tuple array. Can be flattened for easier min/max computation
   return getMinMaxDates(tilesDates.flat())
 }
-async function getEsriViewportDate(map: any) {
+async function getEsriViewportDate_WorldImagery(map: any) {
   const ESRI_MAPSERVER_URL = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/16/query'
   const esriUrl = new URL(ESRI_MAPSERVER_URL)
   const bounds = map.getBounds();
@@ -472,6 +503,30 @@ async function getEsriViewportDate(map: any) {
   })
   console.log('esriDates', esriDates)
   return getMinMaxDates(esriDates)
+}
+
+let mostRecentReleaseNumber = 56102;
+async function getEsriViewportDate(map: any) {
+  const center = map.getCenter();
+  const zoom = Math.floor(map.getZoom()) + 1
+  console.log('center', center)
+  const metadata = await getWaybackMetadata(
+    {
+      longitude: center.lng,
+      latitude: center.lat,
+    },
+    zoom,
+    mostRecentReleaseNumber,
+  );
+  console.log('metadata', metadata)
+  return getMinMaxDates([metadata.date])
+  //   {
+  //     "date": 1680307200000, 
+  //     "provider": 'Maxar', 
+  //     "source": 'WV03', 
+  //     "resolution": 0.3, 
+  //     "accuracy": 5
+  //   }
 }
 
 
