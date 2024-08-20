@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { getWaybackItems, getMetadata as getWaybackMetadata } from '@vannizhang/wayback-core';
 import { lngLatToWorld } from "@math.gl/web-mercator";
 import ky from 'ky'
+import SphericalMercator from '@mapbox/sphericalmercator'
 
 
 // Convert yandex from 3395 CRS to 3857 standard TMS tiles
@@ -337,73 +338,75 @@ function getBingDatesFromResponse(response: Response) {
 }
 function getVisibleTilesXYZ(map: mapboxgl.Map, tileSize: number) {
   const tiles = [];
-  const zoom = Math.floor(map.getZoom()) + 2;
-  const bounds = map.getBounds();
+  const zoom = Math.floor(map.getZoom()) + 1;
+  const bounds = map.getBounds(); // norteast, southwest
+  console.log("getVisibleTilesXYZ", map, zoom, bounds, bounds.toArray().flat());
+
+  // const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
+  const bbox = bounds.toArray().flat() // w s e n
+  const tms_style = false
+  const merc = new SphericalMercator();
+  const bbox_xyz = merc.xyz(bbox, zoom, tms_style)
+  console.log('bbox_xyz from mapbox sphericalMercator utility', bbox_xyz)
+  for (let x = bbox_xyz.minX; x <= bbox_xyz.maxX; x++) {
+    for (let y = bbox_xyz.minY; y <= bbox_xyz.maxY; y++) {
+      tiles.push({ x, y, z: zoom, ym: 2 ** zoom - y - 1 });
+    }
+  }
   // const topLeft = map.project(bounds.getNorthWest());
   // const bottomRight = map.project(bounds.getSouthEast());
   // https://visgl.github.io/math.gl/docs/modules/web-mercator/api-reference/web-mercator-utils#lnglattoworldlnglat
   // lngLatToWorld Projects a coordinate on sphere onto the 512x512 Web Mercator plane.
-  // console.log('BOUNDS', bounds, bounds.getNorthWest(), bounds.getNorthWest().toArray(), 'should be [lng,lat] ok')
-  const topLeft = lngLatToWorld(bounds.getNorthWest().toArray()).map(
-    (x) => (x / 512) * 2 ** zoom
-  );
-  // console.log('zoom', zoom, lngLatToWorld(bounds.getNorthWest().toArray()), topLeft)
-  const bottomRight = lngLatToWorld(bounds.getSouthEast().toArray()).map(
-    (x) => (x / 512) * 2 ** zoom
-  );
-  console.log("getVisibleTilesXYZ", map, zoom, bounds, topLeft, bottomRight);
+  // const topLeft = lngLatToWorld(bounds.getNorthWest().toArray()).map(
+  //   (x) => (x / 512) * 2 ** zoom
+  // );
+  // // console.log('zoom', zoom, lngLatToWorld(bounds.getNorthWest().toArray()), topLeft)
+  // const bottomRight = lngLatToWorld(bounds.getSouthEast().toArray()).map(
+  //   (x) => (x / 512) * 2 ** zoom
+  // );
 
-  for (
-    let x = Math.floor(topLeft[0]); // .x
-    x <= Math.floor(bottomRight[0]);
-    x++
-  ) {
-    for (
-      let y = Math.floor(topLeft[1] / 2); // .y probable lngLatToWorld has a rect 2x1 coordinate system
-      y >= Math.floor(bottomRight[1] / 2);
-      y--
-      // 
-      // let y = 2 ** zoom - 1 - Math.floor(topLeft[1] / 2); // .y
-      // y <= 2 ** zoom - 1 - Math.floor(bottomRight[1] / 2);
-      // y++
-    ) {
-      tiles.push({ x, y, z: zoom, ym: 2 ** zoom - y - 1 });
-    }
-  }
+  // for (
+  //   let x = Math.floor(topLeft[0]); // .x
+  //   x <= Math.floor(bottomRight[0]);
+  //   x++
+  // ) {
+  //   for (
+  //     let y = Math.floor(topLeft[1] / 2); // .y probable lngLatToWorld has a rect 2x1 coordinate system
+  //     y >= Math.floor(bottomRight[1] / 2);
+  //     y--
+  //     // 
+  //     // let y = 2 ** zoom - 1 - Math.floor(topLeft[1] / 2); // .y
+  //     // y <= 2 ** zoom - 1 - Math.floor(bottomRight[1] / 2);
+  //     // y++
+  //   ) {
+  //     tiles.push({ x, y, z: zoom, ym: 2 ** zoom - y - 1 });
+  //   }
+  // }
 
   return tiles;
 }
-function toQuad(x: number, y: number, z: number) {
-  var quadkey = "";
-  for (var i = z; i >= 0; --i) {
-    var bitmask = 1 << i;
-    var digit = 0;
-    if ((x & bitmask) !== 0) {
-      digit |= 1;
-    }
-    if ((y & bitmask) !== 0) {
-      digit |= 2;
-    }
-    quadkey += digit;
-  }
-  return quadkey;
-}
 
-function toQuad2(x: number, y: number, z: number) {
-  var quadKey = [];
-  for (var i = z; i > 0; i--) {
-    var digit = 0;
-    var mask = 1 << (i - 1);
-    if ((x & mask) != 0) {
-      digit++;
+const toQuad = (
+  tileX: number,
+  tileY: number,
+  zoom: number
+): string => {
+  const quadkey: number[] = []
+  for (let i = zoom; i > 0; i--) {
+    let digit = 0
+    const mask = 1 << (i - 1)
+
+    if ((tileX & mask) != 0) {
+      digit++
     }
-    if ((y & mask) != 0) {
-      digit++;
-      digit++;
+
+    if ((tileY & mask) != 0) {
+      digit += 2
     }
-    quadKey.push(digit);
+
+    quadkey.push(digit)
   }
-  return quadKey.join('');
+  return quadkey.join('')
 }
 
 
@@ -427,7 +430,6 @@ async function getBingDatesFromUrl(url: string) {
 
 function getMinMaxDates(datesArr) {
   const min = Math.min(...(datesArr as any))
-  console.log(min)
   const minDate = new Date(
     min
   )
@@ -438,13 +440,13 @@ function getMinMaxDates(datesArr) {
   )
     .toISOString()
     .slice(0, 10);
-  console.log("yaya", datesArr, "\n", minDate, maxDate);
+  console.log("datesArr", datesArr, "\n", minDate, maxDate);
   return { minDate, maxDate }
 }
 async function getBingViewportDate(map: any) {
   const xyzArray = getVisibleTilesXYZ(map, 256); // source.tileSize)
   console.log(xyzArray);
-  const quadkeysArray = xyzArray.map((xyz: any) => toQuad2(xyz.x, xyz.y, xyz.z));
+  const quadkeysArray = xyzArray.map((xyz: any) => toQuad(xyz.x, xyz.y, xyz.z));
   // const quadkeysArray = xyzArray.map((xyz: any) => toQuad(xyz.x, 2 ** xyz.z - 1 - xyz.y, xyz.z));
   console.log(quadkeysArray);
   const bingUrls = quadkeysArray.map((quadkey: string) => getBingUrl(quadkey));
