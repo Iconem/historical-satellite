@@ -36,8 +36,8 @@ Cross-posting a [twitter thread](https://twitter.com/jo_chemla/status/1656686529
 
 Looking for cloud-free, worldwide, periodic (yearly/monthly) mosaics like
 
+- [Google Earth Web](https://earth.google.com/web/@53.15559085,-1.0098299,428.20825693a,5430806.16808712d,35y,0h,0t,0r/data=CgwqBggBEgAYAUICCAFKDQj___________8BEAA) now supports both high-res historical imagery as well as [Google Earth Timelapse](https://earthengine.google.com/timelapse/) (yearly 1984-2020) from Landsat/Sentinel data, mp4 tiles
 - [Planet monthly basemaps](https://www.planet.com/products/basemap/) for 2016-01 - present
-- [Google Earth Timelapse](https://earthengine.google.com/timelapse/) (yearly 1984-2020) from Landsat/Sentinel data, mp4 tiles,
 - [ESA WorldCover](https://esa-worldcover.org/en) 2020-2021 from Sentinel with large time coverage
 
 Wondering if one of the following orgs have such a dataset from:

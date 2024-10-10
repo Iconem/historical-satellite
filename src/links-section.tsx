@@ -37,7 +37,6 @@ function LinksSection(props: { mapRef: any }) {
       >
         BBBike MapCompare
       </Link>
-      {" | "}
       {" | Older: Google "}
       <Link
         href={`https://earthengine.google.com/timelapse#v=${center?.lat},${center?.lng},${zoom},latLng&t=0.03&ps=50&bt=19840101&et=20201231&startDwell=0&endDwell=0`}
