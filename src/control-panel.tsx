@@ -210,7 +210,7 @@ const BlendingActivator = (props: any) => {
 const BlendingControl = (props: any) => {
   const blendingModes = [
     'difference', 'exclusion', 'color-burn', 'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten',
-    'color-dodge', 'hard-light', 'soft-light', 'hue', 'saturation', 'color', 'luminosity'
+    'color-dodge', 'hard-light', 'soft-light', 'hue', 'saturation', 'color', 'luminosity', 'plus-darker', 'plus-lighter'
   ];
 
   const handleBlendingModeChange = (event: any) => {
