@@ -4,14 +4,8 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 
 import  {  LngLatBounds, LngLat } from "mapbox-gl";
-// import Slider from "@mui/material/Slider";
-// import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-// import PropTypes from 'prop-types'
 
-import {
-  getWaybackItemsWithLocalChanges,
-  // WaybackItem
-} from '@vannizhang/wayback-core';
+import { getWaybackItemsWithLocalChanges,} from '@vannizhang/wayback-core';
 import {
   addMonths,
   subMonths,
@@ -21,7 +15,7 @@ import PlayableSlider from "./playable-slider";
 import LinksSection from "./links-section";
 import { ExportSplitButton, ExportButtonOptions } from "./export-split-button";
 import SettingsModal from "./settings-modal";
-import { toPng, toPixelData } from 'html-to-image';
+import { toPng } from 'html-to-image';
 
 import {
   Select,
@@ -44,7 +38,7 @@ import {
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
-// import SwapHorizontalCircleIcon from '@mui/icons-material/SwapHorizontalCircle';
+
 
 import { differenceInMonths, eachMonthOfInterval, isValid } from "date-fns";
 import {
@@ -62,10 +56,8 @@ import {
   getBingViewportDate,
   getEsriViewportDate,
   retrieveAppleAccessToken,
-  // convertLatlonTo3857,
-} from "./utilities";
 
-import {useResizeObserver} from '@react-hookz/web';
+} from "./utilities";
 
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
 const MAX_FRAME_RESOLUTION = 512; // 1024 - 2048 TODO 512 FOR TESTING? 2048 BETTER
@@ -97,8 +89,7 @@ const escapeTmsUrl = (url: string) =>
     .replace("{z}", "${z}")
     .replace("{quadkey}", "${quadkey}")
     .replaceAll("&", "&amp;");
-// const unescapeTmsUrl = (url: string) =>
-//   url.replace("${x}", "{x}").replace("${y}", "{y}").replace("${z}", "{z}");
+
 function buildGdalWmsXml(tmsUrl: string) {
   return (!tmsUrl?.includes('quadkey')) ?
     `<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(tmsUrl)}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>`
@@ -184,7 +175,6 @@ const OpacitySlider = (props: any) => {
       style={{ width: '10vw' }}
       value={props.opacity}
       step={0.005}
-      // aria-label='Always visible'
       size="small"
       min={0}
       max={1}
@@ -247,7 +237,6 @@ const BlendingControl = (props: any) => {
 // Component: ControlPanelDrawer
 // ------------------------------------------------------
 function ControlPanelDrawer(props: any) {
-  // const theme = useTheme();
   const [open, setOpen] = useState(true);
   const handleDrawerToggle = () => {
     setOpen(!open);
@@ -271,10 +260,6 @@ function ControlPanelDrawer(props: any) {
           color: open ? 'grey' : 'white',
           zIndex: 2000,
           transition: 'bottom 225ms cubic-bezier(0, 0, 0.2, 1) 0ms',
-          // transition: theme.transitions.create('margin', {
-          //   easing: theme.transitions.easing.sharp,
-          //   duration: theme.transitions.duration.leavingScreen,
-          // })
         }}
       >
         {(open ? <ExpandMore /> : <ExpandLess />)}
@@ -292,31 +277,7 @@ function ControlPanelDrawer(props: any) {
         open={open}
       >
 
-        <ControlPanel
-          {...props}
-        // // Adding blending mode opacity, and blending mode activation to pass downward
-        // blendingActivation={props.blendingActivation}
-        // setBlendingActivation={props.setBlendingActivation}
-        // opacity={props.opacity}
-        // setOpacity={props.setOpacity}
-        // blendingMode={props.blendingMode}
-        // setBlendingMode={props.setBlendingMode}
-        // timelineDate={ props.timelineDate }
-        // setTimelineDate={ props.setTimelineDate }
-        // selectedTms={props.selectedTms}
-        // setSelectedTms={ props.setSelectedTms }
-        // swapMapSources={props.swapMapSources}
-        // splitScreenMode={props.splitScreenMode}
-        // setSplitScreenMode={props.setSplitScreenMode}
-        // setSplitPanelSizesPercent={props.setSplitPanelSizesPercent}
-        // mapRef={props.mapRef}
-        // clickedMap={props.clickedMap}
-        // // Additional
-        // setLeftSelectedTms={props.setLeftSelectedTms}
-        // setRightSelectedTms={props.setRightSelectedTms}
-        // setCustomPlanetApiKey={props.setCustomPlanetApiKey}
-        // customPlanetApiKey={props.customPlanetApiKey}
-        />
+        <ControlPanel  {...props} />
       </Drawer>
     </Box>
   );
@@ -331,7 +292,6 @@ function ControlPanel(props: any) {
   // ---------------------------
   // Slider control
   // For slider play/pause loops
-  // const [playbackSpeedFPS, setPlaybackSpeedFPS] = useState<number>(2);
   const [playbackSpeedFPS, setPlaybackSpeedFPS] = useLocalStorage(
     "playbackSpeedFPS",
     2
@@ -340,8 +300,6 @@ function ControlPanel(props: any) {
     props.setTimelineDate(sliderValToDate(newValue, validMinDate));
   };
 
-  // const [minDate, setMinDate] = useState<Date>(MIN_PLANET_DATE);
-  // const [maxDate, setMaxDate] = useState<Date>(MAX_PLANET_DATE);
   const [minLeftDate, setLeftMinDate] = useLocalStorage("export_minDate", MIN_PLANET_DATE);
   const [maxLeftDate, setLeftMaxDate] = useLocalStorage("export_maxDate", MAX_PLANET_DATE);
   const [minRightDate, setRightMinDate] = useLocalStorage("export_minDate", MIN_PLANET_DATE);
@@ -385,19 +343,11 @@ function ControlPanel(props: any) {
     setCollectionDateStr(`${collectionDate?.minDate} - ${collectionDate?.maxDate}`)
   }
 
-  // const [exportInterval, setExportInterval] = useState<number>(12);
-  // const [titilerEndpoint, setTitilerEndpoint] =
-  //   useState<string>(TITILER_ENDPOINT);
-  // const [maxFrameResolution, setMaxFrameResolution] =
-  //   useState<number>(MAX_FRAME_RESOLUTION);
   const [exportInterval, setExportInterval] = useLocalStorage(
     "export_exportInterval",
     12
   );
-  // const [titilerEndpoint, setTitilerEndpoint] = useLocalStorage(
-  //   "export_titilerEndpoint",
-  //   TITILER_ENDPOINT
-  // );
+
   const [titilerEndpoint, setTitilerEndpoint] = useState(
     TITILER_ENDPOINT
   );
@@ -411,18 +361,7 @@ function ControlPanel(props: any) {
   );
   const map = props.mapRef?.current?.getMap() as any;
 
-
-  // const onMoveEnd_esriWaybackMarks = useCallback((props_: any) => (e: any) => {
-  // const onMoveEnd_esriWaybackMarks = (clickedMap: any) => (e: any) => {
-  //   console.log('1. onMoveEnd_esriWaybackMarks clickedMap & props left/right selectedTms', clickedMap) // , props.leftSelectedTms, 
   const onMoveEnd_esriWaybackMarks = useCallback((e: any) => {
-    console.log('1. onMoveEnd_esriWaybackMarks clickedMapRef.current', clickedMapRef.current) // , props.leftSelectedTms, props.rightSelectedTms)
-    // const onMoveEnd_esriWaybackMarks = (e) => {
-    // event type: boxzoomstart
-
-    // const esriOnMoveEnd = 
-    // ESRI Wayback Machine
-  
     const center = map?.getCenter()
     getWaybackItemsWithLocalChanges(
       {
@@ -432,8 +371,6 @@ function ControlPanel(props: any) {
       map?.getZoom() || 0
     ).then(
       (waybackItemsWithLocalChanges: any) => {
-        // console.log('2. onMoveEnd_esriWaybackMarks props left/right selectedTms', clickedMap, props.leftSelectedTms, props.rightSelectedTms)
-        // setEsriWaybackItemsChange(waybackItemsWithLocalChanges)
         props.setWaybackItemsWithLocalChanges(waybackItemsWithLocalChanges)
         const parsedItemsWithLocalChanges = Object.values(waybackItemsWithLocalChanges).map((item: any) => {
           const { itemURL, releaseDateLabel, releaseDatetime, releaseNum } = item
@@ -451,22 +388,15 @@ function ControlPanel(props: any) {
         const waybackMinDate = subMonths(localChangesDates[0], 12);
         const waybackMaxDate = addMonths(localChangesDates[localChangesDates.length - 1], 12);
         const esriWaybackMarks = getSliderMarks(localChangesDates, waybackMinDate)
-        // console.log('3. onMoveEnd_esriWaybackMarks ', center, map.getZoom(), clickedMap, esriWaybackMarks, localChangesDates, props.leftSelectedTms, props.rightSelectedTms)
+
         // It should happen that this callback is remembered, and was setup when clickedMap was set to left or right
         // It is not updated via state/props
         if (clickedMapRef.current == 'left') {
-          // if (clickedMap == 'left') {
-          // if (+props_.leftSelectedTms == +BasemapsIds.ESRIWayback) {
-          console.log('leftSelectedTms == ESRIWayback')
           setLeftMinDate(waybackMinDate)
           setLeftMaxDate(waybackMaxDate)
           setLeftMarks(esriWaybackMarks)
         }
         if (clickedMapRef.current == 'right') {
-          // if (clickedMap == 'right') {
-          // if (+props_.rightSelectedTms == +BasemapsIds.ESRIWayback) {
-          // TODO props_.rightSelectedTms won't get changed since useCallback when changing selectedTms afterwards
-          console.log('rightSelectedTms == ESRIWayback')
           setRightMinDate(waybackMinDate)
           setRightMaxDate(waybackMaxDate)
           setRightMarks(esriWaybackMarks)
@@ -513,11 +443,8 @@ function ControlPanel(props: any) {
   // function handleExportButtonClick(exportFramesMode: boolean = true) {
  
     const mapRef = props.mapRef;
-    // useResizeObserver(mapRef.current?.getContainer() as Element, () => {
-    //   mapRef.current?.getMap()?.resize()
-    //   console.log(mapRef.current?.getCanvas().width);
-    // })
     const bounds = mapRef?.current?.getMap()?.getBounds();
+
   async function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES) {
     // html-to-image can do both export with clipPath and mixBlendMode, although seem a bit slower than html2canvas!
     // Note html2canvas cannot export with mixBlendModes and clipPath yet, see https://github.com/niklasvh/html2canvas/issues/580
@@ -540,10 +467,12 @@ function ControlPanel(props: any) {
 
       //////////////////// TOPNG + draw the img in canvas
 
+
       const filter = (node: HTMLElement) => {
-        const exclusionClasses = ['mapboxgl-ctrl-group', 'mapboxgl-ctrl-geocoder'];
+        const exclusionClasses = ['mapboxgl-ctrl'];
         return !exclusionClasses.some((classname) => node.classList?.contains(classname));
       }
+      
 
       toPng(parentElement, {filter: filter})
         .then(async (dataUrl) => {
@@ -566,50 +495,18 @@ function ControlPanel(props: any) {
 
           const metaData = {
             GeographicTypeGeoKey: 4326,
+            GeogCitationGeoKey : 'WGS 84',
             height: canvas.height,
             width: canvas.width,
             ModelPixelScale: [pixelSizeX, pixelSizeY, 0],
             ModelTiepoint: [0, 0, 0, bbox.west, bbox.north, 0],
-            SamplesPerPixel: 3, 
-            BitsPerSample: [8, 8, 8],
+            SamplesPerPixel: 4, 
+            BitsPerSample: [8, 8, 8, 8],
             PlanarConfiguration: 1, 
-            PhotometricInterpretation: 2,
-            
+            PhotometricInterpretation: 2,  
           };
-
-          const red = new Uint8Array(canvas.width * canvas.height);
-          const green = new Uint8Array(canvas.width * canvas.height);
-          const blue = new Uint8Array(canvas.width * canvas.height);
-
-
-          for (let i = 0; i < canvas.width * canvas.height; i++) {
-            red[i] = imageData.data[i * 4];       
-            green[i] = imageData.data[i * 4 + 1]; 
-            blue[i] = imageData.data[i * 4 + 2];  
-          }
-
-          function reshapeBand(band: any[] | Uint8Array<ArrayBuffer>, width: number, height: number) {
-            const result = [];
-            for (let row = 0; row < height; row++) {
-              const rowArray = [];
-              for (let col = 0; col < width; col++) {
-                rowArray.push(band[row * width + col]);
-              }
-              result.push(rowArray);
-            }
-            return result;
-          }
           
-          const bands = [
-            reshapeBand(red, canvas.width, canvas.height),
-            reshapeBand(green, canvas.width, canvas.height),
-            reshapeBand(blue, canvas.width, canvas.height),
-          ];
-          console.log(bands, bands[0]);
-          
-          
-          
-          const arrayBuffer = await writeArrayBuffer(bands, metaData);
+          const arrayBuffer = await writeArrayBuffer(imageData.data, metaData);
   
           const blob = new Blob([arrayBuffer], { type: "image/tiff" });
           const a = document.createElement("a");
@@ -626,19 +523,7 @@ function ControlPanel(props: any) {
       const aDiv = document.getElementById(
         "downloadFramesDiv"
       ) as HTMLAnchorElement;
-      // const mapRef = props.mapRef;
-      // const bounds = mapRef?.current?.getMap()?.getBounds();
-      // Loop through each monthly basemap and download
 
-      // const filteredPlanetDates =
-      //   props.selectedTms == BasemapsIds.PlanetMonthly
-      //     ? Array.from({ length: monthsCount }, (value, index) =>
-      //         sliderValToDate(index, minDate)
-      //       ).filter(
-      //         // Test with only yearly downloads
-      //         (date, index) => index >= 0 && index <= 1000 && date.getMonth() >= 0
-      //       )
-      //     : [false];
       const filteredPlanetDates =
         eachMonthOfInterval({
           start: validMinDate,
@@ -677,14 +562,12 @@ function ControlPanel(props: any) {
         })
         .map(([key, value]) => {
           const filename = BasemapsIds[key]
-          // const tmsUrl = basemapsTmsSources[props.selectedTms].url
           const tmsUrl = basemapsTmsSources[key].url
           const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
           return cmd_obj;
         })
 
       const gdalTranslateCmds = [...gdalTranslateCmds_other, ...gdalTranslateCmds_planet]
-      // const gdalTranslateCmds = [...gdalTranslateCmds_planet ]
 
       // Write gdal_translate command to batch script with indices to original location of cropped version
       const center = mapRef?.current?.getMap()?.getCenter();
@@ -738,13 +621,10 @@ function ControlPanel(props: any) {
 
   const timeControlled = (tms: any) => [+BasemapsIds.ESRIWayback, +BasemapsIds.PlanetMonthly].includes(+tms)
   const collectionDateAvailable = (tms: any) => collectionDateRetrievable.includes(+tms)
-  // (props.selectedTms == BasemapsIds.PlanetMonthly || props.selectedTms == BasemapsIds.ESRIWayback)
 
-  // console.log(props.timelineDate, 'timelineDate')
   return (
     <div
       style={{
-        // position: "absolute",
         width: "100%",
         pointerEvents: "auto",
 
@@ -830,7 +710,6 @@ function ControlPanel(props: any) {
                       {BasemapsIds[key] + (timeControlled(key) ? ' 📅' : collectionDateAvailable(key) ? ' 🕒' : '')}
                     </MenuItem>
                   ))}
-                  {/* <MenuItem value={''}>Mapbox</MenuItem> */}
                 </Select>
               </FormControl>
               {timeControlled(props.selectedTms) && (
@@ -858,8 +737,6 @@ function ControlPanel(props: any) {
                 <SwapHorizIcon onClick={props.swapMapSources} />
               </IconButton>
             </Stack>
-
-            {/* {props.splitScreenMode === "split-screen" && ( */}
             <Stack
               spacing={2}
               direction="row"
@@ -908,7 +785,6 @@ function ControlPanel(props: any) {
                 setMaxDate={setMaxDate}
                 exportInterval={exportInterval}
                 setExportInterval={setExportInterval}
-                // additional settings
                 titilerEndpoint={titilerEndpoint}
                 setTitilerEndpoint={setTitilerEndpoint}
                 maxFrameResolution={maxFrameResolution}
