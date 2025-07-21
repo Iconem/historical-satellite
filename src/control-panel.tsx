@@ -3,7 +3,7 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 
-import { LngLatBounds, LngLat } from "mapbox-gl";
+import  {  LngLatBounds, LngLat } from "mapbox-gl";
 // import Slider from "@mui/material/Slider";
 // import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 // import PropTypes from 'prop-types'
@@ -21,7 +21,7 @@ import PlayableSlider from "./playable-slider";
 import LinksSection from "./links-section";
 import { ExportSplitButton, ExportButtonOptions } from "./export-split-button";
 import SettingsModal from "./settings-modal";
-import { toPng } from 'html-to-image';
+import { toPng, toPixelData } from 'html-to-image';
 
 import {
   Select,
@@ -65,6 +65,8 @@ import {
   // convertLatlonTo3857,
 } from "./utilities";
 
+import {useResizeObserver} from '@react-hookz/web';
+
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
 const MAX_FRAME_RESOLUTION = 512; // 1024 - 2048 TODO 512 FOR TESTING? 2048 BETTER
 const PROMISES_BATCH_SIZE = 5;
@@ -98,7 +100,7 @@ const escapeTmsUrl = (url: string) =>
 // const unescapeTmsUrl = (url: string) =>
 //   url.replace("${x}", "{x}").replace("${y}", "{y}").replace("${z}", "{z}");
 function buildGdalWmsXml(tmsUrl: string) {
-  return (!tmsUrl.includes('quadkey')) ?
+  return (!tmsUrl?.includes('quadkey')) ?
     `<GDAL_WMS><Service name='TMS'><ServerUrl>${escapeTmsUrl(tmsUrl)}</ServerUrl></Service><DataWindow><UpperLeftX>-20037508.34</UpperLeftX><UpperLeftY>20037508.34</UpperLeftY><LowerRightX>20037508.34</LowerRightX><LowerRightY>-20037508.34</LowerRightY><TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY><YOrigin>top</YOrigin></DataWindow><Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY><BandsCount>3</BandsCount><Cache /></GDAL_WMS>`
     :
     `<GDAL_WMS><Service name='VirtualEarth'><ServerUrl>${escapeTmsUrl(tmsUrl)}</ServerUrl></Service><MaxConnections>4</MaxConnections><Cache/></GDAL_WMS>`;
@@ -420,7 +422,7 @@ function ControlPanel(props: any) {
 
     // const esriOnMoveEnd = 
     // ESRI Wayback Machine
-    // const map = leftMapRef.current?.getMap()
+  
     const center = map?.getCenter()
     getWaybackItemsWithLocalChanges(
       {
@@ -509,28 +511,256 @@ function ControlPanel(props: any) {
   // Define function in component to use mapRef
   // Inspiration for ui overlays (date, latlon, scale) https://github.com/doersino/earthacrosstime/tree/master
   // function handleExportButtonClick(exportFramesMode: boolean = true) {
-  function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES) {
+ 
+    const mapRef = props.mapRef;
+    // useResizeObserver(mapRef.current?.getContainer() as Element, () => {
+    //   mapRef.current?.getMap()?.resize()
+    //   console.log(mapRef.current?.getCanvas().width);
+    // })
+    const bounds = mapRef?.current?.getMap()?.getBounds();
+  async function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES) {
     // html-to-image can do both export with clipPath and mixBlendMode, although seem a bit slower than html2canvas!
     // Note html2canvas cannot export with mixBlendModes and clipPath yet, see https://github.com/niklasvh/html2canvas/issues/580
     if (exportFramesMode == ExportButtonOptions.COMPOSITED) {
-      toPng(document.getElementById('mapsParent') || document.body)
-        .then(function (dataUrl) {
-          const a = document.createElement('a')
-          a.setAttribute('download', 'composited.png')
-          a.setAttribute('href', dataUrl)
-          a.click()
+
+      /////////////////////////////////////////////////////EXPORT to png+pgw
+
+      // toPng(document.getElementById('mapsParent') || document.body)
+      //   .then(function (dataUrl) {
+      //     const a = document.createElement('a')
+      //     a.setAttribute('download', 'composited.png')
+      //     a.setAttribute('href', dataUrl)
+      //     a.click()
+
+      //     Generate .pgw file
+  
+      //     const bbox = {
+      //       west: bounds.getWest(),
+      //       south: bounds.getSouth(),
+      //       east: bounds.getEast(),
+      //       north: bounds.getNorth(),
+      //     };
+
+      // const width = mapRef?.current?.getMap()?.getCanvas().width;
+      // const height = mapRef?.current?.getMap()?.getCanvas().height;
+    
+      //     const pixelSizeX = (bbox.east - bbox.west)/width;
+      //     const pixelSizeY = -(bbox.north - bbox.south)/height;
+
+      //     const pgwContent = [
+      //       pixelSizeX,  
+      //       0,   // rotation
+      //       0,   // rotation
+      //       pixelSizeY,  
+      //       bbox.west, 
+      //       bbox.north, 
+      //     ].join("\n");
+    
+      //     const blobPgw = new Blob([pgwContent], { type: "text/plain" });
+      //     const urlPgw = URL.createObjectURL(blobPgw);
+      //     const linkPgw = document.createElement('a')
+      //     linkPgw.setAttribute('download', 'composited.pgw')
+      //     linkPgw.setAttribute('href', urlPgw)
+      //     linkPgw.click()
+    
+      //     Generate XML file
+      //     const srs = "EPSG:4326";
+      //     const geoTransform = [
+      //       bbox.west,
+      //       pixelSizeX,  
+      //       0,   // rotation
+      //       bbox.north,
+      //       0,   // rotation
+      //       pixelSizeY,  
+      //     ];
+        
+      //     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+      //     <PAMDataset>
+      //       <SRS>${srs}</SRS>
+      //       <GeoTransform>
+      //         ${geoTransform.join(", ")}
+      //       </GeoTransform>
+      //     </PAMDataset>`;
+        
+      
+      //     const blobXml = new Blob([xmlContent], { type: "application/xml" });
+      //     const urlXml = URL.createObjectURL(blobXml);
+      //     const linkXml = document.createElement('a')
+      //     linkXml.setAttribute('download', 'composited.png.aux.xml')
+      //     linkXml.setAttribute('href', urlXml)
+      //     linkXml.click()
+      //   })
+      //   .catch(function (error) {
+      //     console.error('Error with downloading of composited image!', error);
+      //   });
+
+
+
+      ////////////////////////////////////////NOUVEAU: export to a Geotiff
+  
+      const bbox = {
+        west: bounds.getWest(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        north: bounds.getNorth(),
+      };
+      
+      const parentElement = document.getElementById("mapsParent");
+      if (!parentElement) {
+        console.error("Cannot find mapsParent div");
+        return;
+      }
+
+
+      ////////////////////// TOPIXELDATA
+
+      // const width = parentElement.clientWidth;
+      // const height =parentElement.clientHeight;
+
+      // mapRef.current?.resize(); 
+      // await new Promise((resolve) => setTimeout(resolve, 50));
+      // console.log('test')
+
+      // toPixelData(parentElement, {skipAutoScale: true }).then( async(data)=>{
+
+      //   const pixelSizeX = (bbox.east - bbox.west) / width;
+      //   const pixelSizeY = (bbox.north - bbox.south) / height;
+
+      //   const { writeArrayBuffer } = await import("geotiff");
+
+      //   const metaData = {
+      //     GeographicTypeGeoKey: 4326,
+      //     height: height,
+      //     width: width,
+      //     ModelPixelScale: [pixelSizeX, pixelSizeY, 0],
+      //     ModelTiepoint: [0, 0, 0, bbox.west, bbox.north, 0],
+      //     SamplesPerPixel: 3, 
+      //     BitsPerSample: [8, 8, 8],
+      //     PlanarConfiguration: 1, 
+      //     PhotometricInterpretation: 2,
+          
+      //   };
+
+      //   const red = new Uint8Array(width * height);
+      //   const green = new Uint8Array(width * height);
+      //   const blue = new Uint8Array(width * height);
+
+
+      //   for (let i = 0; i < width * height; i++) {
+      //     red[i] = data[i * 4];       
+      //     green[i] = data[i * 4 + 1]; 
+      //     blue[i] = data[i * 4 + 2];  
+      //   }
+
+      //   function reshapeBand(band: any[] | Uint8Array<ArrayBuffer>, width: number, height: number) {
+      //     const result = [];
+      //     for (let row = 0; row < height; row++) {
+      //       const rowArray = [];
+      //       for (let col = 0; col < width; col++) {
+      //         rowArray.push(band[row * width + col]);
+      //       }
+      //       result.push(rowArray);
+      //     }
+      //     return result;
+      //   }
+        
+      //   const bands = [
+      //     reshapeBand(red, width, height),
+      //     reshapeBand(green, width, height),
+      //     reshapeBand(blue, width, height),
+      //   ];
+
+
+      //////////////////// TOPNG + draw the img in canvas
+
+      const filter = (node: HTMLElement) => {
+        const exclusionClasses = ['mapboxgl-ctrl-group', 'mapboxgl-ctrl-geocoder'];
+        return !exclusionClasses.some((classname) => node.classList?.contains(classname));
+      }
+
+      toPng(parentElement, {filter: filter})
+        .then(async (dataUrl) => {
+          const img = new Image();
+          img.src = dataUrl;
+          await img.decode();
+  
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  
+          const pixelSizeX = (bbox.east - bbox.west) / canvas.width;
+          const pixelSizeY = (bbox.north - bbox.south) / canvas.height;
+  
+          const { writeArrayBuffer } = await import("geotiff");
+          
+
+          const metaData = {
+            GeographicTypeGeoKey: 4326,
+            height: canvas.height,
+            width: canvas.width,
+            ModelPixelScale: [pixelSizeX, pixelSizeY, 0],
+            ModelTiepoint: [0, 0, 0, bbox.west, bbox.north, 0],
+            SamplesPerPixel: 3, 
+            BitsPerSample: [8, 8, 8],
+            PlanarConfiguration: 1, 
+            PhotometricInterpretation: 2,
+            
+          };
+
+          const red = new Uint8Array(canvas.width * canvas.height);
+          const green = new Uint8Array(canvas.width * canvas.height);
+          const blue = new Uint8Array(canvas.width * canvas.height);
+
+
+          for (let i = 0; i < canvas.width * canvas.height; i++) {
+            red[i] = imageData.data[i * 4];       
+            green[i] = imageData.data[i * 4 + 1]; 
+            blue[i] = imageData.data[i * 4 + 2];  
+          }
+
+          function reshapeBand(band: any[] | Uint8Array<ArrayBuffer>, width: number, height: number) {
+            const result = [];
+            for (let row = 0; row < height; row++) {
+              const rowArray = [];
+              for (let col = 0; col < width; col++) {
+                rowArray.push(band[row * width + col]);
+              }
+              result.push(rowArray);
+            }
+            return result;
+          }
+          
+          const bands = [
+            reshapeBand(red, canvas.width, canvas.height),
+            reshapeBand(green, canvas.width, canvas.height),
+            reshapeBand(blue, canvas.width, canvas.height),
+          ];
+          console.log(bands, bands[0]);
+          
+          
+          
+          const arrayBuffer = await writeArrayBuffer(bands, metaData);
+  
+          const blob = new Blob([arrayBuffer], { type: "image/tiff" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "export.tif";
+          a.click();
         })
-        .catch(function (error) {
-          console.error('Error with downloading of composited image!', error);
-        });
+        .catch((err) => console.error("GeoTIFF export error:", err));
+    
+      
     }
 
     else {
       const aDiv = document.getElementById(
         "downloadFramesDiv"
       ) as HTMLAnchorElement;
-      const mapRef = props.mapRef;
-      const bounds = mapRef?.current?.getMap()?.getBounds();
+      // const mapRef = props.mapRef;
+      // const bounds = mapRef?.current?.getMap()?.getBounds();
       // Loop through each monthly basemap and download
 
       // const filteredPlanetDates =

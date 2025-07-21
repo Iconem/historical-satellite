@@ -10,6 +10,7 @@ import { getWaybackItems, getMetadata as getWaybackMetadata } from '@vannizhang/
 import { lngLatToWorld } from "@math.gl/web-mercator";
 import ky from 'ky'
 import SphericalMercator from '@mapbox/sphericalmercator'
+import { LngLat } from "mapbox-gl";
 
 
 // Convert yandex from 3395 CRS to 3857 standard TMS tiles
@@ -257,7 +258,10 @@ const useLocalStorage = (
 ): any => {
   const storedItem = localStorage.getItem(storageKey);
   // console.log(storedItem, 'storedItem')
-  let initValue = storedItem ? JSON.parse(storedItem) : fallbackState;
+  let initValue = (storedItem && storedItem !== 'undefined')
+  ? JSON.parse(storedItem)
+  : fallbackState;
+  
   if (isDate) {
     initValue = new Date(initValue);
   }
