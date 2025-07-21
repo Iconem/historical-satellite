@@ -500,38 +500,6 @@ function ControlPanel(props: any) {
           PhotometricInterpretation: 2,
 
         };
-
-      // toPng(parentElement, {filter: filter})
-      //   .then(async (dataUrl) => {
-      //     const img = new Image();
-      //     img.src = dataUrl;
-      //     await img.decode();
-  
-      //     const canvas = document.createElement("canvas");
-      //     canvas.width = img.width;
-      //     canvas.height = img.height;
-      //     const ctx = canvas.getContext("2d")!;
-      //     ctx.drawImage(img, 0, 0);
-      //     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  
-      //     const pixelSizeX = (bbox.east - bbox.west) / canvas.width;
-      //     const pixelSizeY = (bbox.north - bbox.south) / canvas.height;
-  
-      //     const { writeArrayBuffer } = await import("geotiff");
-          
-
-      //     const metaData = {
-      //       GeographicTypeGeoKey: 4326,
-      //       GeogCitationGeoKey : 'WGS 84',
-      //       height: canvas.height,
-      //       width: canvas.width,
-      //       ModelPixelScale: [pixelSizeX, pixelSizeY, 0],
-      //       ModelTiepoint: [0, 0, 0, bbox.west, bbox.north, 0],
-      //       SamplesPerPixel: 4, 
-      //       BitsPerSample: [8, 8, 8, 8],
-      //       PlanarConfiguration: 1, 
-      //       PhotometricInterpretation: 2,  
-      //     };
           
           const arrayBuffer = await writeArrayBuffer(data, metaData);
   
