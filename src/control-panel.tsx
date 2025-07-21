@@ -15,7 +15,7 @@ import PlayableSlider from "./playable-slider";
 import LinksSection from "./links-section";
 import { ExportSplitButton, ExportButtonOptions } from "./export-split-button";
 import SettingsModal from "./settings-modal";
-import { toPng } from 'html-to-image';
+import { toPixelData } from 'html-to-image';
 
 import {
   Select,
@@ -465,48 +465,75 @@ function ControlPanel(props: any) {
         return;
       }
 
-      //////////////////// TOPNG + draw the img in canvas
+      //////////////////// ToPixelData
 
 
       const filter = (node: HTMLElement) => {
         const exclusionClasses = ['mapboxgl-ctrl'];
         return !exclusionClasses.some((classname) => node.classList?.contains(classname));
       }
-      
+      const width = parentElement.clientWidth;
+      const height =parentElement.clientHeight;
+      const dpr = window.devicePixelRatio 
 
-      toPng(parentElement, {filter: filter})
-        .then(async (dataUrl) => {
-          const img = new Image();
-          img.src = dataUrl;
-          await img.decode();
+      mapRef.current?.resize(); 
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      console.log('test')
+
+      toPixelData(parentElement, {filter: filter,  canvasWidth: width / dpr, canvasHeight: height / dpr,}).then( async(data)=>{
+
+        const pixelSizeX = (bbox.east - bbox.west) / width;
+        const pixelSizeY = (bbox.north - bbox.south) / height;
+
+        const { writeArrayBuffer } = await import("geotiff");
+
+        const metaData = {
+          GeographicTypeGeoKey: 4326,
+          GeogCitationGeoKey : 'WGS 84',
+          height: height,
+          width: width,
+          ModelPixelScale: [pixelSizeX, pixelSizeY, 0],
+          ModelTiepoint: [0, 0, 0, bbox.west, bbox.north, 0],
+          SamplesPerPixel: 4, 
+          BitsPerSample: [8, 8, 8, 8],
+          PlanarConfiguration: 1, 
+          PhotometricInterpretation: 2,
+
+        };
+
+      // toPng(parentElement, {filter: filter})
+      //   .then(async (dataUrl) => {
+      //     const img = new Image();
+      //     img.src = dataUrl;
+      //     await img.decode();
   
-          const canvas = document.createElement("canvas");
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext("2d")!;
-          ctx.drawImage(img, 0, 0);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      //     const canvas = document.createElement("canvas");
+      //     canvas.width = img.width;
+      //     canvas.height = img.height;
+      //     const ctx = canvas.getContext("2d")!;
+      //     ctx.drawImage(img, 0, 0);
+      //     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   
-          const pixelSizeX = (bbox.east - bbox.west) / canvas.width;
-          const pixelSizeY = (bbox.north - bbox.south) / canvas.height;
+      //     const pixelSizeX = (bbox.east - bbox.west) / canvas.width;
+      //     const pixelSizeY = (bbox.north - bbox.south) / canvas.height;
   
-          const { writeArrayBuffer } = await import("geotiff");
+      //     const { writeArrayBuffer } = await import("geotiff");
           
 
-          const metaData = {
-            GeographicTypeGeoKey: 4326,
-            GeogCitationGeoKey : 'WGS 84',
-            height: canvas.height,
-            width: canvas.width,
-            ModelPixelScale: [pixelSizeX, pixelSizeY, 0],
-            ModelTiepoint: [0, 0, 0, bbox.west, bbox.north, 0],
-            SamplesPerPixel: 4, 
-            BitsPerSample: [8, 8, 8, 8],
-            PlanarConfiguration: 1, 
-            PhotometricInterpretation: 2,  
-          };
+      //     const metaData = {
+      //       GeographicTypeGeoKey: 4326,
+      //       GeogCitationGeoKey : 'WGS 84',
+      //       height: canvas.height,
+      //       width: canvas.width,
+      //       ModelPixelScale: [pixelSizeX, pixelSizeY, 0],
+      //       ModelTiepoint: [0, 0, 0, bbox.west, bbox.north, 0],
+      //       SamplesPerPixel: 4, 
+      //       BitsPerSample: [8, 8, 8, 8],
+      //       PlanarConfiguration: 1, 
+      //       PhotometricInterpretation: 2,  
+      //     };
           
-          const arrayBuffer = await writeArrayBuffer(imageData.data, metaData);
+          const arrayBuffer = await writeArrayBuffer(data, metaData);
   
           const blob = new Blob([arrayBuffer], { type: "image/tiff" });
           const a = document.createElement("a");
