@@ -449,9 +449,6 @@ function ControlPanel(props: any) {
     // html-to-image can do both export with clipPath and mixBlendMode, although seem a bit slower than html2canvas!
     // Note html2canvas cannot export with mixBlendModes and clipPath yet, see https://github.com/niklasvh/html2canvas/issues/580
     if (exportFramesMode == ExportButtonOptions.COMPOSITED) {
-
-      ////////////////////////////////////////NOUVEAU: export to a Geotiff
-  
       const bbox = {
         west: bounds.getWest(),
         south: bounds.getSouth(),
@@ -465,11 +462,8 @@ function ControlPanel(props: any) {
         return;
       }
 
-      //////////////////// ToPixelData
-
-
       const filter = (node: HTMLElement) => {
-        const exclusionClasses = ['mapboxgl-ctrl'];
+        const exclusionClasses = ['mapboxgl-ctrl-group', 'mapboxgl-ctrl-geocoder', 'mapboxgl-ctrl-logo'];
         return !exclusionClasses.some((classname) => node.classList?.contains(classname));
       }
       const width = parentElement.clientWidth;
@@ -506,15 +500,16 @@ function ControlPanel(props: any) {
           const blob = new Blob([arrayBuffer], { type: "image/tiff" });
           const a = document.createElement("a");
           a.href = URL.createObjectURL(blob);
-          a.download = "export.tif";
+          a.download = "composited_epsg4326.tif";
           a.click();
         })
-        .catch((err) => console.error("GeoTIFF export error:", err));
+        .catch((err) => console.error("Composited GeoTIFF export error:", err));
     
       
     }
 
     else {
+      // Loop through each monthly basemap and download
       const aDiv = document.getElementById(
         "downloadFramesDiv"
       ) as HTMLAnchorElement;
@@ -779,6 +774,7 @@ function ControlPanel(props: any) {
                 maxDate={validMaxDate}
                 setMaxDate={setMaxDate}
                 exportInterval={exportInterval}
+                // additional settings
                 setExportInterval={setExportInterval}
                 titilerEndpoint={titilerEndpoint}
                 setTitilerEndpoint={setTitilerEndpoint}

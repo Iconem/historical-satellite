@@ -171,9 +171,9 @@ function MapControls(props: any): ReactElement {
 
       <ScaleControl
         unit={'metric'}
-        position="top-left"
+        position="bottom-left"
         // style={{ clear: 'none' }}
-        maxWidth={60}
+        maxWidth={400}
       />
     </>
   )

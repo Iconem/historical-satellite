@@ -18,8 +18,6 @@ import {
   useWaybackUrl
 } from "./utilities";
 
-import {useResizeObserver} from '@react-hookz/web';
-
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 let rulerOk = false;
 // TODO Avoid tile popping on setTiles of rasterTileSet imagery source
@@ -320,10 +318,6 @@ function App() {
     }
   };
 
-  ////////////////////////////////////////////////NOUVEAU
-  
-
-
   return (
     <>
       <style>
@@ -585,7 +579,6 @@ function App() {
                   </Source>
                 )
             }
-            <ScaleControl maxWidth={60} unit="metric" position={'top-right'} />
           </Map>
           {(splitScreenMode !== "split-screen") && (
             <canvas
@@ -611,7 +604,6 @@ function App() {
         </div>
       </div>
       <ControlPanelDrawer
-
         // Adding custom Planet API key input
         clickedMap={clickedMap}
         customPlanetApiKey={customPlanetApiKey}
