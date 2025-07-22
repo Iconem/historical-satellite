@@ -579,7 +579,6 @@ function App() {
                   </Source>
                 )
             }
-            <ScaleControl maxWidth={60} unit="metric" position={'top-right'} />
           </Map>
           {(splitScreenMode !== "split-screen") && (
             <canvas
