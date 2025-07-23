@@ -2,10 +2,11 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
+import { writeArrayBuffer } from "geotiff";
 
-import  {  LngLatBounds, LngLat } from "mapbox-gl";
+import  {  LngLatBounds} from "mapbox-gl";
 
-import { getWaybackItemsWithLocalChanges,} from '@vannizhang/wayback-core';
+import { getWaybackItemsWithLocalChanges} from '@vannizhang/wayback-core';
 import {
   addMonths,
   subMonths,
@@ -46,6 +47,7 @@ import {
   dateToSliderVal,
   formatDate,
   planetBasemapUrl,
+  wayBackWithLocalChangesUrl,
   BasemapsIds,
   basemapsTmsSources,
   getSliderMarks,
@@ -84,9 +86,13 @@ export type MapSplitMode = "side-by-side" | "split-screen";
 
 const escapeTmsUrl = (url: string) =>
   url
+
     .replace("{x}", "${x}")
     .replace("{y}", "${y}")
     .replace("{z}", "${z}")
+    .replace('{level}', '${z}')
+    .replace('{row}', '${y}')
+    .replace('{col}', '${x}')
     .replace("{quadkey}", "${quadkey}")
     .replaceAll("&", "&amp;");
 
@@ -472,14 +478,11 @@ function ControlPanel(props: any) {
 
       mapRef.current?.resize(); 
       await new Promise((resolve) => setTimeout(resolve, 50));
-      console.log('test')
 
-      toPixelData(parentElement, {filter: filter,  canvasWidth: width / dpr, canvasHeight: height / dpr,}).then( async(data)=>{
+      toPixelData(parentElement, {filter: filter,  canvasWidth: width / dpr, canvasHeight: height / dpr, skipFonts: true}).then( async(data)=>{
 
         const pixelSizeX = (bbox.east - bbox.west) / width;
         const pixelSizeY = (bbox.north - bbox.south) / height;
-
-        const { writeArrayBuffer } = await import("geotiff");
 
         const metaData = {
           GeographicTypeGeoKey: 4326,
@@ -520,7 +523,6 @@ function ControlPanel(props: any) {
           end: validMaxDate,
         }).filter((_: Date, i: number) => i % exportInterval == 0)
 
-
       function get_batch_cmd(tmsUrl: string, bounds, filename: string,) {
         const downloadUrl = titilerCropUrl(
           bounds,
@@ -528,6 +530,7 @@ function ControlPanel(props: any) {
           maxFrameResolution,
           titilerEndpoint
         );
+        
         const batch_cmd = `REM ${filename}\nREM ${downloadUrl}\n` +
           // gdal_translate command
           `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "${buildGdalWmsXml(tmsUrl)}" %DOWNLOAD_FOLDER%\\${filename + "_gdal.tif"
@@ -543,28 +546,42 @@ function ControlPanel(props: any) {
         // Also potentially useful: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
         const filename = `PlanetMonthly_${date_YYYY_MM}`
         const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
+        
         return cmd_obj;
       });
 
-      const gdalTranslateCmds_other = Object.entries(basemapsTmsSources)
-        .filter(([key, value]) => {
-          return +key !== BasemapsIds.PlanetMonthly
-        })
-        .map(([key, value]) => {
-          const filename = BasemapsIds[key]
-          const tmsUrl = basemapsTmsSources[key].url
-          const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
-          return cmd_obj;
-        })
-
-      const gdalTranslateCmds = [...gdalTranslateCmds_other, ...gdalTranslateCmds_planet]
-
-      // Write gdal_translate command to batch script with indices to original location of cropped version
-      const center = mapRef?.current?.getMap()?.getCenter();
+      const center = mapRef?.current?.getMap()?.getCenter();   
       const degrees_decimals = 4; // 4 decimals ~11m precision / 5 decimals ~1m precision
       const center_lng = center?.lng?.toFixed(degrees_decimals);
       const center_lat = center?.lat?.toFixed(degrees_decimals);
       const zoom = mapRef?.current?.getMap()?.getZoom();
+      
+      const wayBackWithLocalChangesResponse =  await wayBackWithLocalChangesUrl(center?.lat , center?.lng ,  zoom);
+      
+      const gdalTranslateCmds_wayBack = wayBackWithLocalChangesResponse.map((item) => {
+        const tmsUrl = item.itemURL
+        const date_YYYY_MM = formatDate(new Date(item.releaseDateLabel));
+        const filename = `Esri_WayBack_${date_YYYY_MM}`
+        const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
+        return cmd_obj;
+      });
+
+
+      const gdalTranslateCmds_other = Object.entries(basemapsTmsSources)
+        .filter(([key, value]) => {
+          return +key !== BasemapsIds.PlanetMonthly &&  +key !== BasemapsIds.ESRIWayback
+        })
+        .map(([key, value]) => {
+          const filename = BasemapsIds[key]
+          const tmsUrl = basemapsTmsSources[key].url
+          
+          const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
+          return cmd_obj;
+        })
+
+      const gdalTranslateCmds = [...gdalTranslateCmds_other, ...gdalTranslateCmds_planet, ...gdalTranslateCmds_wayBack]
+
+      // Write gdal_translate command to batch script with indices to original location of cropped version
       const foldername = `historical-maps-${center_lng}-${center_lat}-${zoom}`;
       const gdal_commands =
         "REM GDAL COMMANDS to retrieve Planet Monthly Basemaps (without TiTiler)\n" +
@@ -842,3 +859,4 @@ function ControlPanel(props: any) {
 }
 
 export default ControlPanelDrawer;
+
