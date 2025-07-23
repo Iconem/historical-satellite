@@ -478,7 +478,6 @@ function ControlPanel(props: any) {
 
       mapRef.current?.resize(); 
       await new Promise((resolve) => setTimeout(resolve, 50));
-      console.log('test')
 
       toPixelData(parentElement, {filter: filter,  canvasWidth: width / dpr, canvasHeight: height / dpr, skipFonts: true}).then( async(data)=>{
 
@@ -547,7 +546,6 @@ function ControlPanel(props: any) {
         // Also potentially useful: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
         const filename = `PlanetMonthly_${date_YYYY_MM}`
         const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
-        console.log('planet',cmd_obj);
         
         return cmd_obj;
       });

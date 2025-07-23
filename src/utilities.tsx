@@ -45,10 +45,9 @@ export function useWaybackUrl(date: Date, waybackItemsWithLocalChanges: Array<an
   const [loading, setLoading] = useState(true);
   const [url, setUrl] = useState(String);
 
-
   useEffect(() => {
     const initWayBackItems = async () => {
-      const items = await getWaybackItems();      
+      const items = await getWaybackItems();
       // Returns a list of WaybackItem for all World Imagery Wayback releases/versions from the Wayback archive
       // The output list is sorted by release date in descending order (newest release is the first item).
       mostRecentReleaseNumber = items[0].releaseNum
@@ -86,8 +85,6 @@ export function useWaybackUrl(date: Date, waybackItemsWithLocalChanges: Array<an
 
   return { url, loading };
 }
-
-
 
 const planetBasemapUrl = (date: Date, customApi?: string) => {
   // basemap_date_str = "2019_01";
@@ -422,7 +419,6 @@ async function getBingViewportDate(map: any) {
   const quadkeysArray = xyzArray.map((xyz: any) => toQuad(xyz.x, xyz.y, xyz.z));
   console.log(quadkeysArray);
   const bingUrls = quadkeysArray.map((quadkey: string) => getBingUrl(quadkey));
-
 
   const tilesDates = await Promise.all(
     bingUrls.map(async (url) => await getBingDatesFromUrl(url))
