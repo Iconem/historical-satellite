@@ -1,6 +1,6 @@
 import { ReactElement, memo, useCallback } from 'react'
 import CustomOverlay from './custom-overlay';
-import { ScaleControl, NavigationControl, useControl } from "react-map-gl";
+import { ScaleControl, NavigationControl, useControl } from "react-map-gl/mapbox-legacy";
 import GeocoderControl from './geocoder-control'
 import RulerControl from '@mapbox-controls/ruler';
 import JSZip from 'jszip'

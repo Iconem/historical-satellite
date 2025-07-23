@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 
 import "./App.css";
-import Map, { type MapRef, Source, Layer, ScaleControl } from "react-map-gl";
+import Map, { type MapRef, Source, Layer } from "react-map-gl/mapbox-legacy";
 import ControlPanelDrawer, { type MapSplitMode } from "./control-panel";
-import { set, subMonths } from "date-fns";
+import { subMonths } from "date-fns";
 import Split from "react-split";
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import '@mapbox-controls/ruler/src/index.css';

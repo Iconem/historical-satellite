@@ -3,11 +3,11 @@
 
 import * as React from 'react'
 import { useState, cloneElement } from 'react'
-import { useControl } from 'react-map-gl'
+import { useControl } from 'react-map-gl/mapbox-legacy'
 import { createPortal } from 'react-dom'
 import PropTypes from 'prop-types'
 
-import type { MapboxMap, IControl } from 'react-map-gl'
+import type { MapboxMap, IControl } from 'react-map-gl/mapbox-legacy'
 
 class OverlayControl implements IControl {
   _map: MapboxMap | null = null

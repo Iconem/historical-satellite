@@ -6,8 +6,7 @@ import {
   eachYearOfInterval,
 } from "date-fns";
 import { useState, useEffect } from "react";
-import { getWaybackItems, getMetadata as getWaybackMetadata } from '@vannizhang/wayback-core';
-import { lngLatToWorld } from "@math.gl/web-mercator";
+import { getWaybackItems, getMetadata as getWaybackMetadata, getWaybackItemsWithLocalChanges } from '@vannizhang/wayback-core';
 import ky from 'ky'
 import SphericalMercator from '@mapbox/sphericalmercator'
 import { LngLat } from "mapbox-gl";
@@ -35,20 +34,21 @@ const formatDate = (date: Date) => format(date, "yyyy-MM");
 
 // PlanetMonthly URLS
 const PLANET_BASEMAP_API_KEY = import.meta.env.VITE_PLANET_BASEMAP_API_KEY;
+const MAPBOX_TOKEN= import.meta.env.VITE_MAPBOX_TOKEN
 
 // Set min/max dates for planet monthly basemaps on component mount
 export const MIN_PLANET_DATE = new Date("2016-01-01T00:00:00.000");
 export const MAX_PLANET_DATE = subMonths(new Date(), 1);
-
 
 export function useWaybackUrl(date: Date, waybackItemsWithLocalChanges: Array<any>) {
   const [wayBackItems, setWaybackItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [url, setUrl] = useState(String);
 
+
   useEffect(() => {
     const initWayBackItems = async () => {
-      const items = await getWaybackItems();
+      const items = await getWaybackItems();      
       // Returns a list of WaybackItem for all World Imagery Wayback releases/versions from the Wayback archive
       // The output list is sorted by release date in descending order (newest release is the first item).
       mostRecentReleaseNumber = items[0].releaseNum
@@ -59,12 +59,6 @@ export function useWaybackUrl(date: Date, waybackItemsWithLocalChanges: Array<an
   }, []);
 
   useEffect(() => {
-
-    //         itemURL: itemURL.replace('{level}', '{z}').replace('{row}', '{y}').replace('{column}', '{y}'), 
-    //         releaseDatetime: new Date(releaseDatetime), 
-    //         releaseDateLabel, 
-    //         releaseNum
-
     let waybackItems_: Array<any>;
     if (waybackItemsWithLocalChanges && waybackItemsWithLocalChanges.length > 0) {
       waybackItems_ = waybackItemsWithLocalChanges
@@ -79,7 +73,6 @@ export function useWaybackUrl(date: Date, waybackItemsWithLocalChanges: Array<an
       item => (new Date(item.releaseDatetime) > date),
       sortedItems
     )
-    // console.log('ESRI Wayback testing ', sortedItems, closestSuperior, closestSuperior?.itemURL)
     if (closestSuperior) {
       const closestUrl = closestSuperior?.itemURL
         .replace('{level}', '{z}')
@@ -103,6 +96,10 @@ const planetBasemapUrl = (date: Date, customApi?: string) => {
     "yyyy_MM"
   )}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${customApi ? customApi : PLANET_BASEMAP_API_KEY}`;
 };
+
+const wayBackWithLocalChangesUrl=  async (lat:number, long:number, zoom:number) =>{
+  return await getWaybackItemsWithLocalChanges({  longitude: long , latitude: lat }, zoom);  
+}
 
 // Set custom slider marks for each beginning of year
 function getSliderMarks(dates_array: Date[], minDate: Date) {
@@ -167,7 +164,7 @@ const basemapsTmsSources: any = {
   // Mapbox relies on Maxar (z 13-16) and Vexcel Imagery (z16+)
   // https://docs.mapbox.com/data/tilesets/reference/mapbox-satellite/#data-sources
   [BasemapsIds.Mapbox]: {
-    url: `https://api.mapbox.com/v4/mapbox.satellite//{z}/{x}/{y}.webp?sku=101OD9Bs4ngtD&access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA`,
+    url: `https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.webp?sku=1018anLugHFK1&access_token=${MAPBOX_TOKEN}`,
     maxzoom: 22,
   },
   [BasemapsIds.Heremaps]: {
@@ -257,7 +254,6 @@ const useLocalStorage = (
   isDate = false
 ): any => {
   const storedItem = localStorage.getItem(storageKey);
-  // console.log(storedItem, 'storedItem')
   let initValue = (storedItem && storedItem !== 'undefined')
   ? JSON.parse(storedItem)
   : fallbackState;
@@ -273,7 +269,6 @@ const useLocalStorage = (
         fallbackState !== null &&
         !objectsHaveSameKeys(fallbackState, initValue))
     ) {
-      // console.log(`Setting ${storageKey} value to fallbackState`)
       initValue = fallbackState;
     }
   }
@@ -400,9 +395,7 @@ function getBingUrl(quadkey: string) {
 async function getBingDatesFromUrl(url: string) {
   const dates = await fetch(url).then(function (response) {
     // In the bing case, can look for a response header property
-    // console.log(url, response.headers);
     const dates = getBingDatesFromResponse(response);
-    // console.log("getBingDatesFromUrl, in fetch", dates);
     return dates;
   });
   return dates ?? "error on fetch ?";
@@ -427,22 +420,9 @@ async function getBingViewportDate(map: any) {
   const xyzArray = getVisibleTilesXYZ(map, 256); // source.tileSize)
   console.log(xyzArray);
   const quadkeysArray = xyzArray.map((xyz: any) => toQuad(xyz.x, xyz.y, xyz.z));
-  // const quadkeysArray = xyzArray.map((xyz: any) => toQuad(xyz.x, 2 ** xyz.z - 1 - xyz.y, xyz.z));
   console.log(quadkeysArray);
   const bingUrls = quadkeysArray.map((quadkey: string) => getBingUrl(quadkey));
-  // console.log(bingUrls);
 
-  // const promArray = bingUrls.map(async (url) => {
-  //   return await getBingDatesFromUrl(url);
-  // });
-  // console.log("promArray", promArray);
-  // Promise.all(promArray).then((dates) => {
-  //   console.log("after promise.all", dates);
-  //   const minDate = Math.min(...(dates as any).map((d: number[]) => d[0]));
-  //   const maxDate = Math.max(...(dates as any).map((d: number[]) => d[1]));
-  //   console.log(dates, minDate, maxDate);
-  //   document.a = dates;
-  // });
 
   const tilesDates = await Promise.all(
     bingUrls.map(async (url) => await getBingDatesFromUrl(url))
@@ -580,6 +560,7 @@ export {
   dateToSliderVal,
   formatDate,
   planetBasemapUrl,
+  wayBackWithLocalChangesUrl,
   BasemapsIds,
   basemapsTmsSources,
   getSliderMarksEveryYear,

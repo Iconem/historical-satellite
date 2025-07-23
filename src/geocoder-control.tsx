@@ -6,7 +6,7 @@ import {
   useControl,
   type MarkerProps,
   type ControlPosition,
-} from "react-map-gl";
+} from "react-map-gl/mapbox-legacy";
 import type * as React from "react";
 import mapboxgl from "mapbox-gl";
 import MapboxGeocoder, {
