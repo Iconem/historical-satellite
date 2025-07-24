@@ -42,6 +42,8 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 
 import { differenceInMonths, eachMonthOfInterval, isValid } from "date-fns";
+import JSZip from "jszip";
+import { saveAs } from 'file-saver';
 import {
   sliderValToDate,
   dateToSliderVal,
@@ -60,6 +62,7 @@ import {
   retrieveAppleAccessToken,
 
 } from "./utilities";
+
 
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
 const MAX_FRAME_RESOLUTION = 512; // 1024 - 2048 TODO 512 FOR TESTING? 2048 BETTER
@@ -144,8 +147,18 @@ a = `${titilerEndpoint}/cog/crop/${coords_str}&url=${encodeURIComponent(
 const timer = async (ms: number): Promise<any> =>
   await new Promise((resolve) => setTimeout(resolve, ms));
 
+var zip = new JSZip();
+
+function generateZip(zip: JSZip,foldername: any){
+  zip.generateAsync({type:"blob"})
+  .then(function(blob: any) {
+    saveAs(blob, `${foldername}.zip`)
+  });
+}
+
 // Send batches of PROMISES_BATCH_SIZE POST requests to ApolloMapping API server
-async function fetchTitilerFramesBatches(gdalTranslateCmds: any, aDiv: any) {
+async function fetchTitilerFramesBatches(gdalTranslateCmds: any, foldername: string) {
+  var parentFolder= zip.folder("historical_images");
   for (let i = 0; i < gdalTranslateCmds.length; i += PROMISES_BATCH_SIZE) {
     const chunk = gdalTranslateCmds.slice(i, i + PROMISES_BATCH_SIZE);
     // Await all promises of chunk fetching
@@ -153,18 +166,16 @@ async function fetchTitilerFramesBatches(gdalTranslateCmds: any, aDiv: any) {
       chunk.map((c: any) => {
         fetch(c.downloadUrl)
           .then((response) => response.blob())
-          .then((blob) => {
-            console.log("downloading new ", c.downloadUrl);
-            const blobURL = URL.createObjectURL(blob);
-            aDiv.href = blobURL;
-            aDiv.download = c.filename + "_titiler.tif";
-            aDiv.click();
+          .then( async(blob) => {
+            const arrayBuffer = await blob.arrayBuffer();
+            parentFolder?.file(`${c.filename}_titiler.tif`, arrayBuffer);
           });
       })
     );
 
     await timer(PROMISES_BATCH_DELAY);
   }
+  generateZip(zip,foldername)
 }
 
 
@@ -593,11 +604,14 @@ function ControlPanel(props: any) {
         `for /f "delims=" %%i in ('dir /b/od/t:c C:\\PROGRA~1\\QGIS*') do set QGIS="C:\\PROGRA~1\\%%i"\n` +
         `mkdir ${foldername} \n\n` +
         gdalTranslateCmds.map((c) => c.batch_cmd).join("\n");
-      aDiv.href =
-        "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
-      aDiv.download = "gdal_commands.bat";
 
-      aDiv.click();
+      if (exportFramesMode == ExportButtonOptions.SCRIPT_ONLY) {
+        aDiv.href =
+        "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
+        aDiv.download = "gdal_commands.bat";
+        aDiv.click();
+      }
+
       // METHOD 2 TEST not working, since MDN says only supported in secure contexts (HTTPS)
       // Other way using HTML Native Filesystem API
       // https://stackoverflow.com/questions/34870711/download-a-file-at-different-location-using-html5/70001920#70001920
@@ -621,7 +635,8 @@ function ControlPanel(props: any) {
 
         // // --- METHOD 2 : batches ---
         console.log('exportFramesMode == ExportButtonOptions.ALL_FRAMES')
-        fetchTitilerFramesBatches(gdalTranslateCmds, aDiv);
+        zip.file("gdal_commands.bat", gdal_commands);
+        fetchTitilerFramesBatches(gdalTranslateCmds, foldername);
       }
     }
   }
