@@ -108,12 +108,6 @@ function App() {
   }, [])
 
 
-  // const [leftSelectedTms, setLeftSelectedTms] = useState<BasemapsIds>(
-  //   BasemapsIds.PlanetMonthly
-  // );
-  // const [rightSelectedTms, setRightSelectedTms] = useState<BasemapsIds>(
-  //   BasemapsIds.GoogleHybrid
-  // );
   const [leftSelectedTms, setLeftSelectedTms]: [BasemapsIds, (e: BasemapsIds) => void] = useLocalStorage(
     "ui_leftSelectedTms",
     BasemapsIds.PlanetMonthly
@@ -126,7 +120,6 @@ function App() {
   function resizeMaps() {
     leftMapRef.current?.getMap()?.resize();
     rightMapRef.current?.getMap()?.resize();
-    // rightMapRef.current.resize();
   }
 
   // Update raster TMS source faster than react component remount on timelineDate state update
@@ -263,6 +256,8 @@ function App() {
   const [geojsonFeatures, setGeojsonFeatures]: [GeoJSON.FeatureCollection, Function] = useState({
     type: 'FeatureCollection', features: []
   })
+
+  const [selectedBasemap,setSelectedBasemap] = useState('1')
 
   function GeojsonLayer() {
     return (
@@ -449,9 +444,14 @@ function App() {
         // projection={"naturalEarth"} // globe mercator naturalEarth equalEarth  // TODO: eventually make projection controllable
         >
           <MapControls
-            mapRef={leftMapRef}
+            mapRef={clickedMap == "left" ? leftMapRef : rightMapRef}
+            rightMapRef={rightMapRef}
+            leftMapRef = {leftMapRef}
             mapboxAccessToken={MAPBOX_TOKEN}
             setGeojsonFeatures={setGeojsonFeatures}
+            clickedMap={clickedMap}
+            leftSelectedTms={leftSelectedTms}
+            selectedBasemap={selectedBasemap}
           />
 
           <GeojsonLayer />
@@ -551,7 +551,7 @@ function App() {
                     tileSize={256}
                     key={"planet" + rightTimelineDate.toString()}
                   >
-                    <Layer type="raster" layout={{}} paint={{}} />
+                    <Layer type="raster" layout={{}} paint={{'raster-opacity-transition': { duration: 0 }}} />
                   </Source>
                 ) : rightSelectedTms == BasemapsIds.ESRIWayback ? (
                   <Source
@@ -563,7 +563,7 @@ function App() {
                     // key={"wayback" + rightTimelineDate.toString().toLowerCase()}
                     key={"wayback-" + rightWaybackUrl.split('/').reverse()[3]}
                   >
-                    <Layer type="raster" layout={{}} paint={{}} />
+                    <Layer type="raster" layout={{}} paint={{'raster-opacity-transition': { duration: 0 }}} />
                   </Source>
                 ) : (
                   <Source
@@ -636,7 +636,11 @@ function App() {
         setLeftSelectedTms={setLeftSelectedTms}
         setRightSelectedTms={setRightSelectedTms}
         leftMapRef={leftMapRef}
+        rightMapRef= {rightMapRef}
         setWaybackItemsWithLocalChanges={setWaybackItemsWithLocalChanges}
+
+        setSelectedBasemap = {setSelectedBasemap}
+        selectedBasemap={selectedBasemap}
       />
     </>
   );

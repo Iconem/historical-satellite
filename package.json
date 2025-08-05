@@ -31,12 +31,14 @@
     "html-to-image": "^1.11.11",
     "jszip": "^3.10.1",
     "ky": "^1.5.0",
-    "mapbox-gl": "^2.14.1",
+    "mapbox-gl": "^3.14.0",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-map-gl": "8.0",
-    "react-split": "^2.0.14"
+    "react-split": "^2.0.14",
+    "terra-draw": "^1.11.0",
+    "terra-draw-mapbox-gl-adapter": "^1.1.0"
   },
   "devDependencies": {
     "@types/react": "^18.0.28",

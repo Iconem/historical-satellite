@@ -182,6 +182,7 @@ function generateZip(zip: JSZip,foldername: any){
 
 // Send batches of PROMISES_BATCH_SIZE POST requests to ApolloMapping API server
 async function fetchTitilerFramesBatches(gdalTranslateCmds: any, foldername: string, zip: JSZip, setProgress: ((arg0: number) => void)) {
+  setProgress(0);
   const total = gdalTranslateCmds.length;
   let completed = 0;
 
@@ -490,10 +491,12 @@ function ControlPanel(props: any) {
     },
     [props.clickedMap, props.selectedTms, props.mapRef]
   )
-
+  
   const handleBasemapChange = (event: SelectChangeEvent) => {
     const selectedTms = event.target.value as BasemapsIds
     props.setSelectedTms(selectedTms); // as string
+    props.setSelectedBasemap(selectedTms)
+    
   };
   // ------------------------------------------
   // HANDLE EXPORT SAVE TO DISK
@@ -524,7 +527,7 @@ function ControlPanel(props: any) {
       }
 
       const filter = (node: HTMLElement) => {
-        const exclusionClasses = ['mapboxgl-ctrl-group', 'mapboxgl-ctrl-geocoder', 'mapboxgl-ctrl-logo'];
+        const exclusionClasses = ['mapboxgl-ctrl-group', 'mapboxgl-ctrl-geocoder', 'mapboxgl-ctrl-logo', 'terradraw-group'];
         return !exclusionClasses.some((classname) => node.classList?.contains(classname));
       }
       const width = parentElement.clientWidth;
@@ -711,10 +714,9 @@ function ControlPanel(props: any) {
         setIsDownloading(true);
         zip.file("gdal_commands.bat", gdal_commands);
         const cmdsToDownload = gdalTranslateCmds.filter(cmd => cmd.active);
-
         await fetchTitilerFramesBatches(cmdsToDownload, foldername, zip, setProgress);
         setIsDownloading(false);
-        setProgress(0);
+        
       }
     }
   }
