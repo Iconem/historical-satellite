@@ -197,6 +197,12 @@ function FileUploadControl(props: any): ReactElement {
 
 function MapDrawingComponent(props: any): ReactElement  {
 
+  // const terraDrawStartedRef = useRef(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const onSelect = (id: string) => {
+    setSelectedId(id);
+  };
+
   function initTerraDrawLeft(map: mapboxgl.Map) {
       if (props.terraDrawLeftRef.current) {
         try {
@@ -205,6 +211,7 @@ function MapDrawingComponent(props: any): ReactElement  {
           console.warn("Erreur lors du stop précédent :", e);
         }
       }
+    // if (terraDrawStartedRef.current) return;
     const terraDraw = new TerraDraw({
       adapter: new TerraDrawMapboxGLAdapter({ map }),
       modes: [
@@ -230,6 +237,9 @@ function MapDrawingComponent(props: any): ReactElement  {
     });
   
     terraDraw.start();
+    // terraDrawStartedRef.current = true;
+    terraDraw.on("select", onSelect);
+
     const layers = map.getStyle().layers;
     
       if (layers) {
@@ -280,6 +290,7 @@ function MapDrawingComponent(props: any): ReactElement  {
     });
   
     terraDraw.start();
+    terraDraw.on("select", onSelect);
     const layers = map.getStyle().layers;
     if (layers) {
       layers.forEach(layer => {
@@ -356,127 +367,89 @@ function MapDrawingComponent(props: any): ReactElement  {
     setActiveMode('static');
   }, [props.clickedMap]);
 
-  //move terradraw layer to the front
   useEffect(() => {
-    console.log('AAAAAA',props.selectedBasemap);
     const leftMap = props.leftMapRef?.current?.getMap();
-    const rightMap = props.rightMapRef?.current?.getMap();
-  
-    // if (!leftMap ) return;
+    const leftTerraDraw = props.terraDrawLeftRef?.current;
 
-    function bringTerraDrawToFront(map: mapboxgl.Map) {
-      const layers = map.getStyle().layers;
-      console.log('LAYEEEEEEEEEEEEEEERS', layers);
-      
-      if (!layers) return;
-  
-      layers.forEach((layer) => {
-        if (layer.id.startsWith("td")) {
-          try {
-            map.moveLayer(layer.id); 
-            console.log(`Moved layer ${layer.id}`);
-          } catch (e) {
-            console.warn(`Erreur moveLayer sur ${layer.id}`, e);
-          }
-        }
-      });
-    }
-  
-    if (leftMap.isStyleLoaded()) {
-      console.log('left loaded');
-      bringTerraDrawToFront(leftMap);
-    } else {
-      console.log('left still loaded');
-      leftMap.on("load", () => {
-        console.log('UPPPPPPPPPP');
-        
-        const waiting = () => {
-          if (!leftMap.isStyleLoaded()) {
-            setTimeout(waiting, 200);
-          } else {
-            bringTerraDrawToFront(leftMap);
-          }
-        };
-        waiting();
-        
-        console.log('preteeeeeeeeee');
-        
-        bringTerraDrawToFront(leftMap);
-      });
-    }
+    if (!leftMap || !leftTerraDraw) return;
     
+    let alreadyMoved = false;
+
+    const bringTerraDrawToFront = () => {
+      const savedFeatures = leftTerraDraw.getSnapshot();
+      console.log('saaaved', savedFeatures);
+      if (!leftTerraDraw || !savedFeatures) return;
+      if (alreadyMoved) return;
+      let moved = false;
+      console.log('hereeeeeeeeeeee');
+      
+      try {
+        leftTerraDraw.stop();
+        leftTerraDraw.start();    
+        console.log(leftTerraDraw.getSnapshot())   
+        leftTerraDraw.addFeatures(savedFeatures);
+      } catch (e) {
+        console.warn("Erreur bringTerraDrawToFront", e);
+      }
+      moved = true;
+
+      if (moved) {
+        alreadyMoved = true; 
+      }
+    };
     
-    // if (rightMap.isStyleLoaded()) {
-    //   console.log('right loaded');
-      
-    //   bringTerraDrawToFront(rightMap);
-    // }
-    rightMap.on("style.load", () => {
-      console.log('right still loaded ');
-      
-      bringTerraDrawToFront(rightMap);
-    });
+
+    const onIdle = () => {
+      console.log('yepppp');
+      bringTerraDrawToFront();
+    };
+
+    leftMap.on("idle", onIdle);
+    leftMap.on("load", onIdle);
   
+
+    return () => {
+      leftMap.off("idle", onIdle);
+      leftMap.off("load", onIdle);
+    };
   }, [props.selectedBasemap]);
+  
+      // const layers = leftMap.getStyle().layers;
+      // if (!layers) return;
+      // layers.forEach((layer) => {
+      //   if (layer.id.startsWith("td")) {
+      //     try {
+      //       leftMap.moveLayer(layer.id);
+      //       console.log(`Moved layer ${layer.id}`);
+      //       moved = true;
+      //     } catch (e) {
+      //       console.warn(`Erreur moveLayer sur ${layer.id}`, e);
+      //     }
+      //   }
+      // });
 
-  // useEffect(() => {
-  //   const leftMap = props.leftMapRef?.current?.getMap();
-  //   const rightMap = props.rightMapRef?.current?.getMap();
-  
-  //   if (!leftMap || !rightMap) return;
-  
-  //   function bringTerraDrawToFront(map: mapboxgl.Map) {
-  //     const layers = map.getStyle().layers;
-  //     if (!layers) return;
-  
-  //     layers.forEach((layer) => {
-  //       console.log('layer', layer);
-        
-  //       if (layer.id.startsWith("td")) {
-  //         try {
-  //           map.moveLayer(layer.id);
-  //           console.log(`Moved layer ${layer.id}`);
-  //         } catch (e) {
-  //           console.warn(`Erreur moveLayer sur ${layer.id}`, e);
-  //         }
-  //       }
-  //     });
-  //   }
-  
-  //   // Pour leftMap
-  //   if (props.clickedMap === "left") {
-  //     console.log('leftclicked');
+
+  //move terradraw layer to the front
+      // function bringTerraDrawToFront(map: mapboxgl.Map) {
+    //   const layers = map.getStyle().layers;
+    //   console.log('LAYEEEEEEEEEEEEEEERS', layers);
       
-  //     if (leftMap.isStyleLoaded()) {
-  //       console.log('leftloaded');
-        
-  //       bringTerraDrawToFront(leftMap);
-  //     } else {
-  //       console.log('entre dans le else');
-        
-  //       // Sinon on attend le chargement du style
-  //       leftMap.once("style.load", () => {
-  //         console.log("leftMap style chargé (event)");
-  //         bringTerraDrawToFront(leftMap);
-  //       });
-  //     }
-  //   }
-    
+    //   if (!layers) return;
   
-  //   // Même chose pour rightMap
-  //   // if (rightMap.isStyleLoaded()) {
-  //   //   bringTerraDrawToFront(rightMap);
-  //   // } else {
-  //   //   rightMap.on("style.load", () => {
-  //   //     console.log("rightMap style chargé (event)");
-  //   //     bringTerraDrawToFront(rightMap);
-  //   //   });
-  //   // }
-  
-  // }, [props.selectedBasemap]);
-  
-
-
+    //   layers.forEach((layer) => {
+    //     // remove layers mn TerraDraw
+    //     // apres addlayer (layers )
+    //     if (layer.id.startsWith("terra-draw")) {
+    //       try {
+    //         map.moveLayer(layer.id); 
+    //         console.log(`Moved layer ${layer.id}`);
+    //       } catch (e) {
+    //         console.warn(`Erreur moveLayer sur ${layer.id}`, e);
+    //       }
+    //     }
+    //   });
+    // }
+ 
   //Switch between draw's modes
   type Mode = "rectangle" | "polygon" | "point" | "static"| "select";
   const [activeMode, setActiveMode] = useState<Mode>("static");
@@ -498,11 +471,6 @@ function MapDrawingComponent(props: any): ReactElement  {
   function exportDrawing() {
     const leftFeatures = props.terraDrawLeftRef?.current?.getSnapshot() ?? [];
     const rightFeatures = props.terraDrawRightRef?.current?.getSnapshot() ?? [];
-
-    console.log('FEATUUUUUUUUUUUUUURES',leftFeatures);
-    
-  
-    // Fusionner les deux tableaux
     const combinedFeatures = [...leftFeatures, ...rightFeatures];
   
     if (combinedFeatures.length === 0) {
@@ -526,28 +494,6 @@ function MapDrawingComponent(props: any): ReactElement  {
     a.click();
     URL.revokeObjectURL(url);
   }
-  
-
-  //Select one feature
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const onSelect = (id: string) => {
-    setSelectedId(id);
-  };
-  useEffect(() => {
-    const draw =
-      props.clickedMap === "left"
-        ? props.terraDrawLeftRef.current
-        : props.terraDrawRightRef.current;
-  
-    if (!draw) return;
-  
-    draw.on("select", onSelect);
-  
-    return () => {
-      draw.off("select", onSelect);
-    };
-  }, [props.clickedMap]);
-  
 
   //delete handler for selected feature
   function deleteHandler() {
@@ -559,6 +505,8 @@ function MapDrawingComponent(props: any): ReactElement  {
     if (!draw) return;
   
     if (selectedId) {
+      console.log('haaaaaaa');
+      
       const snapshot = draw?.getSnapshot();
       const filteredFeatures = snapshot.filter(
         (f: { id: any }) => f.id !== selectedId

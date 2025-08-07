@@ -431,15 +431,12 @@ function App() {
           ref={leftMapRef}
           onClick={() => {
             setClickedMap("left")
-            // setLeftMa
           }}
           onMoveStart={onLeftMoveStart}
-          // onMove={activeMap === "left" ? onMove : () => ({})}
           onMove={activeMap === "left" ? onMoveDebounce : () => ({})}
           onMoveEnd={onMoveEnd}
           style={LeftMapStyle}
           mapStyle={leftMapboxMapStyle}
-        // transformRequest={transformRequest}
 
         // projection={"naturalEarth"} // globe mercator naturalEarth equalEarth  // TODO: eventually make projection controllable
         >
@@ -450,7 +447,6 @@ function App() {
             mapboxAccessToken={MAPBOX_TOKEN}
             setGeojsonFeatures={setGeojsonFeatures}
             clickedMap={clickedMap}
-            leftSelectedTms={leftSelectedTms}
             selectedBasemap={selectedBasemap}
           />
 
@@ -485,7 +481,7 @@ function App() {
             </Source>
           ) : (
             <Source
-              id="tms-source"
+              id={`tms-source-${leftSelectedTms}`}
               scheme="xyz"
               type="raster"
               tiles={[basemapsTmsSources[leftSelectedTms].url]}
