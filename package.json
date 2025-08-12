@@ -35,10 +35,12 @@
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-icons": "^5.5.0",
     "react-map-gl": "8.0",
     "react-split": "^2.0.14",
     "terra-draw": "^1.11.0",
-    "terra-draw-mapbox-gl-adapter": "^1.1.0"
+    "terra-draw-mapbox-gl-adapter": "^1.1.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/react": "^18.0.28",

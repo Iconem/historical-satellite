@@ -835,8 +835,12 @@ function ControlPanel(props: any) {
                   </LocalizationProvider>{" "}
                 </>
               )}{" "}
-              <IconButton color="primary" aria-label="swap map sources">
-                <SwapHorizIcon onClick={props.swapMapSources} />
+              <IconButton 
+                color="primary" 
+                aria-label="swap map sources"
+                onClick={props.swapMapSources}
+              >
+                <SwapHorizIcon  />
               </IconButton>
             </Stack>
             <Stack

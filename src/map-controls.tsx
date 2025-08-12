@@ -10,12 +10,14 @@ import { kml } from '@tmcw/togeojson'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUpload, faTrash } from '@fortawesome/free-solid-svg-icons'
 
-import { TerraDraw, TerraDrawFreehandMode, TerraDrawPointMode, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode } from "terra-draw";
+import { TerraDraw, TerraDrawFreehandMode, TerraDrawLineStringMode, TerraDrawPointMode, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode } from "terra-draw";
 import { TerraDrawMapboxGLAdapter } from 'terra-draw-mapbox-gl-adapter';
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import mapboxgl from 'mapbox-gl';
 import { string } from 'prop-types';
 import { long2tile } from '@vannizhang/wayback-core';
+import { TerraDrawControlComponent } from './terraDraw-control';
+import { v4 as uuidv4 } from 'uuid';
 
 
 export function WrappedRulerControl(props: any) {
@@ -83,6 +85,7 @@ function FileInput(props: any): ReactElement {
           console.log('input file is KML')
           const xmlDoc = new DOMParser().parseFromString(fileContent, 'text/xml')
           geojsonFeatures = kml(xmlDoc)
+          
         }
         else if (['json', 'geojson'].includes(fileExt)) {
           console.log('input file is GEOJSON')
@@ -91,12 +94,14 @@ function FileInput(props: any): ReactElement {
         // Focus Zoom on imported geo features
         console.log('geojsonFeatures from input file', geojsonFeatures)
         updateGeojsonFeatures(geojsonFeatures)
+
         //add imported geojson file to terradraw
         //round coordinates to solve the 'coordinates too precise error' of terradraw 
         function roundCoords(coords: number[], precision = 6) {
           return coords.map((c) => parseFloat(c.toFixed(precision)));
         }
         if (geojsonFeatures.type === "FeatureCollection" && Array.isArray(geojsonFeatures.features)) {
+          
           const updatedFeatures = geojsonFeatures.features.map((feature: any) => {
             let mode = "static";
       
@@ -115,23 +120,27 @@ function FileInput(props: any): ReactElement {
       
             return {
               ...feature,
+              id: feature.id || uuidv4(),
               properties: {
                 ...(feature.properties || {}),
                 mode,
               },
             };
-
-            // To see if we delete the uploaded geojsonfeature from mapbox if we added it to terradraw....
-            //in this case we should add in the props setGeojsonFeatures and set it here to {}...
           }); 
-          const terraDraw = props.terraDrawLeftRef?.current;
-        
-          if (terraDraw) {
-            terraDraw.addFeatures(updatedFeatures);
-          }   
-        } else {
-          console.error("Invalid GeoJSON format for TerraDraw");
-        }
+          props.setGeojsonFeatures(null)
+          const terraDrawLeft = props.terraDrawLeftRef?.current;
+          const terraDrawRight = props.terraDrawRightRef?.current;
+
+          if (terraDrawLeft) {
+            terraDrawLeft.addFeatures(updatedFeatures);
+          }
+
+          if (terraDrawRight) {
+            terraDrawRight.addFeatures(updatedFeatures);
+          } 
+          } else {
+            console.error("Invalid GeoJSON format for TerraDraw");
+          }
         
       }
     }
@@ -164,28 +173,6 @@ function FileInput(props: any): ReactElement {
   )
 }
 
-function RemoveFeatures(props: any): ReactElement {
-  return (
-    <CustomOverlay position="top-left" style={{ pointerEvents: 'all' }}>
-      <div className="mapboxgl-ctrl mapboxgl-ctrl-group">
-        <button
-          type="button"
-          title="Remove Features (geojson, kml etc)"
-          onClick={() => {
-            props.setGeojsonFeatures({
-              type: 'FeatureCollection', features: []
-            })
-          }}
-        >
-          <span className="mapboxgl-ctrl-icon" style={{ paddingTop: '7px' }}>
-            <FontAwesomeIcon icon={faTrash} />{' '}
-          </span>
-        </button>
-      </div>
-    </CustomOverlay>
-  )
-}
-
 
 function FileUploadControl(props: any): ReactElement {
   return (
@@ -194,7 +181,7 @@ function FileUploadControl(props: any): ReactElement {
     </CustomOverlay>
   )
 }
-
+export   type Mode = "rectangle" | "polygon" | "point" | "linestring" | "static"| "select";
 function MapDrawingComponent(props: any): ReactElement  {
 
   // const terraDrawStartedRef = useRef(false);
@@ -218,6 +205,7 @@ function MapDrawingComponent(props: any): ReactElement  {
         new TerraDrawRectangleMode(),
         new TerraDrawPolygonMode(),
         new TerraDrawPointMode(),
+        new TerraDrawLineStringMode(),
         new TerraDrawSelectMode({
           styles: {
             selectedPolygonFillOpacity: 0.7,
@@ -271,6 +259,7 @@ function MapDrawingComponent(props: any): ReactElement  {
         new TerraDrawRectangleMode(),
         new TerraDrawPolygonMode(),
         new TerraDrawPointMode(),
+        new TerraDrawLineStringMode(),
         new TerraDrawSelectMode({
           styles: {
             selectedPolygonFillOpacity: 0.7,
@@ -291,6 +280,7 @@ function MapDrawingComponent(props: any): ReactElement  {
   
     terraDraw.start();
     terraDraw.on("select", onSelect);
+
     const layers = map.getStyle().layers;
     if (layers) {
       layers.forEach(layer => {
@@ -345,63 +335,42 @@ function MapDrawingComponent(props: any): ReactElement  {
     };
   },[])
 
-  //reset the terradraw mode on switch between maps
-  useEffect(() => {
-    const left = props.terraDrawLeftRef?.current;
-    const right = props.terraDrawRightRef?.current;
-  
-    if (!left || !right) return;
-  
-    try {
-      left.setMode('static');
-    } catch (e) {
-      console.warn("Erreur setMode left:", e);
-    }
-  
-    try {
-      right.setMode('static');
-    } catch (e) {
-      console.warn("Erreur setMode right:", e);
-    }
-  
-    setActiveMode('static');
-  }, [props.clickedMap]);
+  //Bring drawing to front after changing the basemap
+  const alreadyMovedLeftRef = useRef(false);
+const alreadyMovedRightRef = useRef(false);
+  const bringTerraDrawToFront = (alreadyMovedRef : React.MutableRefObject<boolean>, terraDraw: TerraDraw) => {
+    console.log(terraDraw, alreadyMovedRef);
+    if (!terraDraw) return;
 
+    const savedFeatures = terraDraw.getSnapshot();
+    if (!savedFeatures) return;
+    
+    if (alreadyMovedRef.current) return;
+    
+    try {
+      if (terraDraw && typeof terraDraw.stop === "function" && typeof terraDraw.start === "function") {
+        terraDraw.stop();
+        terraDraw.start();
+        terraDraw.addFeatures(savedFeatures);
+      }
+    } catch (e) {
+      console.warn("Erreur bringTerraDrawToFront", e);
+    }
+    
+    alreadyMovedRef.current = true;
+  };
   useEffect(() => {
+    if (props.clickedMap == 'right') return;
+
     const leftMap = props.leftMapRef?.current?.getMap();
     const leftTerraDraw = props.terraDrawLeftRef?.current;
 
     if (!leftMap || !leftTerraDraw) return;
     
-    let alreadyMoved = false;
-
-    const bringTerraDrawToFront = () => {
-      const savedFeatures = leftTerraDraw.getSnapshot();
-      console.log('saaaved', savedFeatures);
-      if (!leftTerraDraw || !savedFeatures) return;
-      if (alreadyMoved) return;
-      let moved = false;
-      console.log('hereeeeeeeeeeee');
-      
-      try {
-        leftTerraDraw.stop();
-        leftTerraDraw.start();    
-        console.log(leftTerraDraw.getSnapshot())   
-        leftTerraDraw.addFeatures(savedFeatures);
-      } catch (e) {
-        console.warn("Erreur bringTerraDrawToFront", e);
-      }
-      moved = true;
-
-      if (moved) {
-        alreadyMoved = true; 
-      }
-    };
-    
+    alreadyMovedLeftRef.current = false;
 
     const onIdle = () => {
-      console.log('yepppp');
-      bringTerraDrawToFront();
+      bringTerraDrawToFront(alreadyMovedLeftRef, leftTerraDraw);
     };
 
     leftMap.on("idle", onIdle);
@@ -413,55 +382,45 @@ function MapDrawingComponent(props: any): ReactElement  {
       leftMap.off("load", onIdle);
     };
   }, [props.selectedBasemap]);
-  
-      // const layers = leftMap.getStyle().layers;
-      // if (!layers) return;
-      // layers.forEach((layer) => {
-      //   if (layer.id.startsWith("td")) {
-      //     try {
-      //       leftMap.moveLayer(layer.id);
-      //       console.log(`Moved layer ${layer.id}`);
-      //       moved = true;
-      //     } catch (e) {
-      //       console.warn(`Erreur moveLayer sur ${layer.id}`, e);
-      //     }
-      //   }
-      // });
 
+  useEffect(() => {
+    if (props.clickedMap == 'left') return;
 
-  //move terradraw layer to the front
-      // function bringTerraDrawToFront(map: mapboxgl.Map) {
-    //   const layers = map.getStyle().layers;
-    //   console.log('LAYEEEEEEEEEEEEEEERS', layers);
-      
-    //   if (!layers) return;
+    const rightMap = props.rightMapRef?.current?.getMap();
+    const rightTerraDraw = props.terraDrawRightRef?.current;
+
+    if (!rightMap || !rightTerraDraw) return;
+    
+    alreadyMovedRightRef.current = false;
+
+    const onIdle = () => {
+      bringTerraDrawToFront(alreadyMovedRightRef, rightTerraDraw );
+    };
+
+    rightMap.on("idle", onIdle);
+    rightMap.on("load", onIdle);
   
-    //   layers.forEach((layer) => {
-    //     // remove layers mn TerraDraw
-    //     // apres addlayer (layers )
-    //     if (layer.id.startsWith("terra-draw")) {
-    //       try {
-    //         map.moveLayer(layer.id); 
-    //         console.log(`Moved layer ${layer.id}`);
-    //       } catch (e) {
-    //         console.warn(`Erreur moveLayer sur ${layer.id}`, e);
-    //       }
-    //     }
-    //   });
-    // }
- 
+
+    return () => {
+      rightMap.off("idle", onIdle);
+      rightMap.off("load", onIdle);
+    };
+  }, [props.selectedBasemap]);
+
   //Switch between draw's modes
-  type Mode = "rectangle" | "polygon" | "point" | "static"| "select";
   const [activeMode, setActiveMode] = useState<Mode>("static");
-
   const toggleMode = (mode: Mode) => {
     const newMode = activeMode === mode ? "static" : mode;
-
+    
+    console.log();
+    
     if (props.clickedMap == 'left') {   
       props.terraDrawLeftRef?.current?.setMode(newMode);
+      props.terraDrawRightRef?.current?.setMode(newMode);
       setActiveMode(newMode);
     } else if (props.clickedMap == 'right'){
       props.terraDrawRightRef?.current?.setMode(newMode);
+      props.terraDrawLeftRef?.current?.setMode(newMode);
       setActiveMode(newMode);
     }
 
@@ -505,8 +464,6 @@ function MapDrawingComponent(props: any): ReactElement  {
     if (!draw) return;
   
     if (selectedId) {
-      console.log('haaaaaaa');
-      
       const snapshot = draw?.getSnapshot();
       const filteredFeatures = snapshot.filter(
         (f: { id: any }) => f.id !== selectedId
@@ -520,77 +477,21 @@ function MapDrawingComponent(props: any): ReactElement  {
       draw.clear(); 
     }
   }
-  const buttonStyle = {
-    fontSize: "16px",
-    padding: "2px",
-    backgroundColor: "white",
-    border: "none",
-    borderRadius: "6px",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-    cursor: "pointer",
-    transition: "all 0.2s ease-in-out",
-  };
+
   
   return(
-    <div
-      style={{
-        position: "absolute",
-        top: '35%',
-        left: "10px",
-        zIndex: 1,
-        backgroundColor: "white",
-        padding: "2px",
-        borderRadius: "2px",
-        boxShadow: "0 1px 1px rgba(0,0,0,0.15)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "1px",
-
-      }}
-      className="terradraw-group"
-    >
-
-      <button 
-      onClick={() => toggleMode("select")}
-      style={{ 
-        ...buttonStyle,
-        backgroundColor: activeMode === "select" ? "lightgreen" : "white" }}
-      >
-        🖱️ 
-      </button>
-      <button
-        onClick={() => toggleMode("rectangle")}
-        style={{ 
-          ...buttonStyle, 
-          backgroundColor: activeMode === "rectangle" ? "lightgreen" : "white" }}
-      >
-        ▭
-      </button>
-      <button
-        onClick={() => toggleMode("polygon")}
-        style={{  
-          ...buttonStyle,
-          backgroundColor: activeMode === "polygon" ? "lightgreen" : "white" }}
-      >
-        ⬠
-      </button>
-      <button
-        onClick={() => toggleMode("point")}
-        style={{  
-          ...buttonStyle,
-          backgroundColor: activeMode === "point" ? "lightgreen" : "white" }}
-      >
-        📍
-      </button>
-      <button onClick={() =>deleteHandler()} style={{  ...buttonStyle}}> 
-        🗑️ 
-      </button>
-      <button onClick={exportDrawing}  style={{  ...buttonStyle}}> 💾  </button>
-
-    </div>
-
+    <>
+      <TerraDrawControlComponent
+        toggleMode={toggleMode}
+        activeMode={activeMode}
+        deleteHandler={deleteHandler}
+        exportDrawing={exportDrawing}
+        position="top-left"
+      />
+    </>
+      
   )
-  
+
 }
 
 
@@ -610,18 +511,14 @@ function MapControls(props: any): ReactElement {
         position="top-left"
       />
 
+      <NavigationControl showCompass={false} position="top-left" />
+
       <FileUploadControl
         setGeojsonFeatures={props.setGeojsonFeatures}
         mapRef={props.mapRef}
         terraDrawLeftRef= {terraDrawLeftRef}
-        // terraDrawRef={terraDrawRef}
+        terraDrawRightRef= {terraDrawRightRef}
       />
-      <RemoveFeatures 
-        setGeojsonFeatures={props.setGeojsonFeatures}
-        // terraDrawRef={terraDrawRef}
-      />
-
-      <NavigationControl showCompass={false} position="top-left" />
 
       <MapDrawingComponent 
       leftMapRef={props.leftMapRef}
@@ -630,6 +527,7 @@ function MapControls(props: any): ReactElement {
       terraDrawLeftRef={terraDrawLeftRef}
       terraDrawRightRef={terraDrawRightRef}
       selectedBasemap={props.selectedBasemap}
+      setGeojsonFeatures={props.setGeojsonFeatures}
       />
 
       <ScaleControl

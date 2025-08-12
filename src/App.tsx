@@ -231,6 +231,17 @@ function App() {
     false
   );
 
+  // const leftMapboxMapStyle = useMemo(() => {
+  //   return leftSelectedTms == BasemapsIds.Mapbox
+  //     ? "mapbox://styles/mapbox/satellite-streets-v12"
+  //     : backgroundBasemapStyle;
+  // }, [leftSelectedTms]);
+  // const rightMapboxMapStyle = useMemo(() => {
+  //   return rightSelectedTms == BasemapsIds.Mapbox
+  //     ? "mapbox://styles/mapbox/satellite-streets-v12"
+  //     : backgroundBasemapStyle;
+  // }, [rightSelectedTms]);
+
   const leftMapboxMapStyle = useMemo(() => {
     return leftSelectedTms == BasemapsIds.Mapbox
       ? "mapbox://styles/mapbox/satellite-streets-v12"
@@ -563,7 +574,7 @@ function App() {
                   </Source>
                 ) : (
                   <Source
-                    id="tms-source"
+                    id={`tms-source-${rightSelectedTms}`}
                     scheme="xyz"
                     type="raster"
                     tiles={[basemapsTmsSources[rightSelectedTms].url]}
