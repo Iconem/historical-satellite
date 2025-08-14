@@ -1,21 +1,16 @@
-import { ReactElement, memo, useCallback, useEffect, useRef, useState } from 'react'
+import { ReactElement, memo, useEffect, useRef, useState } from 'react'
 import CustomOverlay from './custom-overlay';
 import { ScaleControl, NavigationControl, useControl } from "react-map-gl/mapbox-legacy";
 import GeocoderControl from './geocoder-control'
 import RulerControl from '@mapbox-controls/ruler';
 import JSZip from 'jszip'
-
 import bbox from '@turf/bbox'
 import { kml } from '@tmcw/togeojson'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUpload, faTrash } from '@fortawesome/free-solid-svg-icons'
-
-import { TerraDraw, TerraDrawFreehandMode, TerraDrawLineStringMode, TerraDrawPointMode, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode } from "terra-draw";
+import { faUpload} from '@fortawesome/free-solid-svg-icons'
+import { TerraDraw, TerraDrawLineStringMode, TerraDrawPointMode, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode} from "terra-draw";
 import { TerraDrawMapboxGLAdapter } from 'terra-draw-mapbox-gl-adapter';
-import type { Feature, GeoJsonProperties, Geometry } from "geojson";
-import mapboxgl from 'mapbox-gl';
-import { string } from 'prop-types';
-import { long2tile } from '@vannizhang/wayback-core';
+import { GeoJSONSource } from 'mapbox-gl';
 import { TerraDrawControlComponent } from './terraDraw-control';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -184,269 +179,270 @@ function FileUploadControl(props: any): ReactElement {
 export   type Mode = "rectangle" | "polygon" | "point" | "linestring" | "static"| "select";
 function MapDrawingComponent(props: any): ReactElement  {
 
-  // const terraDrawStartedRef = useRef(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const onSelect = (id: string) => {
-    setSelectedId(id);
+  const selectedIdRef = useRef<string | number | null>(null);
+  const isProgrammaticDeselect = useRef(false);
+
+  const onSelect = (id: string | number) => {
+    selectedIdRef.current = id;
+  
+    const leftDraw = props.terraDrawLeftRef?.current;
+    const rightDraw = props.terraDrawRightRef?.current;
+  
+    if (leftDraw?.getSnapshot().some((f: { id: string | number; }) => f.id === id)) {
+      leftDraw.selectFeature(id);
+    }
+  
+    if (rightDraw?.getSnapshot().some((f: { id: string | number; }) => f.id === id)) {
+      rightDraw.selectFeature(id);
+    }
   };
-
-  function initTerraDrawLeft(map: mapboxgl.Map) {
-      if (props.terraDrawLeftRef.current) {
-        try {
-          props.terraDrawLeftRef.current.stop();
-        } catch (e) {
-          console.warn("Erreur lors du stop précédent :", e);
-        }
-      }
-    // if (terraDrawStartedRef.current) return;
-    const terraDraw = new TerraDraw({
-      adapter: new TerraDrawMapboxGLAdapter({ map }),
-      modes: [
-        new TerraDrawRectangleMode(),
-        new TerraDrawPolygonMode(),
-        new TerraDrawPointMode(),
-        new TerraDrawLineStringMode(),
-        new TerraDrawSelectMode({
-          styles: {
-            selectedPolygonFillOpacity: 0.7,
-            selectedPolygonOutlineColor: "#00FF00",
-            selectedPointColor: "#00FF00",
-            selectedPointOutlineColor: "#00FFFF",
-          },
-          // Enable editing tools by Feature
-          flags: {
-            point: { feature: { draggable: true } },
-            polygon: { feature: { draggable: true } },
-            rectangle: { feature: { draggable: true } },
-          },
-          allowManualDeselection: true,
-        })
-      ],
-    });
+  const onDeselect = () => {
+    if (isProgrammaticDeselect.current) return;
   
-    terraDraw.start();
-    // terraDrawStartedRef.current = true;
-    terraDraw.on("select", onSelect);
-
-    const layers = map.getStyle().layers;
+    const id = selectedIdRef.current;
+    if (!id) return;
+  
+    isProgrammaticDeselect.current = true;   
     
-      if (layers) {
-        layers.forEach(layer => {
-          if (layer.id.startsWith('terra-draw')) {
-            try {
-              map.moveLayer(layer.id);
-            } catch(e) {
-              console.log(e);
-              
-            }
-          }
-        });
-      }
-    props.terraDrawLeftRef.current = terraDraw;
-  }
+    props.terraDrawRightRef?.current?.deselectFeature(id);
+    props.terraDrawLeftRef?.current?.deselectFeature(id);
   
-  function initTerraDrawRight(map: mapboxgl.Map) {
-    if (props.terraDrawRightRef.current) {
-      try {
-        props.terraDrawRightRef.current.stop();
-      } catch (e) {
-        console.warn("Erreur lors du stop précédent :", e);
-      }
-    }
-    const terraDraw = new TerraDraw({
-      adapter: new TerraDrawMapboxGLAdapter({ map }),
-      modes: [
-        new TerraDrawRectangleMode(),
-        new TerraDrawPolygonMode(),
-        new TerraDrawPointMode(),
-        new TerraDrawLineStringMode(),
-        new TerraDrawSelectMode({
-          styles: {
-            selectedPolygonFillOpacity: 0.7,
-            selectedPolygonOutlineColor: "#00FF00",
-            selectedPointColor: "#00FF00",
-            selectedPointOutlineColor: "#00FFFF",
-          },
-          // Enable editing tools by Feature
-          flags: {
-            point: { feature: { draggable: true } },
-            polygon: { feature: { draggable: true } },
-            rectangle: { feature: { draggable: true } },
-          },
-          allowManualDeselection: true,
-        })
-      ],
+    selectedIdRef.current = null;
+    isProgrammaticDeselect.current = false;
+  };
+// Syncs a feature’s coordinates from one map to the other to keep both maps in sync
+const isProgrammaticUpdate = { current: false };
+function syncFeatureCoordsAcrossMaps(featureId: string, fromLeft: boolean) {
+  if (isProgrammaticUpdate.current) return;
+
+  const sourceDraw = fromLeft ? props.terraDrawLeftRef.current : props.terraDrawRightRef.current;
+  const targetDraw = fromLeft ? props.terraDrawRightRef.current : props.terraDrawLeftRef.current;
+  if (!sourceDraw || !targetDraw) return;
+  console.log(" Syncc,, fromLeft:", fromLeft, "terraDrawLeft:", sourceDraw, "terraDrawRight:", targetDraw);
+  const feature = sourceDraw.getSnapshot().find((f: { id: string; }) => f.id === featureId);
+  if (!feature) return;
+
+  const targetFeature = targetDraw.getSnapshot().find((f: { id: string; }) => f.id === featureId);
+  if (
+    targetFeature &&
+    JSON.stringify(targetFeature.geometry.coordinates) ===
+      JSON.stringify(feature.geometry.coordinates)
+  ) {
+    return;
+  }
+
+  isProgrammaticUpdate.current = true;
+  if (targetFeature) {
+    targetDraw.updateFeatureGeometry(feature.id, feature.geometry);
+  } else {
+    targetDraw.addFeatures([feature]);
+  }
+  isProgrammaticUpdate.current = false;
+}
+// Updates the shared GeoJSON source on the map with features from the specified TerraDraw instance
+const sharedData: GeoJSON.FeatureCollection = {
+  type: "FeatureCollection",
+  features: [],
+};
+function updateSharedSource( fromLeft: boolean) {
+  const sourceDraw = fromLeft
+    ? props.terraDrawLeftRef.current
+    : props.terraDrawRightRef.current;
+
+  if (!sourceDraw) {
+    console.warn("sourceDraw n'est pas défini");
+    return;
+  }
+
+  const allFeatures = sourceDraw.getSnapshot();
+  const leftMap = props.leftMapRef?.current?.getMap();
+  const rightMap = props.rightMapRef?.current?.getMap();
+
+  [leftMap, rightMap].forEach((map) => {
+    const mySource = map?.getSource("shared-draw-source") as GeoJSONSource;
+    mySource?.setData({
+      type: "FeatureCollection",
+      features: allFeatures,
     });
-  
-    terraDraw.start();
-    terraDraw.on("select", onSelect);
+  });
+}
 
-    const layers = map.getStyle().layers;
-    if (layers) {
-      layers.forEach(layer => {
-        if (layer.id.startsWith('terra-draw')) {
-          try {
-            map.moveLayer(layer.id);
-          } catch(e) {
-            console.log(e);
-            
-          }
-        }
-      });
+function initTerraDraw(
+  map: mapboxgl.Map,
+  drawRef: React.MutableRefObject<TerraDraw | null>,
+) {
+  // Stop previous instance
+  if (drawRef.current) {
+    try {
+      drawRef.current.stop();
+    } catch (e) {
+      console.warn("Erreur lors du stop précédent :", e);
     }
-    props.terraDrawRightRef.current = terraDraw;
+  }
+  // create terradraw instance
+  if (!map.getSource("shared-draw-source")) {
+    console.log('source added'); 
+    map.addSource("shared-draw-source", { type: "geojson", data: sharedData });
+  }
+  const terraDraw = new TerraDraw({
+    adapter: new TerraDrawMapboxGLAdapter({ map }),
+    modes: [
+      new TerraDrawRectangleMode(),
+      new TerraDrawPolygonMode(),
+      new TerraDrawPointMode(),
+      new TerraDrawLineStringMode(),
+      new TerraDrawSelectMode({
+        styles: {
+          selectedPolygonFillOpacity: 0.7,
+          selectedPolygonOutlineColor: "#00FF00",
+          selectedPointColor: "#00FF00",
+          selectedPointOutlineColor: "#00FFFF",
+          selectedLineStringColor: "#00FF00",
+        },
+        flags: {
+          point: { feature: { draggable: true } },
+          polygon: { feature: { draggable: true } },
+          rectangle: { feature: { draggable: true } },
+          linestring: { feature: { draggable: true } },
+        },
+        allowManualDeselection: true,
+      }),
+    ],
+  });
+  if (!terraDraw) return;
+  terraDraw.start();
+
+  console.log('draaaaaaaaaaaaw',terraDraw);
+  const fromLeft = drawRef === props.terraDrawLeftRef;
+  terraDraw.on("select", onSelect);
+  terraDraw.on("deselect", onDeselect);
+  terraDraw.on("change", (ids, type, context) => { 
+    console.log(ids,type,context);
+    if (!ids) return;
+    if (type === 'update' || type === 'create' ) {
+      ids.forEach(id => syncFeatureCoordsAcrossMaps(id, fromLeft));
+    }
+  });
+  terraDraw.on("change", () => updateSharedSource(fromLeft));
+
+  drawRef.current = terraDraw;
+}
+
+// UseEffects to initialize both left and right terradraw instances
+useEffect(() => {
+  const leftMap = props.leftMapRef?.current?.getMap();
+  if (!leftMap) return;
+
+  const init = () => initTerraDraw(leftMap, props.terraDrawLeftRef);
+  if (leftMap.isStyleLoaded()) {
+    init();
+  } else {
+    leftMap.once("load", init);
   }
 
-  //initialize both left and right terradraw
-  useEffect(() => {
-    const leftMap = props.leftMapRef?.current?.getMap();
-    if (!leftMap) return;
+  return () => {
+    props.terraDrawLeftRef?.current?.stop();
+  };
+}, []);
 
-      if (leftMap.isStyleLoaded()) {
-        initTerraDrawLeft(leftMap);
-      } else {
-        leftMap.once("load", () => {
-          initTerraDrawLeft(leftMap);
-        });
-      }
+useEffect(() => {
+  const rightMap = props.rightMapRef?.current?.getMap();
 
-    // Nettoyage
-    return () => {
-      props.terraDrawLeftRef?.current?.stop();
-    };
-  }, []);
-  
+  if (!rightMap) return;
 
-  useEffect(()=>{
-    const rightMap = props.rightMapRef?.current?.getMap();
-    if (!rightMap) return;
+  const init = () => initTerraDraw(rightMap, props.terraDrawRightRef);
+  if (rightMap.isStyleLoaded()) {
+    init();
+  } else {
+    rightMap.once("load", init);
+  }
 
-      if (rightMap.isStyleLoaded()) {
-        initTerraDrawRight(rightMap);
-      } else {
-        rightMap.once("load", () => {
-          initTerraDrawRight(rightMap);
-        });
-      }
-
-    // Nettoyage
-    return () => {
-      props.terraDrawRightRef?.current?.stop();
-    };
-  },[])
+  return () => {
+    props.terraDrawRightRef?.current?.stop();
+  };
+}, []);
 
   //Bring drawing to front after changing the basemap
   const alreadyMovedLeftRef = useRef(false);
-const alreadyMovedRightRef = useRef(false);
-  const bringTerraDrawToFront = (alreadyMovedRef : React.MutableRefObject<boolean>, terraDraw: TerraDraw) => {
-    console.log(terraDraw, alreadyMovedRef);
-    if (!terraDraw) return;
-
-    const savedFeatures = terraDraw.getSnapshot();
-    if (!savedFeatures) return;
-    
+  const alreadyMovedRightRef = useRef(false);
+  const bringTerraDrawToFront = (alreadyMovedRef : React.MutableRefObject<boolean>, terraDraw: TerraDraw, map: mapboxgl.Map) => {
     if (alreadyMovedRef.current) return;
-    
-    try {
-      if (terraDraw && typeof terraDraw.stop === "function" && typeof terraDraw.start === "function") {
-        terraDraw.stop();
-        terraDraw.start();
-        terraDraw.addFeatures(savedFeatures);
-      }
-    } catch (e) {
-      console.warn("Erreur bringTerraDrawToFront", e);
+    if (map && terraDraw) {
+      ["td-polygon", "td-polygon-outline", "td-linestring", "td-point"].forEach(layerId => {
+        console.log(map.getLayer(layerId));
+        
+        if (map.getLayer(layerId)) map.moveLayer(layerId);
+      });
     }
-    
     alreadyMovedRef.current = true;
   };
   useEffect(() => {
+  
     if (props.clickedMap == 'right') return;
-
     const leftMap = props.leftMapRef?.current?.getMap();
     const leftTerraDraw = props.terraDrawLeftRef?.current;
 
     if (!leftMap || !leftTerraDraw) return;
     
-    alreadyMovedLeftRef.current = false;
-
+    alreadyMovedLeftRef.current = false;   
     const onIdle = () => {
-      bringTerraDrawToFront(alreadyMovedLeftRef, leftTerraDraw);
+      bringTerraDrawToFront(alreadyMovedLeftRef, leftTerraDraw,leftMap );
     };
-
     leftMap.on("idle", onIdle);
-    leftMap.on("load", onIdle);
-  
-
     return () => {
       leftMap.off("idle", onIdle);
-      leftMap.off("load", onIdle);
     };
-  }, [props.selectedBasemap]);
+  }, [props.selectedBasemap, props.leftTimelineDate]);
 
   useEffect(() => {
     if (props.clickedMap == 'left') return;
-
     const rightMap = props.rightMapRef?.current?.getMap();
     const rightTerraDraw = props.terraDrawRightRef?.current;
 
     if (!rightMap || !rightTerraDraw) return;
     
     alreadyMovedRightRef.current = false;
-
     const onIdle = () => {
-      bringTerraDrawToFront(alreadyMovedRightRef, rightTerraDraw );
+      bringTerraDrawToFront(alreadyMovedRightRef, rightTerraDraw, rightMap );
     };
-
     rightMap.on("idle", onIdle);
-    rightMap.on("load", onIdle);
-  
-
     return () => {
       rightMap.off("idle", onIdle);
-      rightMap.off("load", onIdle);
     };
-  }, [props.selectedBasemap]);
+  }, [props.selectedBasemap, props.rightTimelineDate]);
 
   //Switch between draw's modes
   const [activeMode, setActiveMode] = useState<Mode>("static");
   const toggleMode = (mode: Mode) => {
-    const newMode = activeMode === mode ? "static" : mode;
-    
-    console.log();
-    
-    if (props.clickedMap == 'left') {   
-      props.terraDrawLeftRef?.current?.setMode(newMode);
-      props.terraDrawRightRef?.current?.setMode(newMode);
+    const newMode = activeMode === mode ? "static" : mode; 
+    const leftTerraDraw = props.terraDrawLeftRef?.current;
+    const rightTerraDraw = props.terraDrawRightRef?.current;
+    if (leftTerraDraw && props.clickedMap == 'left') {   
+      leftTerraDraw.setMode(newMode);
+      rightTerraDraw.setMode(newMode);
       setActiveMode(newMode);
-    } else if (props.clickedMap == 'right'){
-      props.terraDrawRightRef?.current?.setMode(newMode);
-      props.terraDrawLeftRef?.current?.setMode(newMode);
+    } else if (rightTerraDraw && props.clickedMap == 'right'){
+      rightTerraDraw.setMode(newMode);
+      leftTerraDraw.setMode(newMode);
       setActiveMode(newMode);
     }
-
   };
 
   // export drawings of both maps left & right
   function exportDrawing() {
     const leftFeatures = props.terraDrawLeftRef?.current?.getSnapshot() ?? [];
-    const rightFeatures = props.terraDrawRightRef?.current?.getSnapshot() ?? [];
-    const combinedFeatures = [...leftFeatures, ...rightFeatures];
-  
-    if (combinedFeatures.length === 0) {
+    if (leftFeatures.length === 0) {
       console.warn("Aucun dessin à exporter.");
       return;
     }
-  
     const geojson = {
       type: "FeatureCollection",
-      features: combinedFeatures,
-    };
-  
+      features: leftFeatures,
+    }; 
     const blob = new Blob([JSON.stringify(geojson)], {
       type: "application/json",
     });
-    const url = URL.createObjectURL(blob);
-  
+    const url = URL.createObjectURL(blob); 
     const a = document.createElement("a");
     a.href = url;
     a.download = "my_drawings.geojson"; 
@@ -456,37 +452,85 @@ const alreadyMovedRightRef = useRef(false);
 
   //delete handler for selected feature
   function deleteHandler() {
-    const draw =
-      props.clickedMap === "left"
-        ? props.terraDrawLeftRef.current
-        : props.terraDrawRightRef.current;
+    const leftDraw = props.terraDrawLeftRef.current;
+    const rightDraw = props.terraDrawRightRef.current;
+    
+    if (!leftDraw || !rightDraw) return;
   
-    if (!draw) return;
-  
+    const selectedId = selectedIdRef.current;
+    
     if (selectedId) {
-      const snapshot = draw?.getSnapshot();
-      const filteredFeatures = snapshot.filter(
-        (f: { id: any }) => f.id !== selectedId
-      );
-  
-      draw.clear(); 
-      draw.addFeatures(filteredFeatures); 
-  
-      setSelectedId(null); 
+      const removeFrom = (drawInstance: TerraDraw) => {
+        const snapshot = drawInstance.getSnapshot();
+        const filteredFeatures = snapshot.filter(
+          (f) => f.id !== undefined && f.id !== selectedId
+        );
+        drawInstance.clear();
+        drawInstance.addFeatures(filteredFeatures);
+      }; 
+      removeFrom(leftDraw);
+      removeFrom(rightDraw);
+
+      selectedIdRef.current = null;
     } else {
-      draw.clear(); 
+      leftDraw.clear();
+      rightDraw.clear();
     }
   }
-
   
+  //reset the mode onclick on Escape
+  useEffect(() => {
+    const handleKeyDown = (event: { key: string; }) => {
+      if (event.key === "Escape") {
+        setActiveMode('static');
+        props.terraDrawLeftRef.current?.setMode("static");
+        props.terraDrawRightRef.current?.setMode("static");       
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  //Toggle the visibility of the drawings of both right and left maps
+  const [isVisible, setVisible] = useState(true);
+  function toggleDrawings() {
+    const leftMap = props.leftMapRef?.current?.getMap();
+    const rightMap = props.rightMapRef?.current?.getMap();
+
+    if (!leftMap && !rightMap) return;
+
+    setVisible(!isVisible)
+
+    const lefMapLayers= leftMap.getStyle().layers
+    
+    lefMapLayers.forEach((layer: any)=>{
+      if (layer.id.startsWith('td')) {       
+        leftMap.setLayoutProperty(
+          layer.id,
+          'visibility',
+          !isVisible ? 'visible' : 'none'
+        );
+        rightMap.setLayoutProperty(
+          layer.id,
+          'visibility',
+          !isVisible ? 'visible' : 'none'
+        );
+      }
+    })   
+  }
+
   return(
     <>
       <TerraDrawControlComponent
         toggleMode={toggleMode}
         activeMode={activeMode}
         deleteHandler={deleteHandler}
-        exportDrawing={exportDrawing}
+        exportDrawing= {exportDrawing}
+        toggleDrawings={toggleDrawings}
         position="top-left"
+        isVisible={isVisible}
       />
     </>
       
@@ -496,7 +540,6 @@ const alreadyMovedRightRef = useRef(false);
 
 
 function MapControls(props: any): ReactElement {
-  // const terraDrawRef = useRef<TerraDraw>();
   const terraDrawLeftRef= useRef<TerraDraw>();
   const terraDrawRightRef= useRef<TerraDraw>();
   return (
@@ -528,6 +571,8 @@ function MapControls(props: any): ReactElement {
       terraDrawRightRef={terraDrawRightRef}
       selectedBasemap={props.selectedBasemap}
       setGeojsonFeatures={props.setGeojsonFeatures}
+      leftTimelineDate={props.leftTimelineDate}
+      rightTimelineDate={props.rightTimelineDate}
       />
 
       <ScaleControl

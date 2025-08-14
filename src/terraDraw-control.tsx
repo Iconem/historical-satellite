@@ -2,9 +2,10 @@ import { useControl } from 'react-map-gl/mapbox-legacy'
 import { createPortal } from 'react-dom'
 
 import { Mode } from './map-controls'
-import React from 'react';
-import { FaMousePointer, FaMapMarkerAlt, FaRegSquare, FaDrawPolygon, FaTrash, FaSave, FaChevronUp, FaChevronDown } from 'react-icons/fa';
+import { useState } from 'react'
+import { FaMousePointer, FaMapMarkerAlt, FaRegSquare, FaDrawPolygon, FaTrash, FaSave} from 'react-icons/fa';
 import { MdOutlineDraw, MdDraw, MdOutlinePolyline  } from "react-icons/md";
+import { PiEyeClosedBold, PiEyeBold, PiRectangleLight  } from "react-icons/pi";
 
 class TerraDrawControl {
     private _container: HTMLDivElement
@@ -28,19 +29,24 @@ class TerraDrawControl {
     exportDrawing: () => void; 
     activeMode: Mode;
     position?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+    toggleDrawings: () => void; 
+    isVisible: boolean;
   }
   
   export function TerraDrawControlComponent({
-    deleteHandler,
     toggleMode,
     activeMode,
+    deleteHandler,
     exportDrawing,
-    position = "top-left"
+    toggleDrawings,
+    position = "top-left",
+    isVisible
+    
   }: TerraDrawControlProps) {
     const ctrl = useControl(() => new TerraDrawControl(), { position });
   
-    const [showControls, setShowControls] = React.useState(false);
-
+    const [showControls, setShowControls] = useState(false);
+    
     return createPortal(
       <div>
         <button onClick={() => setShowControls(!showControls)} title ='draw'>
@@ -48,7 +54,10 @@ class TerraDrawControl {
         </button>
 
         {showControls && (
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 5 }}>
+            <button onClick={() => toggleDrawings()}>
+              {isVisible ? <PiEyeBold title='Hide'/> : <PiEyeClosedBold title='Show'/>}
+            </button>
             <button 
               onClick={() => toggleMode("select")}
               style={{ backgroundColor: activeMode === "select" ? "lightgreen" : "white" }}
@@ -76,7 +85,7 @@ class TerraDrawControl {
               title="Rectangle"
 
             >
-              <FaRegSquare />
+              <PiRectangleLight />
             </button>
             <button
               onClick={() => toggleMode("polygon")}

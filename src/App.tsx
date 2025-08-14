@@ -242,16 +242,10 @@ function App() {
   //     : backgroundBasemapStyle;
   // }, [rightSelectedTms]);
 
-  const leftMapboxMapStyle = useMemo(() => {
-    return leftSelectedTms == BasemapsIds.Mapbox
-      ? "mapbox://styles/mapbox/satellite-streets-v12"
-      : backgroundBasemapStyle;
-  }, [leftSelectedTms]);
-  const rightMapboxMapStyle = useMemo(() => {
-    return rightSelectedTms == BasemapsIds.Mapbox
-      ? "mapbox://styles/mapbox/satellite-streets-v12"
-      : backgroundBasemapStyle;
-  }, [rightSelectedTms]);
+  const leftMapboxMapStyle = backgroundBasemapStyle;
+
+  const rightMapboxMapStyle = backgroundBasemapStyle;
+  
 
   const sharedMapsProps = {
     viewState,
@@ -459,14 +453,14 @@ function App() {
             setGeojsonFeatures={setGeojsonFeatures}
             clickedMap={clickedMap}
             selectedBasemap={selectedBasemap}
+            leftTimelineDate={leftTimelineDate}
+            rightTimelineDate={rightTimelineDate}
           />
 
           <GeojsonLayer />
 
 
-          {leftSelectedTms == BasemapsIds.Mapbox ? (
-            <></>
-          ) : leftSelectedTms == BasemapsIds.PlanetMonthly ? (
+          {leftSelectedTms == BasemapsIds.PlanetMonthly ? (
             <Source
               id="planetbasemap-source"
               scheme="xyz"
@@ -501,7 +495,6 @@ function App() {
               key={leftSelectedTms}
             // https://github.com/maptiler/tilejson-spec/tree/custom-projection/2.2.0
             // yandex is in CRS/SRS EPSG:3395 but mapbox source only supports CRS 3857 atm
-            // crs={"EPSG:3395"}
             >
               <Layer type="raster" layout={{}} paint={{}} />
             </Source>
@@ -545,20 +538,23 @@ function App() {
             />
 
             <GeojsonLayer />
-
-            {
+            {/* {
               rightSelectedTms == BasemapsIds.Mapbox ? (
                 <></>) :
                 rightSelectedTms == BasemapsIds.PlanetMonthly ? (
                   <Source
-                    id="planetbasemap-source"
+                    id="planetbasemap-source" */}
+
+            {rightSelectedTms == BasemapsIds.PlanetMonthly ? (
+            <Source
+              id="planetbasemap-source"
                     scheme="xyz"
                     type="raster"
                     tiles={[rightPlanetUrl]} // tiles={[]}
                     tileSize={256}
                     key={"planet" + rightTimelineDate.toString()}
                   >
-                    <Layer type="raster" layout={{}} paint={{'raster-opacity-transition': { duration: 0 }}} />
+                    <Layer id={'layer'} type="raster"  />
                   </Source>
                 ) : rightSelectedTms == BasemapsIds.ESRIWayback ? (
                   <Source
@@ -570,7 +566,7 @@ function App() {
                     // key={"wayback" + rightTimelineDate.toString().toLowerCase()}
                     key={"wayback-" + rightWaybackUrl.split('/').reverse()[3]}
                   >
-                    <Layer type="raster" layout={{}} paint={{'raster-opacity-transition': { duration: 0 }}} />
+                    <Layer id={'layer'} type="raster"  />
                   </Source>
                 ) : (
                   <Source
@@ -582,7 +578,7 @@ function App() {
                     tileSize={256}
                     key={rightSelectedTms}
                   >
-                    <Layer type="raster" layout={{}} paint={{}} />
+                    <Layer id={'layer'} type="raster"  />
                   </Source>
                 )
             }
