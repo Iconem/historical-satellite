@@ -568,10 +568,7 @@ function ControlPanel(props: any) {
         const arrayBuffer = await writeArrayBuffer(data, metaData);
 
         const blob = new Blob([arrayBuffer], { type: "image/tiff" });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "composited_epsg4326.tif";
-        a.click();
+        saveAs(blob, "composited_epsg4326.tif");
       })
         .catch((err) => console.error("Composited GeoTIFF export error:", err));
 
@@ -707,10 +704,8 @@ function ControlPanel(props: any) {
           .join('\n');
 
       if (exportFramesMode == ExportButtonOptions.SCRIPT_ONLY) {
-        aDiv.href =
-          "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
-        aDiv.download = "gdal_commands.bat";
-        aDiv.click();
+        var blob = new Blob([gdal_commands], { type: "text/plain;charset=utf-8" });
+        saveAs(blob, "gdal_commands.bat");
       }
 
       // METHOD 2 TEST not working, since MDN says only supported in secure contexts (HTTPS)
