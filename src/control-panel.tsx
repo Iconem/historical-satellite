@@ -14,7 +14,7 @@ import {
 
 import PlayableSlider from "./playable-slider";
 import LinksSection from "./links-section";
-import { ExportSplitButton, ExportButtonOptions, ProviderOptions } from "./export-split-button";
+import { ExportSplitButton, ExportButtonOptions } from "./export-split-button";
 import SettingsModal from "./settings-modal";
 import { toPixelData } from 'html-to-image';
 
@@ -34,7 +34,9 @@ import {
   Slider,
   Checkbox,
   LinearProgress,
-  Typography
+  Typography,
+  Snackbar,
+  SnackbarContent
 } from "@mui/material";
 
 
@@ -73,12 +75,12 @@ const PROMISES_BATCH_DELAY = 2000; // 2000ms
 
 function LinearProgressWithLabel(props: { value: number }) {
   return (
-    <Box display="flex" alignItems="center">
-      <Box width="100%" mr={1}>
+    <Box display="flex" alignItems="center"  >
+      <Box width="300px" mr={1}>
         <LinearProgress variant="determinate" {...props} />
       </Box>
       <Box minWidth={35}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color='black'>
           {`${Math.round(props.value)}%`}
         </Typography>
       </Box>
@@ -505,6 +507,13 @@ function ControlPanel(props: any) {
 
   const mapRef = props.mapRef;
   const bounds = mapRef?.current?.getMap()?.getBounds();
+  const providerOptions = ['Planet', 'Esri WayBack', 'All Others']
+  const [selectedProviders, setSelectedProviders] = useState<string[]>(providerOptions);
+  enum ProviderOptions {
+    PLANET = "Planet",
+    ESRI = "Esri WayBack",
+    ALL_OTHERS = "All Others",
+  }
 
   async function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES, selectedProviders: ProviderOptions[]) {
     // html-to-image can do both export with clipPath and mixBlendMode, although seem a bit slower than html2canvas!
@@ -645,25 +654,30 @@ function ControlPanel(props: any) {
         const isSelected = (provider: string) => selectedProviders.includes(provider);
 
         const tagWithStatus = (cmds: PartOfGdalCmd[], providerKey: string) =>
-          cmds.map(cmd => ({ ...cmd, active: selectedProviders.length == 0 || isSelected(providerKey) }));
+          cmds.map(cmd => ({
+            ...cmd,
+            provider: providerKey,
+            active: selectedProviders.length == 0 || isSelected(providerKey),
+          }));
 
         return [
-          ...tagWithStatus(allPlanet, "Planet"),
-          ...tagWithStatus(allEsri, "Esri WayBack"),
           ...tagWithStatus(allOthers, "All Others"),
+          ...tagWithStatus(allEsri, "Esri WayBack"),
+          ...tagWithStatus(allPlanet, "Planet"),
         ];
       }
 
       const gdalTranslateCmds = buildGdalTranslateCmds(
         selectedProviders,
-        gdalTranslateCmds_planet,
+        gdalTranslateCmds_other,
         gdalTranslateCmds_wayBack,
-        gdalTranslateCmds_other
+        gdalTranslateCmds_planet
       );
 
 
       // Write gdal_translate command to batch script with indices to original location of cropped version
       const foldername = `historical-maps-${center_lng}-${center_lat}-${zoom}`;
+      let currentProvider = "";
       const gdal_commands =
         "REM GDAL COMMANDS to retrieve Planet Monthly Basemaps (without TiTiler)\n" +
         `REM https://historical-satellite.iconem.com/#${zoom}/${center_lng}/${center_lat} \n` +
@@ -674,10 +688,20 @@ function ControlPanel(props: any) {
         `for /f "delims=" %%i in ('dir /b/od/t:c C:\\PROGRA~1\\QGIS*') do set QGIS="C:\\PROGRA~1\\%%i"\n` +
         `mkdir ${foldername} \n\n` +
         gdalTranslateCmds
-          .map(cmd => cmd.active
-            ? cmd.batch_cmd
-            : cmd.batch_cmd.split('\n').map(line => `REM ${line}`).join('\n')
-          )
+          .map(cmd => {
+            let result = "";
+            if (cmd.provider !== currentProvider) {
+              currentProvider = cmd.provider;
+              result += `\nREM === ${currentProvider} ===\n`;
+            }
+            if (cmd.active) {
+              result += cmd.batch_cmd;
+            } else {
+              result += cmd.batch_cmd.split('\n').map(line => `REM ${line}`).join('\n');
+            }
+
+            return result;
+          })
           .join('\n');
 
       if (exportFramesMode == ExportButtonOptions.SCRIPT_ONLY) {
@@ -871,6 +895,7 @@ function ControlPanel(props: any) {
               <ExportSplitButton
                 handleExportButtonClick={handleExportButtonClick}
                 setExportInterval={setExportInterval}
+                selectedProviders={selectedProviders}
               />
 
               <a
@@ -898,14 +923,22 @@ function ControlPanel(props: any) {
                 setCollectionDateActivated={setCollectionDateActivated}
                 setCustomPlanetApiKey={props.setCustomPlanetApiKey}
                 customPlanetApiKey={props.customPlanetApiKey}
+                selectedProviders={selectedProviders}
+                setSelectedProviders={setSelectedProviders}
+                providerOptions={providerOptions}
               />
             </Stack>
 
-            {isDownloading && (
-              <Box sx={{ width: '55%' }}>
-                <LinearProgressWithLabel value={progress} />
-              </Box>
-            )}
+            <Snackbar
+              open={isDownloading}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+              sx={{ zIndex: 9999, }}
+            >
+              <SnackbarContent
+                sx={{ 'background': "rgba(255, 255, 255, 1);" }}
+                message={<LinearProgressWithLabel value={progress} />}
+              />
+            </Snackbar>
 
           </Stack>
         </div>

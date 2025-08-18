@@ -5,9 +5,11 @@ import {
   Typography,
   IconButton,
   Box,
-  Tooltip, 
-  Checkbox, 
+  Tooltip,
+  Checkbox,
   FormControlLabel,
+  ToggleButtonGroup,
+  ToggleButton,
   // CheckboxChangeEvent,
 } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -34,14 +36,15 @@ export default function SettingsModal(props: any) {
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
   const errorMessage = "start Date should be before end date!";
-  
+
+
   const handleCollectionDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    props.setCollectionDateActivated( event.target.checked);
+    props.setCollectionDateActivated(event.target.checked);
   };
-  
-  const handlePlanetApiInputChange = (event:any) => {
+
+  const handlePlanetApiInputChange = (event: any) => {
     props.setCustomPlanetApiKey(event.target.value);
-};
+  };
 
   return (
     <Fragment>
@@ -61,6 +64,25 @@ export default function SettingsModal(props: any) {
           </Typography>
           <Typography id="modal-modal-description" sx={{ mt: 1, mb: 1 }}>
             Export Frames settings
+          </Typography>{" "}
+          <ToggleButtonGroup
+            value={props.selectedProviders}
+            onChange={(event, newProviders) => {
+              props.setSelectedProviders(newProviders)
+            }}
+            aria-label="Provider selection"
+            color="primary"
+            exclusive={false}
+          >
+            {props.providerOptions.map((provider) => (
+              <ToggleButton key={provider} value={provider}>
+                {provider}
+              </ToggleButton>
+            ))}
+
+          </ToggleButtonGroup>
+          <Typography id="modal-modal-description" sx={{ mt: 1, mb: 1 }}>
+            Planet Monthly Mosaics settings
           </Typography>{" "}
           <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="fr">
             {/* <Tooltip title={"Export start date (from)"}> */}
@@ -171,9 +193,9 @@ export default function SettingsModal(props: any) {
               />
             }
           />
-          
+
           <div className='customApiModal'>
-              <TextField  value={props.customPlanetApiKey} onChange={handlePlanetApiInputChange} size={'small'} label="Planet Monthly Key" style={{ width: '86%' }} />
+            <TextField value={props.customPlanetApiKey} onChange={handlePlanetApiInputChange} size={'small'} label="Planet Monthly Key" style={{ width: '86%' }} />
           </div>
 
         </Box>
