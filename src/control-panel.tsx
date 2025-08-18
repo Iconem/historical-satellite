@@ -4,9 +4,9 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { writeArrayBuffer } from "geotiff";
 
-import  {  LngLatBounds} from "mapbox-gl";
+import { LngLatBounds } from "mapbox-gl";
 
-import { getWaybackItemsWithLocalChanges} from '@vannizhang/wayback-core';
+import { getWaybackItemsWithLocalChanges } from '@vannizhang/wayback-core';
 import {
   addMonths,
   subMonths,
@@ -33,7 +33,7 @@ import {
   Drawer,
   Slider,
   Checkbox,
-  LinearProgress, 
+  LinearProgress,
   Typography
 } from "@mui/material";
 
@@ -173,11 +173,11 @@ const timer = async (ms: number): Promise<any> =>
 
 
 
-function generateZip(zip: JSZip,foldername: any){
-  zip.generateAsync({type:"blob"})
-  .then(function(blob: any) {
-    saveAs(blob, `${foldername}.zip`)
-  });
+function generateZip(zip: JSZip, foldername: any) {
+  zip.generateAsync({ type: "blob" })
+    .then(function (blob: any) {
+      saveAs(blob, `${foldername}.zip`)
+    });
 }
 
 // Send batches of PROMISES_BATCH_SIZE POST requests to ApolloMapping API server
@@ -188,22 +188,22 @@ async function fetchTitilerFramesBatches(gdalTranslateCmds: any, foldername: str
 
   for (let i = 0; i < gdalTranslateCmds.length; i += PROMISES_BATCH_SIZE) {
     const chunk = gdalTranslateCmds.slice(i, i + PROMISES_BATCH_SIZE);
-    
+
     // Await all promises of chunk fetching
     await Promise.all(
       chunk.map((c: any) => {
         fetch(c.downloadUrl)
           .then((response) => response.blob())
-          .then( async(blob) => {
+          .then(async (blob) => {
             const arrayBuffer = await blob.arrayBuffer();
             if (c.filename.includes("Esri_WayBack")) {
-              var ESRI_wayback= zip.folder("ESRI_wayback");
+              var ESRI_wayback = zip.folder("ESRI_wayback");
               ESRI_wayback?.file(`${c.filename}_titiler.tif`, arrayBuffer);
             } else if (c.filename.includes("PlanetMonthly")) {
-              var planet_monthly= zip.folder("planet_monthly");
+              var planet_monthly = zip.folder("planet_monthly");
               planet_monthly?.file(`${c.filename}_titiler.tif`, arrayBuffer);
             } else {
-              var all_others= zip.folder("all_others");
+              var all_others = zip.folder("all_others");
               all_others?.file(`${c.filename}_titiler.tif`, arrayBuffer);
             }
 
@@ -215,7 +215,7 @@ async function fetchTitilerFramesBatches(gdalTranslateCmds: any, foldername: str
     );
     await timer(PROMISES_BATCH_DELAY);
   }
-  generateZip(zip,foldername)
+  generateZip(zip, foldername)
 }
 
 
@@ -491,12 +491,10 @@ function ControlPanel(props: any) {
     },
     [props.clickedMap, props.selectedTms, props.mapRef]
   )
-  
+
   const handleBasemapChange = (event: SelectChangeEvent) => {
     const selectedTms = event.target.value as BasemapsIds
     props.setSelectedTms(selectedTms); // as string
-    props.setSelectedBasemap(selectedTms)
-    
   };
   // ------------------------------------------
   // HANDLE EXPORT SAVE TO DISK
@@ -504,11 +502,11 @@ function ControlPanel(props: any) {
   // Define function in component to use mapRef
   // Inspiration for ui overlays (date, latlon, scale) https://github.com/doersino/earthacrosstime/tree/master
   // function handleExportButtonClick(exportFramesMode: boolean = true) {
- 
-    const mapRef = props.mapRef;
-    const bounds = mapRef?.current?.getMap()?.getBounds();
 
-  async function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES, selectedProviders: ProviderOptions[] ) {
+  const mapRef = props.mapRef;
+  const bounds = mapRef?.current?.getMap()?.getBounds();
+
+  async function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES, selectedProviders: ProviderOptions[]) {
     // html-to-image can do both export with clipPath and mixBlendMode, although seem a bit slower than html2canvas!
     // Note html2canvas cannot export with mixBlendModes and clipPath yet, see https://github.com/niklasvh/html2canvas/issues/580
     var zip = new JSZip();
@@ -519,7 +517,7 @@ function ControlPanel(props: any) {
         east: bounds.getEast(),
         north: bounds.getNorth(),
       };
-      
+
       const parentElement = document.getElementById("mapsParent");
       if (!parentElement) {
         console.error("Cannot find mapsParent div");
@@ -531,42 +529,42 @@ function ControlPanel(props: any) {
         return !exclusionClasses.some((classname) => node.classList?.contains(classname));
       }
       const width = parentElement.clientWidth;
-      const height =parentElement.clientHeight;
-      const dpr = window.devicePixelRatio 
+      const height = parentElement.clientHeight;
+      const dpr = window.devicePixelRatio
 
-      mapRef.current?.resize(); 
+      mapRef.current?.resize();
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      toPixelData(parentElement, {filter: filter,  canvasWidth: width / dpr, canvasHeight: height / dpr, skipFonts: true}).then( async(data)=>{
+      toPixelData(parentElement, { filter: filter, canvasWidth: width / dpr, canvasHeight: height / dpr, skipFonts: true }).then(async (data) => {
 
         const pixelSizeX = (bbox.east - bbox.west) / width;
         const pixelSizeY = (bbox.north - bbox.south) / height;
 
         const metaData = {
           GeographicTypeGeoKey: 4326,
-          GeogCitationGeoKey : 'WGS 84',
+          GeogCitationGeoKey: 'WGS 84',
           height: height,
           width: width,
           ModelPixelScale: [pixelSizeX, pixelSizeY, 0],
           ModelTiepoint: [0, 0, 0, bbox.west, bbox.north, 0],
-          SamplesPerPixel: 4, 
+          SamplesPerPixel: 4,
           BitsPerSample: [8, 8, 8, 8],
-          PlanarConfiguration: 1, 
+          PlanarConfiguration: 1,
           PhotometricInterpretation: 2,
 
         };
-          
-          const arrayBuffer = await writeArrayBuffer(data, metaData);
-  
-          const blob = new Blob([arrayBuffer], { type: "image/tiff" });
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(blob);
-          a.download = "composited_epsg4326.tif";
-          a.click();
-        })
+
+        const arrayBuffer = await writeArrayBuffer(data, metaData);
+
+        const blob = new Blob([arrayBuffer], { type: "image/tiff" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "composited_epsg4326.tif";
+        a.click();
+      })
         .catch((err) => console.error("Composited GeoTIFF export error:", err));
-    
-      
+
+
     }
 
     else {
@@ -588,7 +586,7 @@ function ControlPanel(props: any) {
           maxFrameResolution,
           titilerEndpoint
         );
-        
+
         const batch_cmd = `REM ${filename}\nREM ${downloadUrl}\n` +
           // gdal_translate command
           `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "${buildGdalWmsXml(tmsUrl)}" %DOWNLOAD_FOLDER%\\${filename + "_gdal.tif"
@@ -604,18 +602,18 @@ function ControlPanel(props: any) {
         // Also potentially useful: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
         const filename = `PlanetMonthly_${date_YYYY_MM}`
         const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
-        
+
         return cmd_obj;
       });
 
-      const center = mapRef?.current?.getMap()?.getCenter();   
+      const center = mapRef?.current?.getMap()?.getCenter();
       const degrees_decimals = 4; // 4 decimals ~11m precision / 5 decimals ~1m precision
       const center_lng = center?.lng?.toFixed(degrees_decimals);
       const center_lat = center?.lat?.toFixed(degrees_decimals);
       const zoom = mapRef?.current?.getMap()?.getZoom();
-      
-      const wayBackWithLocalChangesResponse =  await wayBackWithLocalChangesUrl(center?.lat , center?.lng ,  zoom);
-      
+
+      const wayBackWithLocalChangesResponse = await wayBackWithLocalChangesUrl(center?.lat, center?.lng, zoom);
+
       const gdalTranslateCmds_wayBack = wayBackWithLocalChangesResponse.map((item) => {
         const tmsUrl = item.itemURL
         const date_YYYY_MM = formatDate(new Date(item.releaseDateLabel));
@@ -627,42 +625,42 @@ function ControlPanel(props: any) {
 
       const gdalTranslateCmds_other = Object.entries(basemapsTmsSources)
         .filter(([key, value]) => {
-          return +key !== BasemapsIds.PlanetMonthly &&  +key !== BasemapsIds.ESRIWayback
+          return +key !== BasemapsIds.PlanetMonthly && +key !== BasemapsIds.ESRIWayback
         })
         .map(([key, value]) => {
           const filename = BasemapsIds[key]
           const tmsUrl = basemapsTmsSources[key].url
-          
+
           const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
           return cmd_obj;
         })
 
-        //Builds a list of gdalTranslateCmds command objects based on selected providers
-        function buildGdalTranslateCmds(
-          selectedProviders: string[],
-          allPlanet: PartOfGdalCmd[],
-          allEsri: PartOfGdalCmd[],
-          allOthers: PartOfGdalCmd[]
-        ) {
-          const isSelected = (provider: string) => selectedProviders.includes(provider);
-        
-          const tagWithStatus = (cmds: PartOfGdalCmd[], providerKey: string) =>
-            cmds.map(cmd => ({ ...cmd, active: selectedProviders.length==0 || isSelected(providerKey) }));
-        
-          return [
-            ...tagWithStatus(allPlanet, "Planet"),
-            ...tagWithStatus(allEsri, "Esri WayBack"),
-            ...tagWithStatus(allOthers, "All Others"),
-          ];
-        }
+      //Builds a list of gdalTranslateCmds command objects based on selected providers
+      function buildGdalTranslateCmds(
+        selectedProviders: string[],
+        allPlanet: PartOfGdalCmd[],
+        allEsri: PartOfGdalCmd[],
+        allOthers: PartOfGdalCmd[]
+      ) {
+        const isSelected = (provider: string) => selectedProviders.includes(provider);
 
-        const gdalTranslateCmds = buildGdalTranslateCmds(
-          selectedProviders,
-          gdalTranslateCmds_planet,
-          gdalTranslateCmds_wayBack,
-          gdalTranslateCmds_other
-        );
-      
+        const tagWithStatus = (cmds: PartOfGdalCmd[], providerKey: string) =>
+          cmds.map(cmd => ({ ...cmd, active: selectedProviders.length == 0 || isSelected(providerKey) }));
+
+        return [
+          ...tagWithStatus(allPlanet, "Planet"),
+          ...tagWithStatus(allEsri, "Esri WayBack"),
+          ...tagWithStatus(allOthers, "All Others"),
+        ];
+      }
+
+      const gdalTranslateCmds = buildGdalTranslateCmds(
+        selectedProviders,
+        gdalTranslateCmds_planet,
+        gdalTranslateCmds_wayBack,
+        gdalTranslateCmds_other
+      );
+
 
       // Write gdal_translate command to batch script with indices to original location of cropped version
       const foldername = `historical-maps-${center_lng}-${center_lat}-${zoom}`;
@@ -684,7 +682,7 @@ function ControlPanel(props: any) {
 
       if (exportFramesMode == ExportButtonOptions.SCRIPT_ONLY) {
         aDiv.href =
-        "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
+          "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
         aDiv.download = "gdal_commands.bat";
         aDiv.click();
       }
@@ -716,7 +714,7 @@ function ControlPanel(props: any) {
         const cmdsToDownload = gdalTranslateCmds.filter(cmd => cmd.active);
         await fetchTitilerFramesBatches(cmdsToDownload, foldername, zip, setProgress);
         setIsDownloading(false);
-        
+
       }
     }
   }
@@ -835,12 +833,12 @@ function ControlPanel(props: any) {
                   </LocalizationProvider>{" "}
                 </>
               )}{" "}
-              <IconButton 
-                color="primary" 
+              <IconButton
+                color="primary"
                 aria-label="swap map sources"
                 onClick={props.swapMapSources}
               >
-                <SwapHorizIcon  />
+                <SwapHorizIcon />
               </IconButton>
             </Stack>
             <Stack
@@ -904,7 +902,7 @@ function ControlPanel(props: any) {
             </Stack>
 
             {isDownloading && (
-              <Box sx={{ width: '55%'}}>
+              <Box sx={{ width: '55%' }}>
                 <LinearProgressWithLabel value={progress} />
               </Box>
             )}
