@@ -26,6 +26,7 @@
     "@vannizhang/wayback-core": "^1.0.7",
     "date-fns": "^2.30.0",
     "dayjs": "^1.11.7",
+    "file-saver": "^2.0.5",
     "geotiff": "^2.1.4-beta.0",
     "html-to-image": "^1.11.11",
     "jszip": "^3.10.1",

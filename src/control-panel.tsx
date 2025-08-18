@@ -14,7 +14,7 @@ import {
 
 import PlayableSlider from "./playable-slider";
 import LinksSection from "./links-section";
-import { ExportSplitButton, ExportButtonOptions } from "./export-split-button";
+import { ExportSplitButton, ExportButtonOptions, ProviderOptions } from "./export-split-button";
 import SettingsModal from "./settings-modal";
 import { toPixelData } from 'html-to-image';
 
@@ -32,7 +32,9 @@ import {
   Box,
   Drawer,
   Slider,
-  Checkbox
+  Checkbox,
+  LinearProgress, 
+  Typography
 } from "@mui/material";
 
 
@@ -42,6 +44,8 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 
 import { differenceInMonths, eachMonthOfInterval, isValid } from "date-fns";
+import JSZip from "jszip";
+import { saveAs } from 'file-saver';
 import {
   sliderValToDate,
   dateToSliderVal,
@@ -61,16 +65,39 @@ import {
 
 } from "./utilities";
 
+
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
 const MAX_FRAME_RESOLUTION = 512; // 1024 - 2048 TODO 512 FOR TESTING? 2048 BETTER
 const PROMISES_BATCH_SIZE = 5;
 const PROMISES_BATCH_DELAY = 2000; // 2000ms
+
+function LinearProgressWithLabel(props: { value: number }) {
+  return (
+    <Box display="flex" alignItems="center">
+      <Box width="100%" mr={1}>
+        <LinearProgress variant="determinate" {...props} />
+      </Box>
+      <Box minWidth={35}>
+        <Typography variant="body2" color="text.secondary">
+          {`${Math.round(props.value)}%`}
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
 
 function valueLabelFormat(value: number, minDate: Date) {
   return `${formatDate(sliderValToDate(value, minDate))}`;
 }
 
 export type MapSplitMode = "side-by-side" | "split-screen";
+
+type PartOfGdalCmd = {
+  downloadUrl: string;
+  batch_cmd: string;
+  filename: string;
+};
+
 
 // Could integrate unknown TMS servers via NextGis QMS, but not needed since all major ones already there
 // https://docs.nextgis.com/qms_srv_dev/doc/api.html
@@ -144,27 +171,50 @@ a = `${titilerEndpoint}/cog/crop/${coords_str}&url=${encodeURIComponent(
 const timer = async (ms: number): Promise<any> =>
   await new Promise((resolve) => setTimeout(resolve, ms));
 
+
+
+function generateZip(zip: JSZip,foldername: any){
+  zip.generateAsync({type:"blob"})
+  .then(function(blob: any) {
+    saveAs(blob, `${foldername}.zip`)
+  });
+}
+
 // Send batches of PROMISES_BATCH_SIZE POST requests to ApolloMapping API server
-async function fetchTitilerFramesBatches(gdalTranslateCmds: any, aDiv: any) {
+async function fetchTitilerFramesBatches(gdalTranslateCmds: any, foldername: string, zip: JSZip, setProgress: ((arg0: number) => void)) {
+  const total = gdalTranslateCmds.length;
+  let completed = 0;
+
   for (let i = 0; i < gdalTranslateCmds.length; i += PROMISES_BATCH_SIZE) {
     const chunk = gdalTranslateCmds.slice(i, i + PROMISES_BATCH_SIZE);
+    
     // Await all promises of chunk fetching
     await Promise.all(
       chunk.map((c: any) => {
         fetch(c.downloadUrl)
           .then((response) => response.blob())
-          .then((blob) => {
-            console.log("downloading new ", c.downloadUrl);
-            const blobURL = URL.createObjectURL(blob);
-            aDiv.href = blobURL;
-            aDiv.download = c.filename + "_titiler.tif";
-            aDiv.click();
+          .then( async(blob) => {
+            const arrayBuffer = await blob.arrayBuffer();
+            if (c.filename.includes("Esri_WayBack")) {
+              var ESRI_wayback= zip.folder("ESRI_wayback");
+              ESRI_wayback?.file(`${c.filename}_titiler.tif`, arrayBuffer);
+            } else if (c.filename.includes("PlanetMonthly")) {
+              var planet_monthly= zip.folder("planet_monthly");
+              planet_monthly?.file(`${c.filename}_titiler.tif`, arrayBuffer);
+            } else {
+              var all_others= zip.folder("all_others");
+              all_others?.file(`${c.filename}_titiler.tif`, arrayBuffer);
+            }
+
+            completed += 1;
+            setProgress((completed / total) * 100);
+
           });
       })
     );
-
     await timer(PROMISES_BATCH_DELAY);
   }
+  generateZip(zip,foldername)
 }
 
 
@@ -328,6 +378,10 @@ function ControlPanel(props: any) {
   const setMinDate = props.clickedMap == "left" ? setLeftMinDate : setRightMinDate
   const setMaxDate = props.clickedMap == "left" ? setLeftMaxDate : setRightMaxDate
 
+  //for linearProgress
+  const [progress, setProgress] = useState(0); // 0 à 100
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const collectionDateRetrievable: BasemapsIds[] = [+BasemapsIds.Bing, +BasemapsIds.ESRI]
   async function getCollectionDateViewport(selectedTms: BasemapsIds) {
     setCollectionDateStr('')
@@ -451,9 +505,10 @@ function ControlPanel(props: any) {
     const mapRef = props.mapRef;
     const bounds = mapRef?.current?.getMap()?.getBounds();
 
-  async function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES) {
+  async function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES, selectedProviders: ProviderOptions[] ) {
     // html-to-image can do both export with clipPath and mixBlendMode, although seem a bit slower than html2canvas!
     // Note html2canvas cannot export with mixBlendModes and clipPath yet, see https://github.com/niklasvh/html2canvas/issues/580
+    var zip = new JSZip();
     if (exportFramesMode == ExportButtonOptions.COMPOSITED) {
       const bbox = {
         west: bounds.getWest(),
@@ -579,7 +634,32 @@ function ControlPanel(props: any) {
           return cmd_obj;
         })
 
-      const gdalTranslateCmds = [...gdalTranslateCmds_other, ...gdalTranslateCmds_planet, ...gdalTranslateCmds_wayBack]
+        //Builds a list of gdalTranslateCmds command objects based on selected providers
+        function buildGdalTranslateCmds(
+          selectedProviders: string[],
+          allPlanet: PartOfGdalCmd[],
+          allEsri: PartOfGdalCmd[],
+          allOthers: PartOfGdalCmd[]
+        ) {
+          const isSelected = (provider: string) => selectedProviders.includes(provider);
+        
+          const tagWithStatus = (cmds: PartOfGdalCmd[], providerKey: string) =>
+            cmds.map(cmd => ({ ...cmd, active: selectedProviders.length==0 || isSelected(providerKey) }));
+        
+          return [
+            ...tagWithStatus(allPlanet, "Planet"),
+            ...tagWithStatus(allEsri, "Esri WayBack"),
+            ...tagWithStatus(allOthers, "All Others"),
+          ];
+        }
+
+        const gdalTranslateCmds = buildGdalTranslateCmds(
+          selectedProviders,
+          gdalTranslateCmds_planet,
+          gdalTranslateCmds_wayBack,
+          gdalTranslateCmds_other
+        );
+      
 
       // Write gdal_translate command to batch script with indices to original location of cropped version
       const foldername = `historical-maps-${center_lng}-${center_lat}-${zoom}`;
@@ -592,12 +672,20 @@ function ControlPanel(props: any) {
         "set BASEMAP_WIDTH=4096\n\n" +
         `for /f "delims=" %%i in ('dir /b/od/t:c C:\\PROGRA~1\\QGIS*') do set QGIS="C:\\PROGRA~1\\%%i"\n` +
         `mkdir ${foldername} \n\n` +
-        gdalTranslateCmds.map((c) => c.batch_cmd).join("\n");
-      aDiv.href =
-        "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
-      aDiv.download = "gdal_commands.bat";
+        gdalTranslateCmds
+          .map(cmd => cmd.active
+            ? cmd.batch_cmd
+            : cmd.batch_cmd.split('\n').map(line => `REM ${line}`).join('\n')
+          )
+          .join('\n');
 
-      aDiv.click();
+      if (exportFramesMode == ExportButtonOptions.SCRIPT_ONLY) {
+        aDiv.href =
+        "data:text/plain;charset=utf-8," + encodeURIComponent(gdal_commands);
+        aDiv.download = "gdal_commands.bat";
+        aDiv.click();
+      }
+
       // METHOD 2 TEST not working, since MDN says only supported in secure contexts (HTTPS)
       // Other way using HTML Native Filesystem API
       // https://stackoverflow.com/questions/34870711/download-a-file-at-different-location-using-html5/70001920#70001920
@@ -620,8 +708,13 @@ function ControlPanel(props: any) {
         // });
 
         // // --- METHOD 2 : batches ---
-        console.log('exportFramesMode == ExportButtonOptions.ALL_FRAMES')
-        fetchTitilerFramesBatches(gdalTranslateCmds, aDiv);
+        setIsDownloading(true);
+        zip.file("gdal_commands.bat", gdal_commands);
+        const cmdsToDownload = gdalTranslateCmds.filter(cmd => cmd.active);
+
+        await fetchTitilerFramesBatches(cmdsToDownload, foldername, zip, setProgress);
+        setIsDownloading(false);
+        setProgress(0);
       }
     }
   }
@@ -803,6 +896,13 @@ function ControlPanel(props: any) {
                 customPlanetApiKey={props.customPlanetApiKey}
               />
             </Stack>
+
+            {isDownloading && (
+              <Box sx={{ width: '55%'}}>
+                <LinearProgressWithLabel value={progress} />
+              </Box>
+            )}
+
           </Stack>
         </div>
         {

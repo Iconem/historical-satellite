@@ -9,6 +9,11 @@ import {
   Paper,
   Popper,
   MenuList,
+  ToggleButtonGroup,
+  ToggleButton,
+  Stack,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload } from "@fortawesome/free-solid-svg-icons";
@@ -28,6 +33,14 @@ export enum ExportButtonOptions {
 }
 
 
+const providerOptions = ['Planet', 'Esri WayBack', 'All Others']
+export enum ProviderOptions {
+  PLANET= "Planet",
+  ESRI = "Esri WayBack",
+  ALL_OTHERS = "All Others",
+}
+
+
 export function ExportSplitButton(props: any) {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -36,6 +49,7 @@ export function ExportSplitButton(props: any) {
     "export_buttonexportSelectedIndex",
     1
   );
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
 
   // const handleClick = () => {
   //   console.info(`You clicked ${splitButtonOptions[exportSelectedIndex]}`);
@@ -75,21 +89,44 @@ export function ExportSplitButton(props: any) {
   // const index: number = Object.keys(LookingForEnum).indexOf('Casual'); // 1
 
 
+
   return (
     <Fragment>
       <ButtonGroup aria-label="split button" variant="outlined">
         <Button onClick={handleToggle} ref={anchorRef}>
           {splitButtonOptions[exportSelectedIndex]}
         </Button>
+        {splitButtonOptions[exportSelectedIndex] === "All Frames" && (
+        <ToggleButtonGroup
+          value={selectedProviders}
+          onChange={(event, newProviders) => {
+            setSelectedProviders(newProviders)          
+          }}
+          aria-label="Provider selection"
+          color="primary"
+          exclusive={false}
+        >  
+            {providerOptions.map((provider) => (
+              <ToggleButton key={provider} value={provider}>
+              {provider}
+            </ToggleButton>
+            ))}
+
+        </ToggleButtonGroup>
+      )}
         <Button
           size="small"
           aria-controls={open ? "split-button-menu" : undefined}
           aria-expanded={open ? "true" : undefined}
           aria-label="select merge strategy"
           aria-haspopup="menu"
-          onClick={() => props.handleExportButtonClick(exportFramesMode)}
+          onClick={() => props.handleExportButtonClick(exportFramesMode, selectedProviders)}
           variant="contained"
           disableElevation
+          disabled={
+            (splitButtonOptions[exportSelectedIndex] === "All Frames") &&
+           selectedProviders.length === 0
+          }
         >
           <FontAwesomeIcon icon={faDownload} />
         </Button>
