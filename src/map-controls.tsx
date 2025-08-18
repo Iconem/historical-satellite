@@ -1,14 +1,17 @@
-import { ReactElement, memo, useCallback } from 'react'
+import { ReactElement, memo, useRef } from 'react'
 import CustomOverlay from './custom-overlay';
 import { ScaleControl, NavigationControl, useControl } from "react-map-gl/mapbox-legacy";
 import GeocoderControl from './geocoder-control'
 import RulerControl from '@mapbox-controls/ruler';
 import JSZip from 'jszip'
-
 import bbox from '@turf/bbox'
 import { kml } from '@tmcw/togeojson'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUpload, faTrash } from '@fortawesome/free-solid-svg-icons'
+import { faUpload } from '@fortawesome/free-solid-svg-icons'
+import { TerraDraw } from "terra-draw";
+
+import { v4 as uuidv4 } from 'uuid';
+import { MapDrawingComponent } from './drawing-component';
 
 
 export function WrappedRulerControl(props: any) {
@@ -28,7 +31,6 @@ function FileInput(props: any): ReactElement {
   function updateGeojsonFeatures(geojsonFeatures: any) {
     const bounds = bbox(geojsonFeatures)
     const [minLng, minLat, maxLng, maxLat] = bounds
-    // console.log('mapRef', props)
     props.mapRef.current.fitBounds(
       [
         [minLng, minLat],
@@ -41,7 +43,6 @@ function FileInput(props: any): ReactElement {
       }
     )
     console.log('bounds fitted, geojsonFeatures set to file input')
-    props.setGeojsonFeatures(geojsonFeatures)
   }
 
   function handleFileUpload(event): void {
@@ -58,7 +59,6 @@ function FileInput(props: any): ReactElement {
         // var new_zip = new JSZip();
         JSZip.loadAsync(inputFile)
           .then(function (zipContent) {
-            // console.log('zipContent', zipContent)
             return zipContent.file("doc.kml")?.async("string");
           }).then(function (kmlString): void {
             console.log('doc.kml file content', kmlString);
@@ -78,6 +78,7 @@ function FileInput(props: any): ReactElement {
           console.log('input file is KML')
           const xmlDoc = new DOMParser().parseFromString(fileContent, 'text/xml')
           geojsonFeatures = kml(xmlDoc)
+
         }
         else if (['json', 'geojson'].includes(fileExt)) {
           console.log('input file is GEOJSON')
@@ -86,6 +87,53 @@ function FileInput(props: any): ReactElement {
         // Focus Zoom on imported geo features
         console.log('geojsonFeatures from input file', geojsonFeatures)
         updateGeojsonFeatures(geojsonFeatures)
+
+        //add imported geojson file to terradraw
+        //round coordinates to solve the 'coordinates too precise error' of terradraw 
+        function roundCoords(coords: number[], precision = 6) {
+          return coords.map((c) => parseFloat(c.toFixed(precision)));
+        }
+        if (geojsonFeatures.type === "FeatureCollection" && Array.isArray(geojsonFeatures.features)) {
+
+          const updatedFeatures = geojsonFeatures.features.map((feature: any) => {
+            let mode = "static";
+
+            switch (feature.geometry.type) {
+              case "Point":
+                feature.geometry.coordinates = roundCoords(feature.geometry.coordinates);
+                mode = "point";
+                break;
+              case "Polygon":
+              case "MultiPolygon":
+                mode = "polygon";
+                break;
+              default:
+                console.warn("Unsupported geometry type:", feature.geometry.type);
+            }
+
+            return {
+              ...feature,
+              id: feature.id || uuidv4(),
+              properties: {
+                ...(feature.properties || {}),
+                mode,
+              },
+            };
+          });
+          const terraDrawLeft = props.terraDrawLeftRef?.current;
+          const terraDrawRight = props.terraDrawRightRef?.current;
+
+          if (terraDrawLeft) {
+            terraDrawLeft.addFeatures(updatedFeatures);
+          }
+
+          if (terraDrawRight) {
+            terraDrawRight.addFeatures(updatedFeatures);
+          }
+        } else {
+          console.error("Invalid GeoJSON format for TerraDraw");
+        }
+
       }
     }
     reader.readAsText(inputFile, 'UTF-8')
@@ -117,28 +165,6 @@ function FileInput(props: any): ReactElement {
   )
 }
 
-function RemoveFeatures(props: any): ReactElement {
-  return (
-    <CustomOverlay position="top-left" style={{ pointerEvents: 'all' }}>
-      <div className="mapboxgl-ctrl mapboxgl-ctrl-group">
-        <button
-          type="button"
-          title="Remove Features (geojson, kml etc)"
-          onClick={() => {
-            props.setGeojsonFeatures({
-              type: 'FeatureCollection', features: []
-            })
-          }}
-        >
-          <span className="mapboxgl-ctrl-icon" style={{ paddingTop: '7px' }}>
-            <FontAwesomeIcon icon={faTrash} />{' '}
-          </span>
-        </button>
-      </div>
-    </CustomOverlay>
-  )
-}
-
 
 function FileUploadControl(props: any): ReactElement {
   return (
@@ -147,27 +173,44 @@ function FileUploadControl(props: any): ReactElement {
     </CustomOverlay>
   )
 }
+export type Mode = "rectangle" | "polygon" | "point" | "linestring" | "static" | "select";
+
+
 
 function MapControls(props: any): ReactElement {
+  const terraDrawLeftRef = useRef<TerraDraw>();
+  const terraDrawRightRef = useRef<TerraDraw>();
+  const mapRef = props.clickedMap === "left" ? props.leftMapRef : props.rightMapRef;
   return (
     <>
       <GeocoderControl
         mapboxAccessToken={props.mapboxAccessToken}
         position="top-left"
         flyTo={false}
-        mapRef={props.mapRef}
+        mapRef={mapRef}
       />
       <WrappedRulerControl
         position="top-left"
       />
 
-      <FileUploadControl
-        setGeojsonFeatures={props.setGeojsonFeatures}
-        mapRef={props.mapRef}
-      />
-      <RemoveFeatures setGeojsonFeatures={props.setGeojsonFeatures} />
-
       <NavigationControl showCompass={false} position="top-left" />
+
+      <FileUploadControl
+        mapRef={mapRef}
+        terraDrawLeftRef={terraDrawLeftRef}
+        terraDrawRightRef={terraDrawRightRef}
+      />
+
+      <MapDrawingComponent
+        leftMapRef={props.leftMapRef}
+        rightMapRef={props.rightMapRef}
+        clickedMap={props.clickedMap}
+        terraDrawLeftRef={terraDrawLeftRef}
+        terraDrawRightRef={terraDrawRightRef}
+        selectedTms={props.selectedTms}
+        leftTimelineDate={props.leftTimelineDate}
+        rightTimelineDate={props.rightTimelineDate}
+      />
 
       <ScaleControl
         unit={'metric'}

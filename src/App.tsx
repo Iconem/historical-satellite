@@ -19,7 +19,6 @@ import {
 } from "./utilities";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
-let rulerOk = false;
 // TODO Avoid tile popping on setTiles of rasterTileSet imagery source
 // https://github.com/mapbox/mapbox-gl-js/issues/12707
 
@@ -41,13 +40,6 @@ function App() {
     import.meta.env.VITE_PLANET_BASEMAP_API_KEY
   );
 
-  // const backgroundBasemapStyle = "satellite-streets-v12";
-  // const [leftTimelineDate, setLeftTimelineDate] = useState<Date>(
-  //   subMonths(new Date(), 1)
-  // );
-  // const [rightTimelineDate, setRightTimelineDate] = useState<Date>(
-  //   subMonths(new Date(), 18)
-  // );
   const [leftTimelineDate, setLeftTimelineDate] = useLocalStorage(
     "leftTimelineDate",
     subMonths(new Date(), 2),
@@ -64,16 +56,13 @@ function App() {
   const [rightPlanetUrl, setRightPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), false));
 
   useEffect(() => {
-    // console.log(leftTimelineDate, 'leftTimelineDate', rightTimelineDate, 'rightTimelineDate') 
     setleftPlanetUrl(planetBasemapUrl(leftTimelineDate, customPlanetApiKey));
   }, [customPlanetApiKey, leftTimelineDate]);
   useEffect(() => {
-    // console.log(leftTimelineDate, 'leftTimelineDate', rightTimelineDate, 'rightTimelineDate') 
     setRightPlanetUrl(planetBasemapUrl(rightTimelineDate, customPlanetApiKey));
   }, [customPlanetApiKey, rightTimelineDate]);
 
   // Like Mapbox gl compare https://docs.mapbox.com/mapbox-gl-js/example/mapbox-gl-compare/
-  // const [splitPanelSizesPercent, setSplitPanelSizesPercent] = useState([75, 25]);
   const [splitPanelSizesPercent, setSplitPanelSizesPercent] = useLocalStorage(
     "ui_splitPanelSizesPercent",
     [75, 25]
@@ -108,12 +97,6 @@ function App() {
   }, [])
 
 
-  // const [leftSelectedTms, setLeftSelectedTms] = useState<BasemapsIds>(
-  //   BasemapsIds.PlanetMonthly
-  // );
-  // const [rightSelectedTms, setRightSelectedTms] = useState<BasemapsIds>(
-  //   BasemapsIds.GoogleHybrid
-  // );
   const [leftSelectedTms, setLeftSelectedTms]: [BasemapsIds, (e: BasemapsIds) => void] = useLocalStorage(
     "ui_leftSelectedTms",
     BasemapsIds.PlanetMonthly
@@ -126,7 +109,6 @@ function App() {
   function resizeMaps() {
     leftMapRef.current?.getMap()?.resize();
     rightMapRef.current?.getMap()?.resize();
-    // rightMapRef.current.resize();
   }
 
   // Update raster TMS source faster than react component remount on timelineDate state update
@@ -209,8 +191,6 @@ function App() {
   // const mapBounds = leftMapRef?.current?.getMap()?.getBounds();
 
   // TODO: on playback, rightmap Moves so fires setActiveMap('right') on play, which is unwanted since it prevents further play
-  // const onLeftMoveStart = useCallback(() => console.log("left"), []);
-  // const onRightMoveStart = useCallback(() => console.log("right"), []);
   const onLeftMoveStart = useCallback(() => setActiveMap("left"), []);
   const onRightMoveStart = useCallback(() => setActiveMap("right"), []);
   const onMove = useCallback((evt: any) => setViewState(evt.viewState), []);
@@ -238,16 +218,21 @@ function App() {
     false
   );
 
-  const leftMapboxMapStyle = useMemo(() => {
-    return leftSelectedTms == BasemapsIds.Mapbox
-      ? "mapbox://styles/mapbox/satellite-streets-v12"
-      : backgroundBasemapStyle;
-  }, [leftSelectedTms]);
-  const rightMapboxMapStyle = useMemo(() => {
-    return rightSelectedTms == BasemapsIds.Mapbox
-      ? "mapbox://styles/mapbox/satellite-streets-v12"
-      : backgroundBasemapStyle;
-  }, [rightSelectedTms]);
+  // const leftMapboxMapStyle = useMemo(() => {
+  //   return leftSelectedTms == BasemapsIds.Mapbox
+  //     ? "mapbox://styles/mapbox/satellite-streets-v12"
+  //     : backgroundBasemapStyle;
+  // }, [leftSelectedTms]);
+  // const rightMapboxMapStyle = useMemo(() => {
+  //   return rightSelectedTms == BasemapsIds.Mapbox
+  //     ? "mapbox://styles/mapbox/satellite-streets-v12"
+  //     : backgroundBasemapStyle;
+  // }, [rightSelectedTms]);
+
+  const leftMapboxMapStyle = backgroundBasemapStyle;
+
+  const rightMapboxMapStyle = backgroundBasemapStyle;
+
 
   const sharedMapsProps = {
     viewState,
@@ -259,51 +244,6 @@ function App() {
     projection: "naturalEarth", // naturalEarth preferred, mercator possible
     preserveDrawingBuffer: true
   };
-
-  const [geojsonFeatures, setGeojsonFeatures]: [GeoJSON.FeatureCollection, Function] = useState({
-    type: 'FeatureCollection', features: []
-  })
-
-  function GeojsonLayer() {
-    return (
-      <Source
-        id="geojson-data"
-        type="geojson"
-        data={geojsonFeatures}
-      >
-        <Layer
-          id='geojson-points'
-          type='circle'
-          paint={{
-            'circle-radius': 10,
-            'circle-color': '#007cbf'
-          }}
-          filter={['==', '$type', 'Point']}
-        />
-        <Layer
-          id='geojson-line'
-          type='line'
-          paint={{
-            'line-color': '#ff0000',
-            'line-opacity': 0.8,
-            'line-width': 3
-          }}
-          // filter={['==', '$type', 'Polygon']}
-          filter={["any", ['==', '$type', 'LineString'], ['==', '$type', 'Polygon']]}
-        />
-        <Layer
-          id='geojson-fill'
-          type='fill'
-          paint={{
-            'fill-color': '#fff',
-            'fill-opacity': 0.2,
-          }}
-          filter={['==', '$type', 'Polygon']}
-        // filter={["in", '$type', ['Polygon', 'Polyline']]}
-        />
-      </Source>
-    );
-  }
 
   const handleSplitScreenChange = (
     event: React.MouseEvent<HTMLElement>,
@@ -436,30 +376,26 @@ function App() {
           ref={leftMapRef}
           onClick={() => {
             setClickedMap("left")
-            // setLeftMa
           }}
           onMoveStart={onLeftMoveStart}
-          // onMove={activeMap === "left" ? onMove : () => ({})}
           onMove={activeMap === "left" ? onMoveDebounce : () => ({})}
           onMoveEnd={onMoveEnd}
           style={LeftMapStyle}
           mapStyle={leftMapboxMapStyle}
-        // transformRequest={transformRequest}
 
         // projection={"naturalEarth"} // globe mercator naturalEarth equalEarth  // TODO: eventually make projection controllable
         >
           <MapControls
-            mapRef={leftMapRef}
+            rightMapRef={rightMapRef}
+            leftMapRef={leftMapRef}
             mapboxAccessToken={MAPBOX_TOKEN}
-            setGeojsonFeatures={setGeojsonFeatures}
+            clickedMap={clickedMap}
+            selectedTms={clickedMap == "left" ? leftSelectedTms : rightSelectedTms}
+            leftTimelineDate={leftTimelineDate}
+            rightTimelineDate={rightTimelineDate}
           />
 
-          <GeojsonLayer />
-
-
-          {leftSelectedTms == BasemapsIds.Mapbox ? (
-            <></>
-          ) : leftSelectedTms == BasemapsIds.PlanetMonthly ? (
+          {leftSelectedTms == BasemapsIds.PlanetMonthly ? (
             <Source
               id="planetbasemap-source"
               scheme="xyz"
@@ -485,7 +421,7 @@ function App() {
             </Source>
           ) : (
             <Source
-              id="tms-source"
+              id={`tms-source-${leftSelectedTms}`}
               scheme="xyz"
               type="raster"
               tiles={[basemapsTmsSources[leftSelectedTms].url]}
@@ -494,7 +430,6 @@ function App() {
               key={leftSelectedTms}
             // https://github.com/maptiler/tilejson-spec/tree/custom-projection/2.2.0
             // yandex is in CRS/SRS EPSG:3395 but mapbox source only supports CRS 3857 atm
-            // crs={"EPSG:3395"}
             >
               <Layer type="raster" layout={{}} paint={{}} />
             </Source>
@@ -527,57 +462,50 @@ function App() {
             ref={rightMapRef}
             onClick={() => setClickedMap("right")}
             onMoveStart={onRightMoveStart}
-            // onMove={activeMap === "right" ? onMove : () => ({})}
             onMove={activeMap === "right" ? onMoveDebounce : () => ({})}
             onMoveEnd={onMoveEnd}
-            // style={RightMapStyle}
             mapStyle={rightMapboxMapStyle}
           >
             <WrappedRulerControl
               position="top-right"
             />
 
-            <GeojsonLayer />
-
-            {
-              rightSelectedTms == BasemapsIds.Mapbox ? (
-                <></>) :
-                rightSelectedTms == BasemapsIds.PlanetMonthly ? (
-                  <Source
-                    id="planetbasemap-source"
-                    scheme="xyz"
-                    type="raster"
-                    tiles={[rightPlanetUrl]} // tiles={[]}
-                    tileSize={256}
-                    key={"planet" + rightTimelineDate.toString()}
-                  >
-                    <Layer type="raster" layout={{}} paint={{}} />
-                  </Source>
-                ) : rightSelectedTms == BasemapsIds.ESRIWayback ? (
-                  <Source
-                    id="wayback-source"
-                    scheme="xyz"
-                    type="raster"
-                    tiles={[rightWaybackUrl]}
-                    tileSize={256}
-                    // key={"wayback" + rightTimelineDate.toString().toLowerCase()}
-                    key={"wayback-" + rightWaybackUrl.split('/').reverse()[3]}
-                  >
-                    <Layer type="raster" layout={{}} paint={{}} />
-                  </Source>
-                ) : (
-                  <Source
-                    id="tms-source"
-                    scheme="xyz"
-                    type="raster"
-                    tiles={[basemapsTmsSources[rightSelectedTms].url]}
-                    maxzoom={basemapsTmsSources[rightSelectedTms].maxzoom || 20}
-                    tileSize={256}
-                    key={rightSelectedTms}
-                  >
-                    <Layer type="raster" layout={{}} paint={{}} />
-                  </Source>
-                )
+            {rightSelectedTms == BasemapsIds.PlanetMonthly ? (
+              <Source
+                id="planetbasemap-source"
+                scheme="xyz"
+                type="raster"
+                tiles={[rightPlanetUrl]} // tiles={[]}
+                tileSize={256}
+                key={"planet" + rightTimelineDate.toString()}
+              >
+                <Layer id={'layer'} type="raster" />
+              </Source>
+            ) : rightSelectedTms == BasemapsIds.ESRIWayback ? (
+              <Source
+                id="wayback-source"
+                scheme="xyz"
+                type="raster"
+                tiles={[rightWaybackUrl]}
+                tileSize={256}
+                // key={"wayback" + rightTimelineDate.toString().toLowerCase()}
+                key={"wayback-" + rightWaybackUrl.split('/').reverse()[3]}
+              >
+                <Layer id={'layer'} type="raster" />
+              </Source>
+            ) : (
+              <Source
+                id={`tms-source-${rightSelectedTms}`}
+                scheme="xyz"
+                type="raster"
+                tiles={[basemapsTmsSources[rightSelectedTms].url]}
+                maxzoom={basemapsTmsSources[rightSelectedTms].maxzoom || 20}
+                tileSize={256}
+                key={rightSelectedTms}
+              >
+                <Layer id={'layer'} type="raster" />
+              </Source>
+            )
             }
           </Map>
           {(splitScreenMode !== "split-screen") && (
@@ -636,6 +564,7 @@ function App() {
         setLeftSelectedTms={setLeftSelectedTms}
         setRightSelectedTms={setRightSelectedTms}
         leftMapRef={leftMapRef}
+        rightMapRef={rightMapRef}
         setWaybackItemsWithLocalChanges={setWaybackItemsWithLocalChanges}
       />
     </>
