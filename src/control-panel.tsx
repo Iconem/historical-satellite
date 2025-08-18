@@ -198,10 +198,10 @@ async function fetchTitilerFramesBatches(gdalTranslateCmds: any, foldername: str
           .then((response) => response.blob())
           .then(async (blob) => {
             const arrayBuffer = await blob.arrayBuffer();
-            if (c.filename.includes("Esri_WayBack")) {
+            if (c.provider === ProviderOptions.ESRIWayback) {
               var ESRI_wayback = zip.folder("ESRI_wayback");
               ESRI_wayback?.file(`${c.filename}_titiler.tif`, arrayBuffer);
-            } else if (c.filename.includes("PlanetMonthly")) {
+            } else if (c.provider === ProviderOptions.PlanetMonthly) {
               var planet_monthly = zip.folder("planet_monthly");
               planet_monthly?.file(`${c.filename}_titiler.tif`, arrayBuffer);
             } else {
@@ -342,6 +342,12 @@ function ControlPanelDrawer(props: any) {
   );
 }
 
+
+enum ProviderOptions {
+  PlanetMonthly = "Planet",
+  ESRIWayback = "Esri WayBack",
+  ALL_OTHERS = "All Others",
+}
 
 
 // -----------------------------------------------------
@@ -507,13 +513,9 @@ function ControlPanel(props: any) {
 
   const mapRef = props.mapRef;
   const bounds = mapRef?.current?.getMap()?.getBounds();
-  const providerOptions = ['Planet', 'Esri WayBack', 'All Others']
+  // select all export options by default
+  const providerOptions = Object.values(ProviderOptions) // ['Planet', 'Esri WayBack', 'All Others']
   const [selectedProviders, setSelectedProviders] = useState<string[]>(providerOptions);
-  enum ProviderOptions {
-    PLANET = "Planet",
-    ESRI = "Esri WayBack",
-    ALL_OTHERS = "All Others",
-  }
 
   async function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES, selectedProviders: ProviderOptions[]) {
     // html-to-image can do both export with clipPath and mixBlendMode, although seem a bit slower than html2canvas!
@@ -647,9 +649,9 @@ function ControlPanel(props: any) {
       //Builds a list of gdalTranslateCmds command objects based on selected providers
       function buildGdalTranslateCmds(
         selectedProviders: string[],
-        allPlanet: PartOfGdalCmd[],
+        allOthers: PartOfGdalCmd[],
         allEsri: PartOfGdalCmd[],
-        allOthers: PartOfGdalCmd[]
+        allPlanet: PartOfGdalCmd[],
       ) {
         const isSelected = (provider: string) => selectedProviders.includes(provider);
 
@@ -657,13 +659,13 @@ function ControlPanel(props: any) {
           cmds.map(cmd => ({
             ...cmd,
             provider: providerKey,
-            active: selectedProviders.length == 0 || isSelected(providerKey),
+            active: isSelected(providerKey),
           }));
 
         return [
-          ...tagWithStatus(allOthers, "All Others"),
-          ...tagWithStatus(allEsri, "Esri WayBack"),
-          ...tagWithStatus(allPlanet, "Planet"),
+          ...tagWithStatus(allOthers, ProviderOptions.ALL_OTHERS),
+          ...tagWithStatus(allEsri, ProviderOptions.ESRIWayback),
+          ...tagWithStatus(allPlanet, ProviderOptions.PlanetMonthly),
         ];
       }
 
