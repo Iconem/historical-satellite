@@ -98,6 +98,7 @@ export function MapDrawingComponent(props: any): ReactElement {
         map: mapboxgl.Map,
         drawRef: React.MutableRefObject<TerraDraw | null>,
     ) {
+        console.log('intializing terradraw');
         // Stop previous instance
         if (drawRef.current) {
             try {
@@ -150,6 +151,7 @@ export function MapDrawingComponent(props: any): ReactElement {
         terraDraw.on("change", () => updateSharedSource(fromLeft));
 
         drawRef.current = terraDraw;
+        console.log('terradraw intialized');
     }
 
     // UseEffects to initialize both left and right terradraw instances
