@@ -173,7 +173,9 @@ export function MapDrawingComponent(props: any): ReactElement {
 
     // UseEffects to initialize both left and right terradraw instances
     useEffect(() => {
+        console.log('useEffect')
         const leftMap = props.leftMapRef?.current?.getMap();
+        console.log('leftMap', leftMap)
         if (!leftMap) return;
 
         const init = () => initTerraDraw(leftMap, props.terraDrawLeftRef);
@@ -189,7 +191,9 @@ export function MapDrawingComponent(props: any): ReactElement {
     }, []);
 
     useEffect(() => {
+        console.log('useEffect')
         const rightMap = props.rightMapRef?.current?.getMap();
+        console.log('rightMap', rightMap)
 
         if (!rightMap) return;
 
