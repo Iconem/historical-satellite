@@ -188,7 +188,7 @@ export function MapDrawingComponent(props: any): ReactElement {
         return () => {
             props.terraDrawLeftRef?.current?.stop();
         };
-    }, []);
+    }, [props.leftMapRef]);
 
     useEffect(() => {
         console.log('useEffect')
@@ -207,7 +207,7 @@ export function MapDrawingComponent(props: any): ReactElement {
         return () => {
             props.terraDrawRightRef?.current?.stop();
         };
-    }, []);
+    }, [props.rightMapRef]);
 
     //Bring drawing to front after changing the basemap
     const alreadyMovedLeftRef = useRef(false);
