@@ -38,7 +38,7 @@
     "react-icons": "^5.5.0",
     "react-map-gl": "8.0",
     "react-split": "^2.0.14",
-    "terra-draw": "^1.11.0",
+    "terra-draw": "^1.12.0",
     "terra-draw-mapbox-gl-adapter": "^1.1.0",
     "uuid": "^11.1.0"
   },
