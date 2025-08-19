@@ -1,4 +1,4 @@
-import { ReactElement, useEffect, useRef, useState } from "react";
+import { ReactElement, useEffect, useRef, useState, useMemo } from "react";
 import { TerraDrawControlComponent } from "./terraDraw-control";
 import { TerraDraw, TerraDrawLineStringMode, TerraDrawPointMode, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode } from "terra-draw";
 import { Mode } from "./map-controls";
@@ -266,6 +266,8 @@ export function MapDrawingComponent(props: any): ReactElement {
 
     //Switch between draw's modes
     const [activeMode, setActiveMode] = useState<Mode>("static");
+
+    /*
     const toggleMode = (mode: Mode) => {
         const newMode = activeMode === mode ? "static" : mode;
 
@@ -281,6 +283,25 @@ export function MapDrawingComponent(props: any): ReactElement {
 
         setActiveMode(newMode);
     };
+    */
+
+    const toggleMode = useMemo(() => {
+        return (mode: Mode) => {
+            const newMode = activeMode === mode ? "static" : mode;
+
+            const leftTerraDraw = props.terraDrawLeftRef?.current;
+            const rightTerraDraw = props.terraDrawRightRef?.current;
+
+            if (!leftTerraDraw && !rightTerraDraw) {
+                console.warn("Aucune instance TerraDraw n'est prête");
+                return;
+            }
+            if (leftTerraDraw) leftTerraDraw.setMode(newMode);
+            if (rightTerraDraw) rightTerraDraw.setMode(newMode);
+
+            setActiveMode(newMode);
+        };
+    }, [props.terraDrawLeftRef, props.terraDrawRightRef]);
 
     // export drawings of both maps left & right
     function exportDrawing() {
