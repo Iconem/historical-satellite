@@ -115,7 +115,8 @@ export function MapDrawingComponent(props: any): ReactElement {
         map: mapboxgl.Map,
         drawRef: React.MutableRefObject<TerraDraw | null>,
     ) {
-        console.log('intializing terradraw');
+        if (!map) return;
+
         // Stop previous instance
         if (drawRef.current) {
             try {
@@ -168,7 +169,10 @@ export function MapDrawingComponent(props: any): ReactElement {
         terraDraw.on("change", () => updateSharedSource(fromLeft));
 
         drawRef.current = terraDraw;
-        console.log('terradraw intialized');
+        console.log("TerraDraw instance assignée", drawRef.current);
+
+        return drawRef.current;
+
     }
 
     // UseEffects to initialize both left and right terradraw instances
@@ -176,28 +180,33 @@ export function MapDrawingComponent(props: any): ReactElement {
         const leftMap = props.leftMapRef?.current?.getMap();
         if (!leftMap) return;
 
-        const init = () => initTerraDraw(leftMap, props.terraDrawLeftRef);
         if (leftMap.isStyleLoaded()) {
-            init();
+            const draw = initTerraDraw(leftMap, props.terraDrawLeftRef);
+            console.log("still loaded left map", leftMap, props.terraDrawLeftRef, "draw:", draw);
         } else {
-            leftMap.once("load", init);
+            leftMap.once("idle", () => {
+                const draw = initTerraDraw(leftMap, props.terraDrawLeftRef);
+                console.log("idle event -> left map loaded", leftMap, props.terraDrawLeftRef, "left draw:", draw);
+            });
         }
 
         return () => {
-            props.terraDrawLeftRef?.current?.stop();
+            props.terraDrawRightRef?.current?.stop();
         };
     }, []);
 
     useEffect(() => {
         const rightMap = props.rightMapRef?.current?.getMap();
-
         if (!rightMap) return;
 
-        const init = () => initTerraDraw(rightMap, props.terraDrawRightRef);
         if (rightMap.isStyleLoaded()) {
-            init();
+            const draw = initTerraDraw(rightMap, props.terraDrawRightRef);
+            console.log("still loaded right map", rightMap, props.terraDrawRightRef, "draw:", draw);
         } else {
-            rightMap.once("load", init);
+            rightMap.once("idle", () => {
+                const draw = initTerraDraw(rightMap, props.terraDrawRightRef);
+                console.log("idle event -> right map loaded", rightMap, props.terraDrawRightRef, "right draw:", draw);
+            });
         }
 
         return () => {
@@ -267,7 +276,12 @@ export function MapDrawingComponent(props: any): ReactElement {
 
         const leftTerraDraw = props.terraDrawLeftRef?.current;
         const rightTerraDraw = props.terraDrawRightRef?.current;
-
+        if (!leftTerraDraw) {
+            console.warn("Aucune instance left n'est prête")
+        }
+        if (!rightTerraDraw) {
+            console.warn("Aucune instance right n'est prête");
+        }
         if (!leftTerraDraw && !rightTerraDraw) {
             console.warn("Aucune instance TerraDraw n'est prête");
             return;

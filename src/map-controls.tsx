@@ -178,8 +178,8 @@ export type Mode = "rectangle" | "polygon" | "point" | "linestring" | "static" |
 
 
 function MapControls(props: any): ReactElement {
-  const terraDrawLeftRef = useRef<TerraDraw>();
-  const terraDrawRightRef = useRef<TerraDraw>();
+  const terraDrawLeftRef = useRef<TerraDraw | null>(null);
+  const terraDrawRightRef = useRef<TerraDraw | null>(null);
   const mapRef = props.clickedMap === "left" ? props.leftMapRef : props.rightMapRef;
   return (
     <>
