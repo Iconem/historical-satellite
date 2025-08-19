@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom'
 
 import { Mode } from './map-controls'
 import { useState } from 'react'
-import { FaMousePointer, FaMapMarkerAlt, FaRegSquare, FaDrawPolygon, FaTrash, FaSave } from 'react-icons/fa';
-import { MdOutlineDraw, MdDraw, MdOutlinePolyline } from "react-icons/md";
-import { PiEyeClosedBold, PiEyeBold, PiRectangleLight } from "react-icons/pi";
+import { FaMousePointer, FaMapMarkerAlt, FaDrawPolygon, FaTrash, FaSave, FaPen, FaPenSquare, FaEyeSlash, FaEye, FaRegSquare } from 'react-icons/fa';
+import { MdOutlinePolyline } from "react-icons/md";
+
 
 class TerraDrawControl {
   private _container: HTMLDivElement
@@ -50,13 +50,13 @@ export function TerraDrawControlComponent({
   return createPortal(
     <div>
       <button onClick={() => setShowControls(!showControls)} title='draw'>
-        {showControls ? <MdDraw /> : <MdOutlineDraw />}
+        {showControls ? <FaPen /> : <FaPen />}
       </button>
 
       {showControls && (
         <div style={{ marginTop: 5 }}>
           <button onClick={() => toggleDrawings()}>
-            {isVisible ? <PiEyeBold title='Hide' /> : <PiEyeClosedBold title='Show' />}
+            {isVisible ? <FaEye title='Hide' /> : <FaEyeSlash title='Show' />}
           </button>
           <button
             onClick={() => toggleMode("select")}
@@ -75,7 +75,7 @@ export function TerraDrawControlComponent({
           <button
             onClick={() => toggleMode("linestring")}
             style={{ backgroundColor: activeMode === "linestring" ? "lightgreen" : "white" }}
-            title="linestring"
+            title="Linestring"
           >
             <MdOutlinePolyline />
           </button>
@@ -85,7 +85,7 @@ export function TerraDrawControlComponent({
             title="Rectangle"
 
           >
-            <PiRectangleLight />
+            <FaRegSquare />
           </button>
           <button
             onClick={() => toggleMode("polygon")}

@@ -73,6 +73,7 @@ export default function SettingsModal(props: any) {
             aria-label="Provider selection"
             color="primary"
             exclusive={false}
+            size={"small"}
           >
             {props.providerOptions.map((provider) => (
               <ToggleButton key={provider} value={provider}>
@@ -137,6 +138,9 @@ export default function SettingsModal(props: any) {
             />
             {/* </Tooltip> */}
           </LocalizationProvider>{" "}
+          <div className='customApiModal'>
+            <TextField value={props.customPlanetApiKey} onChange={handlePlanetApiInputChange} size={'small'} label="Planet Monthly Key" style={{ width: '86%', marginTop: '1em' }} />
+          </div>
           <Typography id="modal-modal-description" sx={{ mt: 1, mb: 1 }}>
             Additional export settings
           </Typography>{" "}
@@ -193,10 +197,6 @@ export default function SettingsModal(props: any) {
               />
             }
           />
-
-          <div className='customApiModal'>
-            <TextField value={props.customPlanetApiKey} onChange={handlePlanetApiInputChange} size={'small'} label="Planet Monthly Key" style={{ width: '86%' }} />
-          </div>
 
         </Box>
       </Modal>
