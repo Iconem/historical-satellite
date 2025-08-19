@@ -242,6 +242,7 @@ export function MapDrawingComponent(props: any): ReactElement {
         const newMode = activeMode === mode ? "static" : mode;
         const leftTerraDraw = props.terraDrawLeftRef?.current;
         const rightTerraDraw = props.terraDrawRightRef?.current;
+        console.log('in toggleMode', { mode, newMode, clickedMap: props.clickedMap, leftTerraDraw, rightTerraDraw })
         if (leftTerraDraw && props.clickedMap == 'left') {
             leftTerraDraw.setMode(newMode);
             rightTerraDraw.setMode(newMode);
