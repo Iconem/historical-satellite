@@ -266,42 +266,22 @@ export function MapDrawingComponent(props: any): ReactElement {
 
     //Switch between draw's modes
     const [activeMode, setActiveMode] = useState<Mode>("static");
-
-    /*
     const toggleMode = (mode: Mode) => {
         const newMode = activeMode === mode ? "static" : mode;
 
         const leftTerraDraw = props.terraDrawLeftRef?.current;
         const rightTerraDraw = props.terraDrawRightRef?.current;
 
-        if (!leftTerraDraw && !rightTerraDraw) {
-            console.warn("Aucune instance TerraDraw n'est prête");
+        if (!leftTerraDraw || !rightTerraDraw) {
+            console.warn("At least one instance of TerraDraw is not ready");
             return;
         }
-        if (leftTerraDraw) leftTerraDraw.setMode(newMode);
-        if (rightTerraDraw) rightTerraDraw.setMode(newMode);
+        if (leftTerraDraw?.enabled) leftTerraDraw.setMode(newMode);
+        if (rightTerraDraw?.enabled) rightTerraDraw.setMode(newMode);
 
         setActiveMode(newMode);
     };
-    */
 
-    const toggleMode = useMemo(() => {
-        return (mode: Mode) => {
-            const newMode = activeMode === mode ? "static" : mode;
-
-            const leftTerraDraw = props.terraDrawLeftRef?.current;
-            const rightTerraDraw = props.terraDrawRightRef?.current;
-
-            if (!leftTerraDraw && !rightTerraDraw) {
-                console.warn("Aucune instance TerraDraw n'est prête");
-                return;
-            }
-            if (leftTerraDraw) leftTerraDraw.setMode(newMode);
-            if (rightTerraDraw) rightTerraDraw.setMode(newMode);
-
-            setActiveMode(newMode);
-        };
-    }, [props.terraDrawLeftRef, props.terraDrawRightRef]);
 
     // export drawings of both maps left & right
     function exportDrawing() {
