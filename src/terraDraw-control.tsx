@@ -55,16 +55,6 @@ export function TerraDrawControlComponent({
 
       {showControls && (
         <div style={{ marginTop: 5 }}>
-          <button onClick={() => toggleDrawings()}>
-            {isVisible ? <FaEye title='Hide' /> : <FaEyeSlash title='Show' />}
-          </button>
-          <button
-            onClick={() => toggleMode("select")}
-            style={{ backgroundColor: activeMode === "select" ? "lightgreen" : "white" }}
-            title="Select"
-          >
-            <FaMousePointer />
-          </button>
           <button
             onClick={() => toggleMode("point")}
             style={{ backgroundColor: activeMode === "point" ? "lightgreen" : "white" }}
@@ -93,6 +83,16 @@ export function TerraDrawControlComponent({
             title="Polygon"
           >
             <FaDrawPolygon />
+          </button>
+          <button onClick={() => toggleDrawings()} style={{ marginTop: 0 }}>
+            {isVisible ? <FaEye title='Hide' /> : <FaEyeSlash title='Show' />}
+          </button>
+          <button
+            onClick={() => toggleMode("select")}
+            style={{ backgroundColor: activeMode === "select" ? "lightgreen" : "white" }}
+            title="Select"
+          >
+            <FaMousePointer />
           </button>
           <button onClick={deleteHandler} title="Delete"> <FaTrash /> </button>
           <button onClick={exportDrawing} title="Export"> <FaSave /> </button>
