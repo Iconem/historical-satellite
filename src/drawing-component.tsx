@@ -39,6 +39,12 @@ export function MapDrawingComponent(props: any): ReactElement {
         isProgrammaticDeselect.current = false;
     };
     // Syncs a feature’s coordinates from one map to the other to keep both maps in sync
+    function roundCoords(coords: any, precision = 6): any {
+        if (typeof coords[0] === "number") {
+            return coords.map((c: number) => +c.toFixed(precision));
+        }
+        return coords.map((c: any) => roundCoords(c, precision));
+    }
     const isProgrammaticUpdate = { current: false };
     function syncFeatureCoordsAcrossMaps(featureId: string, fromLeft: boolean) {
         if (isProgrammaticUpdate.current) return;
@@ -60,9 +66,20 @@ export function MapDrawingComponent(props: any): ReactElement {
 
         isProgrammaticUpdate.current = true;
         if (targetFeature) {
-            targetDraw.updateFeatureGeometry(feature.id, feature.geometry);
+            const roundedGeometry = {
+                ...feature.geometry,
+                coordinates: roundCoords(feature.geometry.coordinates)
+            };
+            targetDraw.updateFeatureGeometry(feature.id, roundedGeometry);
         } else {
-            targetDraw.addFeatures([feature]);
+            const roundedFeature = {
+                ...feature,
+                geometry: {
+                    ...feature.geometry,
+                    coordinates: roundCoords(feature.geometry.coordinates)
+                }
+            };
+            targetDraw.addFeatures([roundedFeature]);
         }
         isProgrammaticUpdate.current = false;
     }
@@ -211,6 +228,9 @@ export function MapDrawingComponent(props: any): ReactElement {
         const onIdle = () => {
             bringTerraDrawToFront(alreadyMovedLeftRef, leftTerraDraw, leftMap);
         };
+        if (!leftMap.loaded()) {
+            leftMap.once("load", onIdle);
+        }
         leftMap.on("idle", onIdle);
         return () => {
             leftMap.off("idle", onIdle);
@@ -228,6 +248,10 @@ export function MapDrawingComponent(props: any): ReactElement {
         const onIdle = () => {
             bringTerraDrawToFront(alreadyMovedRightRef, rightTerraDraw, rightMap);
         };
+
+        if (!rightMap.loaded()) {
+            rightMap.once("load", onIdle);
+        }
         rightMap.on("idle", onIdle);
         return () => {
             rightMap.off("idle", onIdle);
@@ -238,17 +262,18 @@ export function MapDrawingComponent(props: any): ReactElement {
     const [activeMode, setActiveMode] = useState<Mode>("static");
     const toggleMode = (mode: Mode) => {
         const newMode = activeMode === mode ? "static" : mode;
+
         const leftTerraDraw = props.terraDrawLeftRef?.current;
         const rightTerraDraw = props.terraDrawRightRef?.current;
-        if (leftTerraDraw && props.clickedMap == 'left') {
-            leftTerraDraw.setMode(newMode);
-            rightTerraDraw.setMode(newMode);
-            setActiveMode(newMode);
-        } else if (rightTerraDraw && props.clickedMap == 'right') {
-            rightTerraDraw.setMode(newMode);
-            leftTerraDraw.setMode(newMode);
-            setActiveMode(newMode);
+
+        if (!leftTerraDraw && !rightTerraDraw) {
+            console.warn("Aucune instance TerraDraw n'est prête");
+            return;
         }
+        if (leftTerraDraw) leftTerraDraw.setMode(newMode);
+        if (rightTerraDraw) rightTerraDraw.setMode(newMode);
+
+        setActiveMode(newMode);
     };
 
     // export drawings of both maps left & right
