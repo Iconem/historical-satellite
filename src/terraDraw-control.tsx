@@ -5,7 +5,7 @@ import { Mode } from './map-controls'
 import { useState } from 'react'
 import { FaMousePointer, FaMapMarkerAlt, FaDrawPolygon, FaTrash, FaSave, FaPen, FaPenSquare, FaEyeSlash, FaEye, FaRegSquare } from 'react-icons/fa';
 import { MdOutlinePolyline } from "react-icons/md";
-
+import { useTheme, lighten } from '@mui/material/styles';
 
 class TerraDrawControl {
   private _container: HTMLDivElement
@@ -44,6 +44,10 @@ export function TerraDrawControlComponent({
 
 }: TerraDrawControlProps) {
   const ctrl = useControl(() => new TerraDrawControl(), { position });
+  console.log('TerraDrawControlComponent activeMode', activeMode)
+
+  const theme = useTheme();
+  const selectColor = lighten(theme.palette.primary.light, 0.5);
 
   const [showControls, setShowControls] = useState(false);
 
@@ -57,21 +61,21 @@ export function TerraDrawControlComponent({
         <div style={{ marginTop: 5 }}>
           <button
             onClick={() => toggleMode("point")}
-            style={{ backgroundColor: activeMode === "point" ? "lightgreen" : "white" }}
+            style={{ backgroundColor: activeMode === "point" ? selectColor : "white" }}
             title="Point"
           >
             <FaMapMarkerAlt />
           </button>
           <button
             onClick={() => toggleMode("linestring")}
-            style={{ backgroundColor: activeMode === "linestring" ? "lightgreen" : "white" }}
+            style={{ backgroundColor: activeMode === "linestring" ? selectColor : "white" }}
             title="Linestring"
           >
             <MdOutlinePolyline />
           </button>
           <button
             onClick={() => toggleMode("rectangle")}
-            style={{ backgroundColor: activeMode === "rectangle" ? "lightgreen" : "white" }}
+            style={{ backgroundColor: activeMode === "rectangle" ? selectColor : "white" }}
             title="Rectangle"
 
           >
@@ -79,20 +83,20 @@ export function TerraDrawControlComponent({
           </button>
           <button
             onClick={() => toggleMode("polygon")}
-            style={{ backgroundColor: activeMode === "polygon" ? "lightgreen" : "white" }}
+            style={{ backgroundColor: activeMode === "polygon" ? selectColor : "white" }}
             title="Polygon"
           >
             <FaDrawPolygon />
           </button>
-          <button onClick={() => toggleDrawings()} style={{ marginTop: 0 }}>
-            {isVisible ? <FaEye title='Hide' /> : <FaEyeSlash title='Show' />}
-          </button>
           <button
             onClick={() => toggleMode("select")}
-            style={{ backgroundColor: activeMode === "select" ? "lightgreen" : "white" }}
+            style={{ backgroundColor: activeMode === "select" ? selectColor : "white" }}
             title="Select"
           >
             <FaMousePointer />
+          </button>
+          <button onClick={() => toggleDrawings()} style={{ marginTop: 0 }}>
+            {isVisible ? <FaEye title='Hide' /> : <FaEyeSlash title='Show' />}
           </button>
           <button onClick={deleteHandler} title="Delete"> <FaTrash /> </button>
           <button onClick={exportDrawing} title="Export"> <FaSave /> </button>
