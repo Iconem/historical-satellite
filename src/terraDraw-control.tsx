@@ -47,7 +47,8 @@ export function TerraDrawControlComponent({
   console.log('TerraDrawControlComponent activeMode', activeMode)
 
   const theme = useTheme();
-  const selectColor = lighten(theme.palette.primary.light, 0.5);
+  const selectColor = lighten(theme.palette.primary.main, 0.1);
+  const defaultColor = "black";
 
   const [showControls, setShowControls] = useState(false);
 
@@ -61,21 +62,21 @@ export function TerraDrawControlComponent({
         <div style={{ marginTop: 5 }}>
           <button
             onClick={() => toggleMode("point")}
-            style={{ backgroundColor: activeMode === "point" ? selectColor : "white" }}
+            style={{ color: activeMode === "point" ? selectColor : defaultColor }}
             title="Point"
           >
             <FaMapMarkerAlt />
           </button>
           <button
             onClick={() => toggleMode("linestring")}
-            style={{ backgroundColor: activeMode === "linestring" ? selectColor : "white" }}
+            style={{ color: activeMode === "linestring" ? selectColor : defaultColor }}
             title="Linestring"
           >
             <MdOutlinePolyline />
           </button>
           <button
             onClick={() => toggleMode("rectangle")}
-            style={{ backgroundColor: activeMode === "rectangle" ? selectColor : "white" }}
+            style={{ color: activeMode === "rectangle" ? selectColor : defaultColor }}
             title="Rectangle"
 
           >
@@ -83,14 +84,14 @@ export function TerraDrawControlComponent({
           </button>
           <button
             onClick={() => toggleMode("polygon")}
-            style={{ backgroundColor: activeMode === "polygon" ? selectColor : "white" }}
+            style={{ color: activeMode === "polygon" ? selectColor : defaultColor }}
             title="Polygon"
           >
             <FaDrawPolygon />
           </button>
           <button
             onClick={() => toggleMode("select")}
-            style={{ backgroundColor: activeMode === "select" ? selectColor : "white" }}
+            style={{ color: activeMode === "select" ? selectColor : defaultColor }}
             title="Select"
           >
             <FaMousePointer />
