@@ -113,13 +113,13 @@ export function MapDrawingComponent(props: any): ReactElement {
 
     function initTerraDraw(
         map: mapboxgl.Map,
-        drawRef: React.MutableRefObject<TerraDraw | null>,
+        drawRef: TerraDraw | null,
     ) {
         console.log('intializing terradraw');
         // Stop previous instance
-        if (drawRef.current) {
+        if (drawRef) {
             try {
-                drawRef.current.stop();
+                drawRef.stop();
             } catch (e) {
                 console.warn("Erreur lors du stop précédent :", e);
             }
@@ -156,7 +156,7 @@ export function MapDrawingComponent(props: any): ReactElement {
         if (!terraDraw) return;
         terraDraw.start();
 
-        const fromLeft = drawRef === props.terraDrawLeftRef;
+        const fromLeft = drawRef === props.terraDrawLeftRef.current;
         terraDraw.on("select", onSelect);
         terraDraw.on("deselect", onDeselect);
         terraDraw.on("change", (ids, type, context) => {
@@ -167,7 +167,7 @@ export function MapDrawingComponent(props: any): ReactElement {
         });
         terraDraw.on("change", () => updateSharedSource(fromLeft));
 
-        drawRef.current = terraDraw;
+        drawRef = terraDraw;
         console.log('terradraw intialized');
     }
 
@@ -178,17 +178,19 @@ export function MapDrawingComponent(props: any): ReactElement {
         console.log('leftMap', leftMap)
         if (!leftMap) return;
 
-        const init = () => initTerraDraw(leftMap, props.terraDrawLeftRef);
+        const init = () => initTerraDraw(leftMap, props.terraDrawLeftRef?.current);
         if (leftMap.isStyleLoaded()) {
+            console.log('leftMap isStyleLoaded')
             init();
         } else {
+            console.log('leftMap.once load')
             leftMap.once("load", init);
         }
 
         return () => {
             props.terraDrawLeftRef?.current?.stop();
         };
-    }, [props.leftMapRef]);
+    }, [props.leftMapRef, props.terraDrawLeftRef]);
 
     useEffect(() => {
         console.log('useEffect')
@@ -197,17 +199,19 @@ export function MapDrawingComponent(props: any): ReactElement {
 
         if (!rightMap) return;
 
-        const init = () => initTerraDraw(rightMap, props.terraDrawRightRef);
+        const init = () => initTerraDraw(rightMap, props.terraDrawRightRef?.current);
         if (rightMap.isStyleLoaded()) {
+            console.log('rightMap isStyleLoaded')
             init();
         } else {
+            console.log('rightMap.once load')
             rightMap.once("load", init);
         }
 
         return () => {
             props.terraDrawRightRef?.current?.stop();
         };
-    }, [props.rightMapRef]);
+    }, [props.rightMapRef, props.terraDrawRightRef]);
 
     //Bring drawing to front after changing the basemap
     const alreadyMovedLeftRef = useRef(false);
