@@ -48,8 +48,7 @@ export function TerraDrawControlComponent({
   const [showControls, setShowControls] = useState(true);
 
   const theme = useTheme();
-  const selectColor = lighten(theme.palette.primary.main, 0.1);
-  const defaultColor = "black";
+  const selectColor = lighten(theme.palette.primary.light, 0.5);
 
   return createPortal(
     <div>

@@ -160,6 +160,7 @@ export function MapDrawingComponent(props: MapDrawingProps): ReactElement {
     // --- Bring TerraDraw Layers to Front even after basemaap source changed ---
     const bringTerraDrawToFront = (map: mapboxgl.Map) => {
         if (map) {
+
             ["td-polygon", "td-polygon-outline", "td-linestring", "td-point"].forEach(layerId => {
                 if (map.getLayer(layerId)) map.moveLayer(layerId);
             });
