@@ -490,8 +490,10 @@ function ControlPanel(props: any) {
         props.clickedMap == "left" ? setLeftMarks(planetMarks) : setRightMarks(planetMarks)
       }
       else if (props.selectedTms == BasemapsIds.ESRIWayback) {
-        map.on('moveend', onMoveEnd_esriWaybackMarks);
-        onMoveEnd_esriWaybackMarks({ target: map })
+        if (map) {
+          map.on('moveend', onMoveEnd_esriWaybackMarks);
+          onMoveEnd_esriWaybackMarks({ target: map });
+        }
       }
       else if (props.selectedTms == BasemapsIds.Apple) {
         retrieveAppleAccessToken()

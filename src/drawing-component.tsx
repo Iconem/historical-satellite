@@ -1,4 +1,4 @@
-import { ReactElement, useEffect, useRef, useState, useMemo } from "react";
+import { ReactElement, useEffect, useRef, useState } from "react";
 import { TerraDrawControlComponent } from "./terraDraw-control";
 import { TerraDraw, TerraDrawLineStringMode, TerraDrawPointMode, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode } from "terra-draw";
 import { Mode } from "./map-controls";
@@ -113,14 +113,14 @@ export function MapDrawingComponent(props: any): ReactElement {
 
     function initTerraDraw(
         map: mapboxgl.Map,
-        drawRef: TerraDraw | null,
+        drawRef: React.MutableRefObject<TerraDraw | null>,
     ) {
         if (!map) return;
 
         // Stop previous instance
-        if (drawRef) {
+        if (drawRef.current) {
             try {
-                drawRef.stop();
+                drawRef.current.stop();
             } catch (e) {
                 console.warn("Erreur lors du stop précédent :", e);
             }
@@ -157,7 +157,7 @@ export function MapDrawingComponent(props: any): ReactElement {
         if (!terraDraw) return;
         terraDraw.start();
 
-        const fromLeft = drawRef === props.terraDrawLeftRef.current;
+        const fromLeft = drawRef === props.terraDrawLeftRef;
         terraDraw.on("select", onSelect);
         terraDraw.on("deselect", onDeselect);
         terraDraw.on("change", (ids, type, context) => {
@@ -167,66 +167,52 @@ export function MapDrawingComponent(props: any): ReactElement {
             }
         });
         terraDraw.on("change", () => updateSharedSource(fromLeft));
-
-
         drawRef.current = terraDraw;
-        console.log("TerraDraw instance assignée", drawRef.current);
 
         return drawRef.current;
-
 
     }
 
     // UseEffects to initialize both left and right terradraw instances
     useEffect(() => {
-        console.log('useEffect')
         const leftMap = props.leftMapRef?.current?.getMap();
-        console.log('leftMap', leftMap)
         if (!leftMap) return;
-
 
         if (leftMap.isStyleLoaded()) {
             const draw = initTerraDraw(leftMap, props.terraDrawLeftRef);
-            console.log("still loaded left map", leftMap, props.terraDrawLeftRef, "draw:", draw);
         } else {
             leftMap.once("idle", () => {
                 const draw = initTerraDraw(leftMap, props.terraDrawLeftRef);
-                console.log("idle event -> left map loaded", leftMap, props.terraDrawLeftRef, "left draw:", draw);
             });
-
         }
 
         return () => {
             props.terraDrawRightRef?.current?.stop();
         };
-    }, [props.leftMapRef, props.terraDrawLeftRef]);
+    }, []);
 
     useEffect(() => {
-        console.log('useEffect')
         const rightMap = props.rightMapRef?.current?.getMap();
-
         if (!rightMap) return;
 
         if (rightMap.isStyleLoaded()) {
             const draw = initTerraDraw(rightMap, props.terraDrawRightRef);
-            console.log("still loaded right map", rightMap, props.terraDrawRightRef, "draw:", draw);
         } else {
             rightMap.once("idle", () => {
                 const draw = initTerraDraw(rightMap, props.terraDrawRightRef);
-                console.log("idle event -> right map loaded", rightMap, props.terraDrawRightRef, "right draw:", draw);
             });
-
         }
 
         return () => {
             props.terraDrawRightRef?.current?.stop();
         };
-    }, [props.rightMapRef, props.terraDrawRightRef]);
+    }, []);
 
     //Bring drawing to front after changing the basemap
     const alreadyMovedLeftRef = useRef(false);
     const alreadyMovedRightRef = useRef(false);
     const bringTerraDrawToFront = (alreadyMovedRef: React.MutableRefObject<boolean>, terraDraw: TerraDraw, map: mapboxgl.Map) => {
+
         if (alreadyMovedRef.current) return;
         if (map && terraDraw) {
             ["td-polygon", "td-polygon-outline", "td-linestring", "td-point"].forEach(layerId => {
@@ -251,7 +237,7 @@ export function MapDrawingComponent(props: any): ReactElement {
         if (!leftMap.loaded()) {
             leftMap.once("load", onIdle);
         }
-        leftMap.on("idle", onIdle);
+        leftMap.once("idle", onIdle);
         return () => {
             leftMap.off("idle", onIdle);
         };
@@ -272,7 +258,7 @@ export function MapDrawingComponent(props: any): ReactElement {
         if (!rightMap.loaded()) {
             rightMap.once("load", onIdle);
         }
-        rightMap.on("idle", onIdle);
+        rightMap.once("idle", onIdle);
         return () => {
             rightMap.off("idle", onIdle);
         };
@@ -293,15 +279,13 @@ export function MapDrawingComponent(props: any): ReactElement {
         }
         if (!leftTerraDraw && !rightTerraDraw) {
             console.warn("Aucune instance TerraDraw n'est prête");
-
             return;
         }
-        if (leftTerraDraw?.enabled) leftTerraDraw.setMode(newMode);
-        if (rightTerraDraw?.enabled) rightTerraDraw.setMode(newMode);
+        if (leftTerraDraw) leftTerraDraw.setMode(newMode);
+        if (rightTerraDraw) rightTerraDraw.setMode(newMode);
 
         setActiveMode(newMode);
     };
-
 
     // export drawings of both maps left & right
     function exportDrawing() {
