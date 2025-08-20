@@ -5,10 +5,12 @@ import GeocoderControl from './geocoder-control'
 import RulerControl from '@mapbox-controls/ruler';
 import JSZip from 'jszip'
 import bbox from '@turf/bbox'
+import { truncate as turf_truncate } from '@turf/truncate'
 import { kml } from '@tmcw/togeojson'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUpload } from '@fortawesome/free-solid-svg-icons'
 import { TerraDraw } from "terra-draw";
+import type { FeatureCollection } from 'geojson';
 
 import { v4 as uuidv4 } from 'uuid';
 import { MapDrawingComponent } from './drawing-component';
@@ -51,6 +53,11 @@ function FileInput(props: any): ReactElement {
     const filename = inputFile.name
     console.log('inputFile info', inputFile)
     const reader = new FileReader()
+    let geojsonFeatures: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [
+      ]
+    }
     reader.onload = async (e) => {
       const fileExt = filename.split('.').pop().toLowerCase();
       // Handle zip differently because it has async operations
@@ -69,11 +76,6 @@ function FileInput(props: any): ReactElement {
       }
       else {
         const fileContent: string = e.target?.result as string
-        let geojsonFeatures: FeatureCollection = {
-          type: 'FeatureCollection',
-          features: [
-          ]
-        };
         if (fileExt == 'kml') {
           console.log('input file is KML')
           const xmlDoc = new DOMParser().parseFromString(fileContent, 'text/xml')
@@ -89,18 +91,16 @@ function FileInput(props: any): ReactElement {
         updateGeojsonFeatures(geojsonFeatures)
 
         //add imported geojson file to terradraw
-        //round coordinates to solve the 'coordinates too precise error' of terradraw 
-        function roundCoords(coords: number[], precision = 6) {
-          return coords.map((c) => parseFloat(c.toFixed(precision)));
-        }
         if (geojsonFeatures.type === "FeatureCollection" && Array.isArray(geojsonFeatures.features)) {
 
-          const updatedFeatures = geojsonFeatures.features.map((feature: any) => {
+          //round coordinates to solve the 'coordinates too precise error' of terradraw 
+          var truncated = turf_truncate(geojsonFeatures, { precision: 3, coordinates: 2 });
+
+          const updatedFeatures = truncated.features.map((feature: any) => {
             let mode = "static";
 
             switch (feature.geometry.type) {
               case "Point":
-                feature.geometry.coordinates = roundCoords(feature.geometry.coordinates);
                 mode = "point";
                 break;
               case "Polygon":
@@ -113,7 +113,8 @@ function FileInput(props: any): ReactElement {
 
             return {
               ...feature,
-              id: feature.id || uuidv4(),
+              id: uuidv4(), // overwrite id with a new uuid so terradraw can draw it, cannot use standard integer ids
+              // id: feature.id || uuidv4(),
               properties: {
                 ...(feature.properties || {}),
                 mode,
@@ -124,10 +125,12 @@ function FileInput(props: any): ReactElement {
           const terraDrawRight = props.terraDrawRightRef?.current;
 
           if (terraDrawLeft) {
+            terraDrawLeft.clear();
             terraDrawLeft.addFeatures(updatedFeatures);
           }
 
           if (terraDrawRight) {
+            terraDrawRight.clear();
             terraDrawRight.addFeatures(updatedFeatures);
           }
         } else {
@@ -173,7 +176,7 @@ function FileUploadControl(props: any): ReactElement {
     </CustomOverlay>
   )
 }
-export type Mode = "rectangle" | "polygon" | "point" | "linestring" | "static" | "select";
+export type DrawingMode = "rectangle" | "polygon" | "point" | "linestring" | "static" | "select";
 
 
 
@@ -207,7 +210,8 @@ function MapControls(props: any): ReactElement {
         clickedMap={props.clickedMap}
         terraDrawLeftRef={terraDrawLeftRef}
         terraDrawRightRef={terraDrawRightRef}
-        selectedTms={props.selectedTms}
+        leftSelectedTms={props.leftSelectedTms}
+        rightSelectedTms={props.rightSelectedTms}
         leftTimelineDate={props.leftTimelineDate}
         rightTimelineDate={props.rightTimelineDate}
       />

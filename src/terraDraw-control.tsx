@@ -1,10 +1,11 @@
 import { useControl } from 'react-map-gl/mapbox-legacy'
 import { createPortal } from 'react-dom'
 
-import { Mode } from './map-controls'
+import { DrawingMode } from './map-controls'
 import { useState } from 'react'
 import { FaMousePointer, FaMapMarkerAlt, FaDrawPolygon, FaTrash, FaSave, FaPen, FaPenSquare, FaEyeSlash, FaEye, FaRegSquare } from 'react-icons/fa';
 import { MdOutlinePolyline } from "react-icons/md";
+import { BsBoundingBoxCircles } from "react-icons/bs";
 import { useTheme, lighten } from '@mui/material/styles';
 
 class TerraDrawControl {
@@ -25,36 +26,34 @@ class TerraDrawControl {
 }
 interface TerraDrawControlProps {
   deleteHandler: () => void;
-  toggleMode: (mode: Mode) => void;
+  toggleMode: (mode: DrawingMode) => void;
   exportDrawing: () => void;
-  activeMode: Mode;
+  activeDrawingMode: DrawingMode;
   position?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
   toggleDrawings: () => void;
-  isVisible: boolean;
+  drawingsVisible: boolean;
 }
 
 export function TerraDrawControlComponent({
   toggleMode,
-  activeMode,
+  activeDrawingMode,
   deleteHandler,
   exportDrawing,
   toggleDrawings,
   position = "top-left",
-  isVisible
+  drawingsVisible
 
 }: TerraDrawControlProps) {
   const ctrl = useControl(() => new TerraDrawControl(), { position });
-  console.log('TerraDrawControlComponent activeMode', activeMode)
+  const [showControls, setShowControls] = useState(true);
 
   const theme = useTheme();
   const selectColor = lighten(theme.palette.primary.main, 0.1);
   const defaultColor = "black";
 
-  const [showControls, setShowControls] = useState(false);
-
   return createPortal(
     <div>
-      <button onClick={() => setShowControls(!showControls)} title='draw'>
+      <button onClick={() => setShowControls(!showControls)} title='Draw Geometry'>
         {showControls ? <FaPen /> : <FaPen />}
       </button>
 
@@ -62,45 +61,44 @@ export function TerraDrawControlComponent({
         <div style={{ marginTop: 5 }}>
           <button
             onClick={() => toggleMode("point")}
-            style={{ color: activeMode === "point" ? selectColor : defaultColor }}
+            style={{ color: activeDrawingMode === "point" ? selectColor : defaultColor }}
             title="Point"
           >
             <FaMapMarkerAlt />
           </button>
           <button
+            onClick={() => toggleMode("rectangle")}
+            style={{ color: activeDrawingMode === "rectangle" ? selectColor : defaultColor }}
+            title="Rectangle"
+          >
+            <BsBoundingBoxCircles />
+          </button>
+          <button
             onClick={() => toggleMode("linestring")}
-            style={{ color: activeMode === "linestring" ? selectColor : defaultColor }}
+            style={{ color: activeDrawingMode === "linestring" ? selectColor : defaultColor }}
             title="Linestring"
           >
             <MdOutlinePolyline />
           </button>
           <button
-            onClick={() => toggleMode("rectangle")}
-            style={{ color: activeMode === "rectangle" ? selectColor : defaultColor }}
-            title="Rectangle"
-
-          >
-            <FaRegSquare />
-          </button>
-          <button
             onClick={() => toggleMode("polygon")}
-            style={{ color: activeMode === "polygon" ? selectColor : defaultColor }}
+            style={{ color: activeDrawingMode === "polygon" ? selectColor : defaultColor }}
             title="Polygon"
           >
             <FaDrawPolygon />
           </button>
           <button
             onClick={() => toggleMode("select")}
-            style={{ color: activeMode === "select" ? selectColor : defaultColor }}
+            style={{ color: activeDrawingMode === "select" ? selectColor : defaultColor }}
             title="Select"
           >
             <FaMousePointer />
           </button>
           <button onClick={() => toggleDrawings()} style={{ marginTop: 0 }}>
-            {isVisible ? <FaEye title='Hide' /> : <FaEyeSlash title='Show' />}
+            {drawingsVisible ? <FaEye title='Hide drawings' /> : <FaEyeSlash title='Show drawings' />}
           </button>
-          <button onClick={deleteHandler} title="Delete"> <FaTrash /> </button>
-          <button onClick={exportDrawing} title="Export"> <FaSave /> </button>
+          <button onClick={deleteHandler} title="Clear all canvas - otherwise select and press keyboard DEL to delete single feature"> <FaTrash /> </button>
+          <button onClick={exportDrawing} title="Export Geojson FeatureCollection"> <FaSave /> </button>
         </div>
       )}
     </div>,

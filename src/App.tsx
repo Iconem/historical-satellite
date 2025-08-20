@@ -52,8 +52,8 @@ function App() {
     true,
     true
   );
-  const [leftPlanetUrl, setleftPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), false));
-  const [rightPlanetUrl, setRightPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), false));
+  const [leftPlanetUrl, setleftPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), customPlanetApiKey));
+  const [rightPlanetUrl, setRightPlanetUrl] = useState<string>(planetBasemapUrl(subMonths(new Date(), 1), customPlanetApiKey));
 
   useEffect(() => {
     setleftPlanetUrl(planetBasemapUrl(leftTimelineDate, customPlanetApiKey));
@@ -99,11 +99,11 @@ function App() {
 
   const [leftSelectedTms, setLeftSelectedTms]: [BasemapsIds, (e: BasemapsIds) => void] = useLocalStorage(
     "ui_leftSelectedTms",
-    BasemapsIds.PlanetMonthly
+    BasemapsIds.PlanetMonthly.toString()
   );
   const [rightSelectedTms, setRightSelectedTms]: [BasemapsIds, (e: BasemapsIds) => void] = useLocalStorage(
     "ui_rightSelectedTms",
-    BasemapsIds.GoogleHybrid
+    BasemapsIds.GoogleHybrid.toString()
   );
   // End of state variables
   function resizeMaps() {
@@ -390,7 +390,9 @@ function App() {
             leftMapRef={leftMapRef}
             mapboxAccessToken={MAPBOX_TOKEN}
             clickedMap={clickedMap}
-            selectedTms={clickedMap == "left" ? leftSelectedTms : rightSelectedTms}
+            // selectedTms={clickedMap == "left" ? leftSelectedTms : rightSelectedTms}
+            leftSelectedTms={leftSelectedTms}
+            rightSelectedTms={rightSelectedTms}
             leftTimelineDate={leftTimelineDate}
             rightTimelineDate={rightTimelineDate}
           />

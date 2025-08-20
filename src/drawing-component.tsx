@@ -1,414 +1,248 @@
-import { ReactElement, useEffect, useRef, useState, useMemo } from "react";
+import { ReactElement, useEffect, useRef, useState, useCallback } from "react";
 import { TerraDrawControlComponent } from "./terraDraw-control";
-import { TerraDraw, TerraDrawLineStringMode, TerraDrawPointMode, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode } from "terra-draw";
-import { Mode } from "./map-controls";
-import { GeoJSONSource } from "mapbox-gl";
+import {
+    TerraDraw,
+    TerraDrawLineStringMode,
+    TerraDrawPointMode,
+    TerraDrawPolygonMode,
+    TerraDrawRectangleMode,
+    TerraDrawSelectMode,
+} from "terra-draw";
 import { TerraDrawMapboxGLAdapter } from "terra-draw-mapbox-gl-adapter";
+import { DrawingMode } from "./map-controls";
+import { saveAs } from 'file-saver';
 
-export function MapDrawingComponent(props: any): ReactElement {
+type MapDrawingProps = {
+    leftMapRef: React.MutableRefObject<any>;
+    rightMapRef: React.MutableRefObject<any>;
+    terraDrawLeftRef: React.MutableRefObject<TerraDraw | null>;
+    terraDrawRightRef: React.MutableRefObject<TerraDraw | null>;
+    clickedMap?: "left" | "right";
+    leftSelectedTms?: string;
+    rightSelectedTms?: string;
+    leftTimelineDate?: string;
+    rightTimelineDate?: string;
+};
 
-    const selectedIdRef = useRef<string | number | null>(null);
-    const isProgrammaticDeselect = useRef(false);
+export function MapDrawingComponent(props: MapDrawingProps): ReactElement {
+    const [activeDrawingMode, setActiveDrawingMode] = useState<DrawingMode>("static");
+    const [drawingsVisible, setDrawingsVisible] = useState(true);
 
-    const onSelect = (id: string | number) => {
-        selectedIdRef.current = id;
+    // --- Toggle drawings visibility ---
+    const toggleDrawings = useCallback(() => {
+        setDrawingsVisible(v => !v);
+    }, []);
 
-        const leftDraw = props.terraDrawLeftRef?.current;
-        const rightDraw = props.terraDrawRightRef?.current;
+    // whenever drawingsVisible changes, imperatively update map layers
+    useEffect(() => {
+        const leftMap = props.leftMapRef.current?.getMap();
+        const rightMap = props.rightMapRef.current?.getMap();
+        if (!leftMap || !rightMap) return;
+        if (!leftMap.isStyleLoaded() || !rightMap.isStyleLoaded()) return;
 
-        if (leftDraw?.getSnapshot().some((f: { id: string | number; }) => f.id === id)) {
-            leftDraw.selectFeature(id);
-        }
+        const leftLayers = leftMap.getStyle()?.layers ?? [];
+        leftLayers.forEach((layer: any) => {
+            if (layer.id.startsWith("td")) {
+                leftMap.setLayoutProperty(layer.id, "visibility", drawingsVisible ? "visible" : "none");
+                rightMap.setLayoutProperty(layer.id, "visibility", drawingsVisible ? "visible" : "none");
+            }
+        });
+    }, [drawingsVisible, props.leftMapRef, props.rightMapRef]);
 
-        if (rightDraw?.getSnapshot().some((f: { id: string | number; }) => f.id === id)) {
-            rightDraw.selectFeature(id);
-        }
-    };
-    const onDeselect = () => {
-        if (isProgrammaticDeselect.current) return;
 
-        const id = selectedIdRef.current;
-        if (!id) return;
-
-        isProgrammaticDeselect.current = true;
-
-        props.terraDrawRightRef?.current?.deselectFeature(id);
-        props.terraDrawLeftRef?.current?.deselectFeature(id);
-
-        selectedIdRef.current = null;
-        isProgrammaticDeselect.current = false;
-    };
-    // Syncs a feature’s coordinates from one map to the other to keep both maps in sync
-    function roundCoords(coords: any, precision = 6): any {
-        if (typeof coords[0] === "number") {
-            return coords.map((c: number) => +c.toFixed(precision));
-        }
-        return coords.map((c: any) => roundCoords(c, precision));
+    // --- Initialize each terradraw on its map instances once maps styles are ready ---
+    const terradrawSelectModeOptions = {
+        styles: {
+            selectedPolygonFillOpacity: 0.7,
+            selectedPolygonOutlineColor: "#00FF00",
+            selectedPointColor: "#00FF00",
+            selectedPointOutlineColor: "#00FFFF",
+            selectedLineStringColor: "#00FF00",
+        },
+        flags: {
+            point: { feature: { draggable: true } },
+            polygon: { feature: { draggable: true } },
+            rectangle: { feature: { draggable: true } },
+            linestring: { feature: { draggable: true } },
+        },
+        allowManualDeselection: true,
     }
-    const isProgrammaticUpdate = { current: false };
-    function syncFeatureCoordsAcrossMaps(featureId: string, fromLeft: boolean) {
-        if (isProgrammaticUpdate.current) return;
 
-        const sourceDraw = fromLeft ? props.terraDrawLeftRef.current : props.terraDrawRightRef.current;
-        const targetDraw = fromLeft ? props.terraDrawRightRef.current : props.terraDrawLeftRef.current;
-        if (!sourceDraw || !targetDraw) return;
-        const feature = sourceDraw.getSnapshot().find((f: { id: string; }) => f.id === featureId);
-        if (!feature) return;
+    const initTerraDraw = useCallback(
+        (map: mapboxgl.Map, drawRef: React.MutableRefObject<TerraDraw | null>) => {
+            if (!map) return;
+            drawRef.current?.stop();
 
-        const targetFeature = targetDraw.getSnapshot().find((f: { id: string; }) => f.id === featureId);
-        if (
-            targetFeature &&
-            JSON.stringify(targetFeature.geometry.coordinates) ===
-            JSON.stringify(feature.geometry.coordinates)
-        ) {
-            return;
-        }
+            const terraDraw = new TerraDraw({
+                adapter: new TerraDrawMapboxGLAdapter({ map }),
+                modes: [
+                    new TerraDrawRectangleMode(),
+                    new TerraDrawPolygonMode(),
+                    new TerraDrawPointMode(),
+                    new TerraDrawLineStringMode(),
+                    new TerraDrawSelectMode(terradrawSelectModeOptions as any),
+                ],
+            });
+            terraDraw.start();
+            drawRef.current = terraDraw;
+        },
+        []
+    );
 
-        isProgrammaticUpdate.current = true;
-        if (targetFeature) {
-            const roundedGeometry = {
-                ...feature.geometry,
-                coordinates: roundCoords(feature.geometry.coordinates)
-            };
-            targetDraw.updateFeatureGeometry(feature.id, roundedGeometry);
+    const setupTerradraw = (mapRef: any, drawRef: any) => {
+        const map = mapRef?.current?.getMap();
+        if (!map) return;
+        if (map.isStyleLoaded()) {
+            initTerraDraw(map, drawRef);
         } else {
-            const roundedFeature = {
-                ...feature,
-                geometry: {
-                    ...feature.geometry,
-                    coordinates: roundCoords(feature.geometry.coordinates)
-                }
-            };
-            targetDraw.addFeatures([roundedFeature]);
+            map.once("idle", () => initTerraDraw(map, drawRef));
+        }
+    };
+
+    useEffect(() => {
+        setupTerradraw(props.leftMapRef, props.terraDrawLeftRef);
+        setupTerradraw(props.rightMapRef, props.terraDrawRightRef);
+
+        return () => {
+            props.terraDrawLeftRef.current?.stop();
+            props.terraDrawRightRef.current?.stop();
+        };
+    }, [initTerraDraw, props.leftMapRef, props.rightMapRef]);
+
+    // --- Mode toggle ---
+    const toggleMode = useCallback(
+        (mode: DrawingMode) => {
+            const newMode = activeDrawingMode === mode ? "static" : mode;
+            props.terraDrawLeftRef.current?.setMode(newMode);
+            props.terraDrawRightRef.current?.setMode(newMode);
+            setActiveDrawingMode(newMode);
+        },
+        [activeDrawingMode, props.terraDrawLeftRef, props.terraDrawRightRef]
+    );
+
+    // --- Sync drawn features between maps ---
+    const isProgrammaticUpdate = useRef(false);
+    const deepcopyFeatures = (sourceDraw: TerraDraw | null, targetDraw: TerraDraw | null) => {
+        // We don't want any mid points or selection points so we filter them out
+        const features = sourceDraw?.getSnapshot() || []
+        const filteredFeatures = features.filter((f: any) => !f.properties.midPoint && !f.properties.selectionPoint)
+        targetDraw?.clear()
+        targetDraw?.addFeatures(filteredFeatures)
+    }
+
+    const onUpdateDraws = (sourceOfChange: 'left' | 'right', drawLeft: TerraDraw | null, drawRight: TerraDraw | null) => {
+        if (isProgrammaticUpdate.current) return;
+        isProgrammaticUpdate.current = true;
+        console.log('onUpdateDraws', sourceOfChange, drawLeft, drawRight)
+        if (sourceOfChange == 'left') {
+            deepcopyFeatures(drawLeft, drawRight)
+        } else {
+            deepcopyFeatures(drawRight, drawLeft)
         }
         isProgrammaticUpdate.current = false;
     }
-    // Updates the shared GeoJSON source on the map with features from the specified TerraDraw instance
-    const sharedData: GeoJSON.FeatureCollection = {
-        type: "FeatureCollection",
-        features: [],
-    };
-    function updateSharedSource(fromLeft: boolean) {
-        const sourceDraw = fromLeft
-            ? props.terraDrawLeftRef.current
-            : props.terraDrawRightRef.current;
-
-        if (!sourceDraw) {
-            console.warn("sourceDraw n'est pas défini");
-            return;
-        }
-
-        const allFeatures = sourceDraw.getSnapshot();
-        const leftMap = props.leftMapRef?.current?.getMap();
-        const rightMap = props.rightMapRef?.current?.getMap();
-
-        [leftMap, rightMap].forEach((map) => {
-            const mySource = map?.getSource("shared-draw-source") as GeoJSONSource;
-            mySource?.setData({
-                type: "FeatureCollection",
-                features: allFeatures,
-            });
-        });
-    }
-
-    function initTerraDraw(
-        map: mapboxgl.Map,
-        drawRef: TerraDraw | null,
-    ) {
-        if (!map) return;
-
-        // Stop previous instance
-        if (drawRef) {
-            try {
-                drawRef.stop();
-            } catch (e) {
-                console.warn("Erreur lors du stop précédent :", e);
-            }
-        }
-        // create terradraw instance
-        if (!map.getSource("shared-draw-source")) {
-            map.addSource("shared-draw-source", { type: "geojson", data: sharedData });
-        }
-        const terraDraw = new TerraDraw({
-            adapter: new TerraDrawMapboxGLAdapter({ map }),
-            modes: [
-                new TerraDrawRectangleMode(),
-                new TerraDrawPolygonMode(),
-                new TerraDrawPointMode(),
-                new TerraDrawLineStringMode(),
-                new TerraDrawSelectMode({
-                    styles: {
-                        selectedPolygonFillOpacity: 0.7,
-                        selectedPolygonOutlineColor: "#00FF00",
-                        selectedPointColor: "#00FF00",
-                        selectedPointOutlineColor: "#00FFFF",
-                        selectedLineStringColor: "#00FF00",
-                    },
-                    flags: {
-                        point: { feature: { draggable: true } },
-                        polygon: { feature: { draggable: true } },
-                        rectangle: { feature: { draggable: true } },
-                        linestring: { feature: { draggable: true } },
-                    },
-                    allowManualDeselection: true,
-                }),
-            ],
-        });
-        if (!terraDraw) return;
-        terraDraw.start();
-
-        const fromLeft = drawRef === props.terraDrawLeftRef.current;
-        terraDraw.on("select", onSelect);
-        terraDraw.on("deselect", onDeselect);
-        terraDraw.on("change", (ids, type, context) => {
-            if (!ids) return;
-            if (type === 'update' || type === 'create') {
-                ids.forEach(id => syncFeatureCoordsAcrossMaps(id, fromLeft));
-            }
-        });
-        terraDraw.on("change", () => updateSharedSource(fromLeft));
-
-
-        drawRef.current = terraDraw;
-        console.log("TerraDraw instance assignée", drawRef.current);
-
-        return drawRef.current;
-
-
-    }
-
-    // UseEffects to initialize both left and right terradraw instances
-    useEffect(() => {
-        console.log('useEffect')
-        const leftMap = props.leftMapRef?.current?.getMap();
-        console.log('leftMap', leftMap)
-        if (!leftMap) return;
-
-
-        if (leftMap.isStyleLoaded()) {
-            const draw = initTerraDraw(leftMap, props.terraDrawLeftRef);
-            console.log("still loaded left map", leftMap, props.terraDrawLeftRef, "draw:", draw);
-        } else {
-            leftMap.once("idle", () => {
-                const draw = initTerraDraw(leftMap, props.terraDrawLeftRef);
-                console.log("idle event -> left map loaded", leftMap, props.terraDrawLeftRef, "left draw:", draw);
-            });
-
-        }
-
-        return () => {
-            props.terraDrawRightRef?.current?.stop();
-        };
-    }, [props.leftMapRef, props.terraDrawLeftRef]);
 
     useEffect(() => {
-        console.log('useEffect')
-        const rightMap = props.rightMapRef?.current?.getMap();
+        // Syncs terradraw instances. We don't care about which drawings is the right one, only need to know which one fires event that will trigger a setState, then useEffect will watch these state changes and update both draws
+        const onUpdateLeft = () => onUpdateDraws('left', props.terraDrawLeftRef?.current, props.terraDrawRightRef?.current)
+        const onUpdateRight = () => onUpdateDraws('right', props.terraDrawLeftRef?.current, props.terraDrawRightRef?.current)
 
-        if (!rightMap) return;
+        props.terraDrawLeftRef?.current?.on("select", onUpdateLeft);
+        props.terraDrawLeftRef?.current?.on("deselect", onUpdateLeft);
+        props.terraDrawLeftRef?.current?.on("change", onUpdateLeft);
+        props.terraDrawRightRef?.current?.on("select", onUpdateRight);
+        props.terraDrawRightRef?.current?.on("deselect", onUpdateRight);
+        props.terraDrawRightRef?.current?.on("change", onUpdateRight);
 
-        if (rightMap.isStyleLoaded()) {
-            const draw = initTerraDraw(rightMap, props.terraDrawRightRef);
-            console.log("still loaded right map", rightMap, props.terraDrawRightRef, "draw:", draw);
-        } else {
-            rightMap.once("idle", () => {
-                const draw = initTerraDraw(rightMap, props.terraDrawRightRef);
-                console.log("idle event -> right map loaded", rightMap, props.terraDrawRightRef, "right draw:", draw);
-            });
+    }, [props.terraDrawLeftRef, props.terraDrawRightRef, onUpdateDraws]);
 
-        }
 
-        return () => {
-            props.terraDrawRightRef?.current?.stop();
-        };
-    }, [props.rightMapRef, props.terraDrawRightRef]);
-
-    //Bring drawing to front after changing the basemap
-    const alreadyMovedLeftRef = useRef(false);
-    const alreadyMovedRightRef = useRef(false);
-    const bringTerraDrawToFront = (alreadyMovedRef: React.MutableRefObject<boolean>, terraDraw: TerraDraw, map: mapboxgl.Map) => {
-        if (alreadyMovedRef.current) return;
-        if (map && terraDraw) {
+    // --- Bring TerraDraw Layers to Front even after basemaap source changed ---
+    const bringTerraDrawToFront = (map: mapboxgl.Map) => {
+        if (map) {
             ["td-polygon", "td-polygon-outline", "td-linestring", "td-point"].forEach(layerId => {
-
                 if (map.getLayer(layerId)) map.moveLayer(layerId);
             });
         }
-        alreadyMovedRef.current = true;
     };
-    useEffect(() => {
 
-        if (props.clickedMap == 'right') return;
+    useEffect(() => {
         const leftMap = props.leftMapRef?.current?.getMap();
-        const leftTerraDraw = props.terraDrawLeftRef?.current;
-
-        if (!leftMap || !leftTerraDraw) return;
-
-        alreadyMovedLeftRef.current = false;
-        const onIdle = () => {
-            bringTerraDrawToFront(alreadyMovedLeftRef, leftTerraDraw, leftMap);
-        };
-        if (!leftMap.loaded()) {
-            leftMap.once("load", onIdle);
-        }
-        leftMap.on("idle", onIdle);
+        const onIdle = () => bringTerraDrawToFront(leftMap);
+        leftMap.once("sourcedata", onIdle);
+        // Often terradraw was defined after initial source loaded, so had to call once, but delayed
+        setTimeout(() => bringTerraDrawToFront(leftMap), 1000);
         return () => {
-            leftMap.off("idle", onIdle);
+            leftMap.off("sourcedata", onIdle);
         };
-    }, [props.selectedTms, props.leftTimelineDate]);
+    }, [props.leftSelectedTms, props.leftTimelineDate]);
 
     useEffect(() => {
-        if (props.clickedMap == 'left') return;
         const rightMap = props.rightMapRef?.current?.getMap();
-        const rightTerraDraw = props.terraDrawRightRef?.current;
-
-        if (!rightMap || !rightTerraDraw) return;
-
-        alreadyMovedRightRef.current = false;
-        const onIdle = () => {
-            bringTerraDrawToFront(alreadyMovedRightRef, rightTerraDraw, rightMap);
-        };
-
-        if (!rightMap.loaded()) {
-            rightMap.once("load", onIdle);
-        }
-        rightMap.on("idle", onIdle);
+        const onIdle = () => bringTerraDrawToFront(rightMap);
+        rightMap.once("sourcedata", onIdle);
+        // Often terradraw was defined after initial source loaded, so had to call once, but delayed
+        setTimeout(() => bringTerraDrawToFront(rightMap), 1000);
         return () => {
-            rightMap.off("idle", onIdle);
+            rightMap.off("sourcedata", onIdle);
         };
-    }, [props.selectedTms, props.rightTimelineDate]);
-
-    //Switch between draw's modes
-    const [activeMode, setActiveMode] = useState<Mode>("static");
-    const toggleMode = (mode: Mode) => {
-        const newMode = activeMode === mode ? "static" : mode;
-
-        const leftTerraDraw = props.terraDrawLeftRef?.current;
-        const rightTerraDraw = props.terraDrawRightRef?.current;
-        if (!leftTerraDraw) {
-            console.warn("Aucune instance left n'est prête")
-        }
-        if (!rightTerraDraw) {
-            console.warn("Aucune instance right n'est prête");
-        }
-        if (!leftTerraDraw && !rightTerraDraw) {
-            console.warn("Aucune instance TerraDraw n'est prête");
-
-            return;
-        }
-        if (leftTerraDraw?.enabled) leftTerraDraw.setMode(newMode);
-        if (rightTerraDraw?.enabled) rightTerraDraw.setMode(newMode);
-
-        setActiveMode(newMode);
-    };
+    }, [props.rightSelectedTms, props.rightTimelineDate]);
 
 
-    // export drawings of both maps left & right
-    function exportDrawing() {
-        const leftFeatures = props.terraDrawLeftRef?.current?.getSnapshot() ?? [];
-        if (leftFeatures.length === 0) {
-            console.warn("Aucun dessin à exporter.");
-            return;
-        }
-        const geojson = {
-            type: "FeatureCollection",
-            features: leftFeatures,
-        };
-        const blob = new Blob([JSON.stringify(geojson)], {
-            type: "application/json",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "my_drawings.geojson";
-        a.click();
-        URL.revokeObjectURL(url);
-    }
+    // --- Export drawings ---
+    const exportDrawing = useCallback(
+        () => {
+            const features = props.terraDrawLeftRef?.current?.getSnapshot() ?? [];
+            if (features.length === 0) {
+                console.log("No drawings to export");
+                return;
+            }
+            const geojson = {
+                type: "FeatureCollection",
+                features,
+            };
+            const blob = new Blob([JSON.stringify(geojson)], {
+                type: "application/json",
+            });
+            saveAs(blob, "drawings.geojson");
+        },
+        [props.terraDrawLeftRef]
+    );
 
-    //delete handler for selected feature
-    function deleteHandler() {
+    // --- Delete selected ---
+    const deleteHandler = useCallback(() => {
+
         const leftDraw = props.terraDrawLeftRef.current;
         const rightDraw = props.terraDrawRightRef.current;
-
         if (!leftDraw || !rightDraw) return;
 
-        const selectedId = selectedIdRef.current;
+        leftDraw.clear();
+        rightDraw.clear();
+    }, [props.terraDrawLeftRef, props.terraDrawRightRef]);
 
-        if (selectedId) {
-            const removeFrom = (drawInstance: TerraDraw) => {
-                const snapshot = drawInstance.getSnapshot();
-                const filteredFeatures = snapshot.filter(
-                    (f) => f.id !== undefined && f.id !== selectedId
-                );
-                drawInstance.clear();
-                drawInstance.addFeatures(filteredFeatures);
-            };
-            removeFrom(leftDraw);
-            removeFrom(rightDraw);
 
-            selectedIdRef.current = null;
-        } else {
-            leftDraw.clear();
-            rightDraw.clear();
-        }
-    }
-
-    //reset the mode onclick on Escape
+    // --- Keyboard escape reset drawing-mode and delete ---
     useEffect(() => {
-        const handleKeyDown = (event: { key: string; }) => {
-            if (event.key === "Escape") {
-                setActiveMode('static');
-                props.terraDrawLeftRef.current?.setMode("static");
-                props.terraDrawRightRef.current?.setMode("static");
+        const handler = (e: KeyboardEvent) => {
+            console.log('keyHandler, handler', e)
+            if (e.key === "Escape") {
+                toggleMode("static");
             }
         };
-        window.addEventListener("keydown", handleKeyDown);
-        return () => {
-            window.removeEventListener("keydown", handleKeyDown);
-        };
+        window.addEventListener("keyup", handler);
+        return () => window.removeEventListener("keyup", handler);
     }, []);
 
-    //Toggle the visibility of the drawings of both right and left maps
-    const [isVisible, setVisible] = useState(true);
-    function toggleDrawings() {
-        const leftMap = props.leftMapRef?.current?.getMap();
-        const rightMap = props.rightMapRef?.current?.getMap();
-
-        if (!leftMap && !rightMap) return;
-
-        setVisible(!isVisible)
-
-        const lefMapLayers = leftMap.getStyle().layers
-
-        lefMapLayers.forEach((layer: any) => {
-            if (layer.id.startsWith('td')) {
-                leftMap.setLayoutProperty(
-                    layer.id,
-                    'visibility',
-                    !isVisible ? 'visible' : 'none'
-                );
-                rightMap.setLayoutProperty(
-                    layer.id,
-                    'visibility',
-                    !isVisible ? 'visible' : 'none'
-                );
-            }
-        })
-    }
-
     return (
-        <>
-            <TerraDrawControlComponent
-                toggleMode={toggleMode}
-                activeMode={activeMode}
-                deleteHandler={deleteHandler}
-                exportDrawing={exportDrawing}
-                toggleDrawings={toggleDrawings}
-                position="top-left"
-                isVisible={isVisible}
-            />
-        </>
-
-    )
-
+        <TerraDrawControlComponent
+            toggleMode={toggleMode}
+            activeDrawingMode={activeDrawingMode}
+            deleteHandler={deleteHandler}
+            exportDrawing={exportDrawing}
+            toggleDrawings={toggleDrawings}
+            position="top-left"
+            drawingsVisible={drawingsVisible}
+        />
+    );
 }
+
