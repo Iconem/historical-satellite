@@ -94,7 +94,7 @@ function FileInput(props: any): ReactElement {
         if (geojsonFeatures.type === "FeatureCollection" && Array.isArray(geojsonFeatures.features)) {
 
           //round coordinates to solve the 'coordinates too precise error' of terradraw 
-          var truncated = turf_truncate(geojsonFeatures, { precision: 3, coordinates: 2 });
+          var truncated = turf_truncate(geojsonFeatures, { precision: 6, coordinates: 2 });
 
           const updatedFeatures = truncated.features.map((feature: any) => {
             let mode = "static";

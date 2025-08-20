@@ -5,7 +5,8 @@ import { DrawingMode } from './map-controls'
 import { useState } from 'react'
 import { FaMousePointer, FaMapMarkerAlt, FaDrawPolygon, FaTrash, FaSave, FaPen, FaPenSquare, FaEyeSlash, FaEye, FaRegSquare } from 'react-icons/fa';
 import { MdOutlinePolyline } from "react-icons/md";
-import { BsBoundingBoxCircles } from "react-icons/bs";
+import { PiBoundingBoxBold } from "react-icons/pi";
+// import { BsBoundingBoxCircles } from "react-icons/bs";
 import { useTheme, lighten } from '@mui/material/styles';
 
 class TerraDrawControl {
@@ -71,7 +72,7 @@ export function TerraDrawControlComponent({
             style={{ color: activeDrawingMode === "rectangle" ? selectColor : defaultColor }}
             title="Rectangle"
           >
-            <BsBoundingBoxCircles />
+            <PiBoundingBoxBold />
           </button>
           <button
             onClick={() => toggleMode("linestring")}

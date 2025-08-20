@@ -133,7 +133,7 @@ export function MapDrawingComponent(props: MapDrawingProps): ReactElement {
     const onUpdateDraws = (sourceOfChange: 'left' | 'right', drawLeft: TerraDraw | null, drawRight: TerraDraw | null) => {
         if (isProgrammaticUpdate.current) return;
         isProgrammaticUpdate.current = true;
-        console.log('onUpdateDraws', sourceOfChange, drawLeft, drawRight)
+        // console.log('onUpdateDraws', sourceOfChange, drawLeft, drawRight)
         if (sourceOfChange == 'left') {
             deepcopyFeatures(drawLeft, drawRight)
         } else {
@@ -168,23 +168,23 @@ export function MapDrawingComponent(props: MapDrawingProps): ReactElement {
 
     useEffect(() => {
         const leftMap = props.leftMapRef?.current?.getMap();
-        const onIdle = () => bringTerraDrawToFront(leftMap);
-        leftMap.once("sourcedata", onIdle);
+        const reorderCallback = () => bringTerraDrawToFront(leftMap);
+        leftMap.once("sourcedata", reorderCallback);
         // Often terradraw was defined after initial source loaded, so had to call once, but delayed
         setTimeout(() => bringTerraDrawToFront(leftMap), 1000);
         return () => {
-            leftMap.off("sourcedata", onIdle);
+            leftMap.off("sourcedata", reorderCallback);
         };
     }, [props.leftSelectedTms, props.leftTimelineDate]);
 
     useEffect(() => {
         const rightMap = props.rightMapRef?.current?.getMap();
-        const onIdle = () => bringTerraDrawToFront(rightMap);
-        rightMap.once("sourcedata", onIdle);
+        const reorderCallback = () => bringTerraDrawToFront(rightMap);
+        rightMap.once("sourcedata", reorderCallback);
         // Often terradraw was defined after initial source loaded, so had to call once, but delayed
         setTimeout(() => bringTerraDrawToFront(rightMap), 1000);
         return () => {
-            rightMap.off("sourcedata", onIdle);
+            rightMap.off("sourcedata", reorderCallback);
         };
     }, [props.rightSelectedTms, props.rightTimelineDate]);
 
@@ -224,7 +224,6 @@ export function MapDrawingComponent(props: MapDrawingProps): ReactElement {
     // --- Keyboard escape reset drawing-mode and delete ---
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
-            console.log('keyHandler, handler', e)
             if (e.key === "Escape") {
                 toggleMode("static");
             }
