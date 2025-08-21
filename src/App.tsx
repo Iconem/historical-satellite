@@ -105,6 +105,13 @@ function App() {
     "ui_rightSelectedTms",
     BasemapsIds.GoogleHybrid.toString()
   );
+  if (!(Object.values(BasemapsIds) as unknown[]).includes(leftSelectedTms)) {
+    setLeftSelectedTms(BasemapsIds.PlanetMonthly);
+  }
+  if (!(Object.values(BasemapsIds) as unknown[]).includes(rightSelectedTms)) {
+    setRightSelectedTms(BasemapsIds.GoogleHybrid);
+  }
+
   // End of state variables
   function resizeMaps() {
     leftMapRef.current?.getMap()?.resize();
@@ -426,8 +433,8 @@ function App() {
               id={`tms-source-${leftSelectedTms}`}
               scheme="xyz"
               type="raster"
-              tiles={[basemapsTmsSources[leftSelectedTms].url]}
-              maxzoom={basemapsTmsSources[leftSelectedTms].maxzoom || 20}
+              tiles={[basemapsTmsSources[leftSelectedTms]?.url]}
+              maxzoom={basemapsTmsSources[leftSelectedTms]?.maxzoom || 20}
               tileSize={256}
               key={leftSelectedTms}
             // https://github.com/maptiler/tilejson-spec/tree/custom-projection/2.2.0
@@ -500,8 +507,8 @@ function App() {
                 id={`tms-source-${rightSelectedTms}`}
                 scheme="xyz"
                 type="raster"
-                tiles={[basemapsTmsSources[rightSelectedTms].url]}
-                maxzoom={basemapsTmsSources[rightSelectedTms].maxzoom || 20}
+                tiles={[basemapsTmsSources[rightSelectedTms]?.url]}
+                maxzoom={basemapsTmsSources[rightSelectedTms]?.maxzoom || 20}
                 tileSize={256}
                 key={rightSelectedTms}
               >

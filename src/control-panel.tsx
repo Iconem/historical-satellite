@@ -391,13 +391,13 @@ function ControlPanel(props: any) {
   const [progress, setProgress] = useState(0); // 0 à 100
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const collectionDateRetrievable: BasemapsIds[] = [+BasemapsIds.Bing, +BasemapsIds.ESRI]
+  const collectionDateRetrievable: BasemapsIds[] = [BasemapsIds.Bing, BasemapsIds.ESRI]
   async function getCollectionDateViewport(selectedTms: BasemapsIds) {
     setCollectionDateStr('')
     let collectionDate = { minDate: '?', maxDate: '?' };
     const map = props.mapRef?.current?.getMap() as any;
 
-    switch (+selectedTms) {
+    switch (selectedTms) {
       case BasemapsIds.Bing:
         collectionDate = await getBingViewportDate(map)
         break;
@@ -484,9 +484,12 @@ function ControlPanel(props: any) {
         map.off('moveend', onMoveEnd_esriWaybackMarks)
 
       if (props.selectedTms == BasemapsIds.PlanetMonthly) {
-        setMinDate(validMinDate <= MIN_PLANET_DATE ? MIN_PLANET_DATE : validMinDate)
-        setMaxDate(validMaxDate >= MAX_PLANET_DATE ? MAX_PLANET_DATE : validMaxDate)
-        const planetMarks = getSliderMarksEveryYear(validMinDate, validMaxDate)
+        // setMinDate(validMinDate <= MIN_PLANET_DATE ? MIN_PLANET_DATE : validMinDate)
+        // setMaxDate(validMaxDate >= MAX_PLANET_DATE ? MAX_PLANET_DATE : validMaxDate)
+        // const planetMarks = getSliderMarksEveryYear(validMinDate, validMaxDate)
+        setMinDate(MIN_PLANET_DATE)
+        setMaxDate(MAX_PLANET_DATE)
+        const planetMarks = getSliderMarksEveryYear(MIN_PLANET_DATE, MAX_PLANET_DATE)
         props.clickedMap == "left" ? setLeftMarks(planetMarks) : setRightMarks(planetMarks)
       }
       else if (props.selectedTms == BasemapsIds.ESRIWayback) {
@@ -522,6 +525,8 @@ function ControlPanel(props: any) {
   async function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES, selectedProviders: ProviderOptions[]) {
     // html-to-image can do both export with clipPath and mixBlendMode, although seem a bit slower than html2canvas!
     // Note html2canvas cannot export with mixBlendModes and clipPath yet, see https://github.com/niklasvh/html2canvas/issues/580
+    setIsDownloading(true);
+    setProgress(0);
     var zip = new JSZip();
     if (exportFramesMode == ExportButtonOptions.COMPOSITED) {
       const bbox = {
@@ -635,7 +640,7 @@ function ControlPanel(props: any) {
 
       const gdalTranslateCmds_other = Object.entries(basemapsTmsSources)
         .filter(([key, value]) => {
-          return +key !== BasemapsIds.PlanetMonthly && +key !== BasemapsIds.ESRIWayback
+          return key !== BasemapsIds.PlanetMonthly && key !== BasemapsIds.ESRIWayback
         })
         .map(([key, value]) => {
           const filename = BasemapsIds[key]
@@ -732,18 +737,18 @@ function ControlPanel(props: any) {
         // });
 
         // // --- METHOD 2 : batches ---
-        setIsDownloading(true);
         zip.file("gdal_commands.bat", gdal_commands);
         const cmdsToDownload = gdalTranslateCmds.filter(cmd => cmd.active);
         await fetchTitilerFramesBatches(cmdsToDownload, foldername, zip, setProgress);
-        setIsDownloading(false);
 
       }
     }
+    setProgress(100);
+    setIsDownloading(false);
   }
 
-  const timeControlled = (tms: any) => [+BasemapsIds.ESRIWayback, +BasemapsIds.PlanetMonthly].includes(+tms)
-  const collectionDateAvailable = (tms: any) => collectionDateRetrievable.includes(+tms)
+  const timeControlled = (tms: any) => [BasemapsIds.ESRIWayback, BasemapsIds.PlanetMonthly].includes(tms)
+  const collectionDateAvailable = (tms: any) => collectionDateRetrievable.includes(tms)
 
   return (
     <div
@@ -942,7 +947,7 @@ function ControlPanel(props: any) {
           </Stack>
         </div>
         {
-          +props.selectedTms !== BasemapsIds.PlanetMonthly &&
+          props.selectedTms !== BasemapsIds.PlanetMonthly &&
           (
             <div
               style={{
@@ -954,7 +959,7 @@ function ControlPanel(props: any) {
                 minHeight: '31px'
               }}
             >
-              {(collectionDateActivated && collectionDateAvailable(+props.selectedTms)) ? (
+              {(collectionDateActivated && collectionDateAvailable(props.selectedTms)) ? (
                 <Tooltip title={"Caution, Beta feature, only for Bing for now, Seems inacurate"}>
                   <Button
                     variant="outlined" // outlined or text

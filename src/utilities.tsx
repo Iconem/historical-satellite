@@ -34,7 +34,7 @@ const formatDate = (date: Date) => format(date, "yyyy-MM");
 
 // PlanetMonthly URLS
 const PLANET_BASEMAP_API_KEY = import.meta.env.VITE_PLANET_BASEMAP_API_KEY;
-const MAPBOX_TOKEN= import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
 // Set min/max dates for planet monthly basemaps on component mount
 export const MIN_PLANET_DATE = new Date("2016-01-01T00:00:00.000");
@@ -94,8 +94,8 @@ const planetBasemapUrl = (date: Date, customApi?: string) => {
   )}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${customApi ? customApi : PLANET_BASEMAP_API_KEY}`;
 };
 
-const wayBackWithLocalChangesUrl=  async (lat:number, long:number, zoom:number) =>{
-  return await getWaybackItemsWithLocalChanges({  longitude: long , latitude: lat }, zoom);  
+const wayBackWithLocalChangesUrl = async (lat: number, long: number, zoom: number) => {
+  return await getWaybackItemsWithLocalChanges({ longitude: long, latitude: lat }, zoom);
 }
 
 // Set custom slider marks for each beginning of year
@@ -117,18 +117,19 @@ function getSliderMarksEveryYear(minDate: Date, maxDate: Date) {
 
 // const basemapsTmsUrls = {
 // Typescript was not accepting computed strings in enums, so used open Mapbox api token for simplicity
+// TODO bugfix careful it seems that the BasemapsIds enum is not being used correctly in the code, compared to strings instead of numbers 
 enum BasemapsIds {
-  ESRIWayback,
-  PlanetMonthly,
-  GoogleSat,
-  Bing,
-  ESRI,
-  Mapbox,
-  Heremaps,
-  Yandex,
-  Apple,
-  GoogleHybrid,
-  OSM,
+  ESRIWayback = "ESRIWayback",
+  PlanetMonthly = "PlanetMonthly",
+  GoogleSat = "GoogleSat",
+  Bing = "Bing",
+  ESRI = "ESRI",
+  Mapbox = "Mapbox",
+  Heremaps = "Heremaps",
+  Yandex = "Yandex",
+  Apple = "Apple",
+  GoogleHybrid = "GoogleHybrid",
+  OSM = "OSM",
 }
 
 // Could find other TMS tile urls on NextGis QMS
@@ -252,9 +253,9 @@ const useLocalStorage = (
 ): any => {
   const storedItem = localStorage.getItem(storageKey);
   let initValue = (storedItem && storedItem !== 'undefined')
-  ? JSON.parse(storedItem)
-  : fallbackState;
-  
+    ? JSON.parse(storedItem)
+    : fallbackState;
+
   if (isDate) {
     initValue = new Date(initValue);
   }
