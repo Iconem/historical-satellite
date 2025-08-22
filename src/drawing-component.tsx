@@ -51,6 +51,19 @@ export function MapDrawingComponent(props: MapDrawingProps): ReactElement {
 
 
     // --- Initialize each terradraw on its map instances once maps styles are ready ---
+    const featureEditionFlags = {
+        feature: {
+            draggable: true,
+            coordinates: {
+                draggable: true,
+                deletable: true,
+                midpoints: { draggable: true },
+                // Can snap to other coordinates from geometries _of the same mode_
+                snappable: true,
+                // resizable: 'opposite', // don't resize polygons and linestrings
+            }
+        }
+    }
     const terradrawSelectModeOptions = {
         styles: {
             selectedPolygonFillOpacity: 0.7,
@@ -60,10 +73,20 @@ export function MapDrawingComponent(props: MapDrawingProps): ReactElement {
             selectedLineStringColor: "#00FF00",
         },
         flags: {
-            point: { feature: { draggable: true } },
-            polygon: { feature: { draggable: true } },
-            rectangle: { feature: { draggable: true } },
-            linestring: { feature: { draggable: true } },
+            point: featureEditionFlags,
+            polygon: featureEditionFlags,
+            linestring: featureEditionFlags,
+            // for rectangle we only want to make them resizable, not edit the coords   
+            rectangle: {
+                feature: {
+                    draggable: true,
+                    coordinates: {
+                        draggable: true,
+                        // Allow resizing of the geometry from a given origin. 
+                        resizable: 'opposite', // can also be 'center', 'opposite', 'center-fixed', 'opposite-fixed'
+                    }
+                }
+            },
         },
         allowManualDeselection: true,
     }
@@ -77,9 +100,9 @@ export function MapDrawingComponent(props: MapDrawingProps): ReactElement {
                 adapter: new TerraDrawMapboxGLAdapter({ map }),
                 modes: [
                     new TerraDrawRectangleMode(),
-                    new TerraDrawPolygonMode(),
-                    new TerraDrawPointMode(),
-                    new TerraDrawLineStringMode(),
+                    new TerraDrawPolygonMode({ editable: true }),
+                    new TerraDrawPointMode({ editable: true }),
+                    new TerraDrawLineStringMode({ editable: true }),
                     new TerraDrawSelectMode(terradrawSelectModeOptions as any),
                 ],
             });
