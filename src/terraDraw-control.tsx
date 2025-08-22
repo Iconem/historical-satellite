@@ -91,7 +91,7 @@ export function TerraDrawControlComponent({
           <button
             onClick={() => toggleMode("select")}
             style={{ color: activeDrawingMode === "select" ? selectColor : defaultColor }}
-            title="Select &#10;Drag whole features, Edit coordinates or midpoints, Right-click to delete single coordinate or Press DEL to delete single-feature "
+            title="Select &#10;Drag whole features &#10;Edit coordinates or midpoints  &#10;ALT+S or ALT+R to scale or rotate&#10;Right-click to delete single coordinate  &#10;Press DEL to delete single-feature "
           >
             <FaMousePointer />
           </button>

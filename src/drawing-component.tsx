@@ -54,13 +54,15 @@ export function MapDrawingComponent(props: MapDrawingProps): ReactElement {
     const featureEditionFlags = {
         feature: {
             draggable: true,
+            scaleable: true,
+            rotateable: true,
             coordinates: {
                 draggable: true,
                 deletable: true,
                 midpoints: { draggable: true },
                 // Can snap to other coordinates from geometries _of the same mode_
                 snappable: true,
-                // resizable: 'opposite', // don't resize polygons and linestrings
+                // resizable: 'opposite',
             }
         }
     }
@@ -79,16 +81,22 @@ export function MapDrawingComponent(props: MapDrawingProps): ReactElement {
             // for rectangle we only want to make them resizable, not edit the coords   
             rectangle: {
                 feature: {
-                    draggable: true,
+                    ...featureEditionFlags.feature,
                     coordinates: {
-                        draggable: true,
-                        // Allow resizing of the geometry from a given origin. 
+                        ...featureEditionFlags.feature.coordinates,
+                        midpoints: false,
                         resizable: 'opposite', // can also be 'center', 'opposite', 'center-fixed', 'opposite-fixed'
                     }
                 }
             },
         },
         allowManualDeselection: true,
+        keyEvents: {
+            deselect: "Escape",
+            delete: "Delete",
+            rotate: ["Alt", "r"],
+            scale: ["Alt", "s"],
+        },
     }
 
     const initTerraDraw = useCallback(
