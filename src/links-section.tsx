@@ -1,4 +1,5 @@
 import { Link, Typography } from "@mui/material";
+import { FaGithub } from "react-icons/fa";
 
 // -------------------------------------------
 // Component: LinksSection
@@ -18,9 +19,8 @@ function LinksSection(props: { mapRef: any }) {
           }d,35y,0h,0t,0r/data=CgwqBggBEgAYAUICCAE6AwoBMEoNCP___________wEQAA`}
         target={"_blank"}
       >
-        Google Earth Web
+        Google Earth Web Historical
       </Link>
-      {" Historical + Timelapse"}
       {" | ESRI "}
       <Link
         href={`https://livingatlas.arcgis.com/wayback/#active=37890&ext=${bounds?.getWest()},${bounds?.getSouth()},${bounds?.getEast()},${bounds?.getNorth()}&localChangesOnly=true`}
@@ -37,34 +37,28 @@ function LinksSection(props: { mapRef: any }) {
       >
         BBBike MapCompare
       </Link>
-      {" | Older: Google "}
+      {" | Qiusheng Wu "}
+      <Link href={`https://giswqs-streamlit.hf.space/Timelapse`} target={"_blank"}>
+        Landsat/Sentinel Timelapse
+      </Link>
+      {" | "}
       <Link
         href={`https://earthengine.google.com/timelapse#v=${center?.lat},${center?.lng},${zoom},latLng&t=0.03&ps=50&bt=19840101&et=20201231&startDwell=0&endDwell=0`}
         target={"_blank"}
       >
-        Timelapse
+        Google Timelapse
       </Link>
-      {" & "}
-      <Link
-        href="https://google.com/intl/fr/earth/versions/#earth-pro"
-        target={"_blank"}
-      >
-        Earth Pro Desktop
-      </Link>
-      {" | "}
+
+      {" | All links are viewport context-aware | "}
       <Link
         href={`https://github.com/iconem/historical-satellite/`}
         target={"_blank"}
       >
-        GitHub repo
+        OSS repo <FaGithub />
       </Link>
       {" | Made by "}
       <Link href={`https://iconem.com`} target={"_blank"}>
         Iconem
-      </Link>
-      {" | Qiusheng Wu "}
-      <Link href={`https://giswqs-streamlit.hf.space/Timelapse`} target={"_blank"}>
-        Landsat/Sentinel Timelapse
       </Link>
     </Typography>
   );
