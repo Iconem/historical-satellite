@@ -91,14 +91,14 @@ export function TerraDrawControlComponent({
           <button
             onClick={() => toggleMode("select")}
             style={{ color: activeDrawingMode === "select" ? selectColor : defaultColor }}
-            title="Select"
+            title="Select &#10;Drag whole features, Edit coordinates or midpoints, Right-click to delete single coordinate or Press DEL to delete single-feature "
           >
             <FaMousePointer />
           </button>
           <button onClick={() => toggleDrawings()} style={{ marginTop: 0 }}>
             {drawingsVisible ? <FaEye title='Hide drawings' /> : <FaEyeSlash title='Show drawings' />}
           </button>
-          <button onClick={deleteHandler} title="Clear all canvas - otherwise select and press keyboard DEL to delete single feature"> <FaTrash /> </button>
+          <button onClick={deleteHandler} title="Clear all canvas&#10;Otherwise select and press keyboard DEL to delete single feature"> <FaTrash /> </button>
           <button onClick={exportDrawing} title="Export Geojson FeatureCollection"> <FaSave /> </button>
         </div>
       )}
