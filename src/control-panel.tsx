@@ -610,7 +610,7 @@ function ControlPanel(props: any) {
       }
 
       const gdalTranslateCmds_planet = filteredPlanetDates.map((date) => {
-        const tmsUrl = planetBasemapUrl(date);
+        const tmsUrl = planetBasemapUrl(date, props.customPlanetApiKey);
         const date_YYYY_MM = formatDate(date);
         // TRYING METHOD 2
         // https://medium.com/charisol-community/downloading-resources-in-html5-a-download-may-not-work-as-expected-bf63546e2baa
