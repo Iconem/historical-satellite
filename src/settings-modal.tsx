@@ -43,7 +43,7 @@ export default function SettingsModal(props: any) {
   };
 
   const handlePlanetApiInputChange = (event: any) => {
-    props.setCustomPlanetApiKey(event.target.value);
+    props.setCustomPlanetApiKey(event.target.value.trim());
   };
 
   return (
