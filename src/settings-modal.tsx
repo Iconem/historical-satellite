@@ -31,6 +31,8 @@ const style = {
   p: 4,
 };
 
+const RESOLUTION_UPPER_LIMIT = 4096
+
 export default function SettingsModal(props: any) {
   const [open, setOpen] = useState(false);
   const handleOpen = () => setOpen(true);
@@ -152,7 +154,11 @@ export default function SettingsModal(props: any) {
             type="number"
             value={`${props.maxFrameResolution}`}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-              props.setMaxFrameResolution(parseInt(event.target.value));
+              const maxResolution = Math.max(0, 
+                Math.min(
+                  parseInt(event.target.value), RESOLUTION_UPPER_LIMIT
+              ))
+              props.setMaxFrameResolution(maxResolution);
             }}
             InputLabelProps={{
               shrink: true,
