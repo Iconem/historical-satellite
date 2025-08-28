@@ -551,6 +551,13 @@ async function retrieveAppleAccessToken() {
   console.log('accessKey', accessKey)
 }
 
+// Rework chunking promise
+// Nice simple versions of chunking via slice here https://stackoverflow.com/questions/8495687/split-array-into-chunks
+function* chunkArray<T>(arr: T[], n: number): Generator<T[], void> {
+  for (let i = 0; i < arr.length; i += n) {
+    yield arr.slice(i, i + n);
+  }
+}
 
 export {
   sliderValToDate,
@@ -568,4 +575,5 @@ export {
   getBingViewportDate,
   getEsriViewportDate,
   retrieveAppleAccessToken,
+  chunkArray
 };

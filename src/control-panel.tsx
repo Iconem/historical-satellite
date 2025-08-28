@@ -64,7 +64,7 @@ import {
   getBingViewportDate,
   getEsriViewportDate,
   retrieveAppleAccessToken,
-
+  chunkArray
 } from "./utilities";
 
 
@@ -181,56 +181,6 @@ function generateZip(zip: JSZip, foldername: any) {
       saveAs(blob, `${foldername}.zip`)
     });
 }
-
-// Send batches of PROMISES_BATCH_SIZE POST requests to ApolloMapping API server
-async function fetchTitilerFramesBatches(
-  gdalTranslateCmds: any, 
-  foldername: string, 
-  zip: JSZip, 
-  setDownloadProgress: ((arg0: number) => void), 
-  setSnackbarMessage: ((arg0: string) => void)
-) {
-  setDownloadProgress(0);
-  const total = gdalTranslateCmds.length;
-  let completed = 0;
-
-  for (let i = 0; i < gdalTranslateCmds.length; i += PROMISES_BATCH_SIZE) {
-    const chunk = gdalTranslateCmds.slice(i, i + PROMISES_BATCH_SIZE);
-
-    // Await all promises of chunk fetching
-    await Promise.all(
-      chunk.map((c: any) => {
-        try {
-          fetch(c.downloadUrl)
-            .then((response) => response.blob())
-            .then(async (blob) => {
-              const arrayBuffer = await blob.arrayBuffer();
-              if (c.provider === ProviderOptions.ESRIWayback) {
-                var ESRI_wayback = zip.folder("ESRI_wayback");
-                ESRI_wayback?.file(`${c.filename}_titiler.tif`, arrayBuffer);
-              } else if (c.provider === ProviderOptions.PlanetMonthly) {
-                var planet_monthly = zip.folder("planet_monthly");
-                planet_monthly?.file(`${c.filename}_titiler.tif`, arrayBuffer);
-              } else {
-                var all_others = zip.folder("all_others");
-                all_others?.file(`${c.filename}_titiler.tif`, arrayBuffer);
-              }
-  
-              completed += 1;
-              setDownloadProgress((completed / total) * 100);
-            });
-          } catch (error) {
-            console.error(`Error on fetching frame ${c.filename} : ${error.message}`);
-            setSnackbarMessage(`Error on fetching frame ${c.filename}, make sure max-resolution <= 2048`)
-          }
-      })
-    );
-    await timer(PROMISES_BATCH_DELAY);
-  }
-  generateZip(zip, foldername)
-}
-
-
 
 // -----------------------------------------------------
 // Mini-Components only used in ControlPanel
@@ -398,7 +348,7 @@ function ControlPanel(props: any) {
   const setMaxDate = props.clickedMap == "left" ? setLeftMaxDate : setRightMaxDate
 
   //for linearProgress
-  const [snackbarMessage, setSnackbarMessage] = useState(''); 
+  const [snackbarMessage, setSnackbarMessage] = useState('');
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -654,7 +604,6 @@ function ControlPanel(props: any) {
         .filter(([key, value]) => {
           return key !== BasemapsIds.PlanetMonthly // handled in gdalTranslateCmds_planet
             && key !== BasemapsIds.ESRIWayback     // handled in gdalTranslateCmds_wayBack
-            && key !== BasemapsIds.Mapbox          // mapbox prevents direct access to tiles
         })
         .map(([key, value]) => {
           const filename = BasemapsIds[key]
@@ -753,13 +702,87 @@ function ControlPanel(props: any) {
         // // --- METHOD 2 : batches ---
         zip.file("gdal_commands.bat", gdal_commands);
         const cmdsToDownload = gdalTranslateCmds.filter(cmd => cmd.active);
-        await fetchTitilerFramesBatches(cmdsToDownload, foldername, zip, setDownloadProgress);
-
+        await fetchTitilerFramesBatches(cmdsToDownload, foldername, zip);
+        console.log('Downloaded frames via Titiler instance')
       }
     }
+
+    // Inform user, let message for 10s in case, useful in case error occured
     setDownloadProgress(100);
-    setIsDownloading(false);
-    setSnackbarMessage('');
+    setTimeout(() => {
+      setIsDownloading(false);
+      setSnackbarMessage('');
+    }, 10000)
+
+  }
+
+
+  // Send batches of PROMISES_BATCH_SIZE POST requests to ApolloMapping API server
+  async function fetchTitilerFramesBatches(
+    gdalTranslateCmds: any,
+    foldername: string,
+    zip: JSZip
+  ) {
+    setDownloadProgress(0);
+    const total = gdalTranslateCmds.length;
+    let completed = 0;
+
+    const chunked_cmds = [...chunkArray(gdalTranslateCmds, PROMISES_BATCH_SIZE)]
+    // await Promise.all(
+    console.log('Downloading by batches and writing to zip, chunked_cmds', chunked_cmds)
+    // chunked_cmds.forEach(async (chunk: any) => {
+    for (let chunk of chunked_cmds) {
+      // console.log('chunk', chunk)
+      let breakCondition = false
+      await Promise.allSettled(
+        chunk.map(async (c: any) => {
+          // console.log('fetching', c.filename)
+          await fetch(c.downloadUrl)
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("HTTP status code: " + response)
+              }
+              return response.blob()
+            })
+            .then(async (blob) => {
+              const arrayBuffer = await blob.arrayBuffer();
+              if (c.provider === ProviderOptions.ESRIWayback) {
+                var ESRI_wayback = zip.folder("ESRI_wayback");
+                ESRI_wayback?.file(`${c.filename}_titiler.tif`, arrayBuffer);
+              } else if (c.provider === ProviderOptions.PlanetMonthly) {
+                var planet_monthly = zip.folder("planet_monthly");
+                planet_monthly?.file(`${c.filename}_titiler.tif`, arrayBuffer);
+              } else {
+                var all_others = zip.folder("all_others");
+                all_others?.file(`${c.filename}_titiler.tif`, arrayBuffer);
+              }
+              completed += 1;
+              setDownloadProgress((completed / total) * 100);
+              setSnackbarMessage(`Downloaded ${c.filename}`)
+            })
+            .catch((error) => {
+              console.warn(`For ${c.filename}, Error occured during downloading, STOPPING SUBSEQUENTS TRIALS, make sure max-resolution <= 2048. Error ${error}`)
+              setSnackbarMessage(`Error occured during downloading, STOPPING SUBSEQUENTS TRIALS, make sure max-resolution <= 2048`)
+              breakCondition = true
+            })
+        })
+      ).catch((error) => {
+        console.warn(`Error in Promise.all at chunk level, ${error}`)
+      })
+
+      // await timer(PROMISES_BATCH_DELAY);
+      if (breakCondition) {
+        setSnackbarMessage(`Error occured during downloading, STOPPING SUBSEQUENTS TRIALS, make sure max-resolution <= 2048`)
+        break
+      }
+    }
+    console.log('out of for loop', completed)
+
+    // Processed all chunks by batches, now writing zip and downloading
+    if (completed > 0) {
+      console.log('generating and exporting zip')
+      generateZip(zip, foldername)
+    }
   }
 
   const timeControlled = (tms: any) => [BasemapsIds.ESRIWayback, BasemapsIds.PlanetMonthly].includes(tms)
@@ -788,7 +811,7 @@ function ControlPanel(props: any) {
           textAlign: "center",
           padding: "30px",
           background: "#fffc",
-          width: "100%",
+          // width: "100%",
           alignSelf: "flex-end",
           position: "relative",
           height: "auto",
@@ -953,10 +976,16 @@ function ControlPanel(props: any) {
               anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
               sx={{ zIndex: 9999, }}
             >
-              {snackbarMessage}
               <SnackbarContent
-                sx={{ 'background': "rgba(255, 255, 255, 1);" }}
-                message={<LinearProgressWithLabel value={downloadProgress} />}
+                sx={{ 'background': "rgba(255, 255, 255, 1);", textAlign: 'center' }} // the change is here }}
+                message={
+                  <Box display="flex" flexDirection="column" alignItems="center"  >
+                    <Typography variant="body2" color='black'>
+                      {snackbarMessage}
+                    </Typography>
+                    < LinearProgressWithLabel value={downloadProgress} />
+                  </Box>
+                }
               />
             </Snackbar>
 
