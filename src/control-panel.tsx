@@ -761,9 +761,10 @@ function ControlPanel(props: any) {
               setSnackbarMessage(`Downloaded ${c.filename}`)
             })
             .catch((error) => {
-              console.warn(`For ${c.filename}, Error occured during downloading, STOPPING SUBSEQUENTS TRIALS, make sure max-resolution <= 2048. Error ${error}`)
-              setSnackbarMessage(`Error occured during downloading, STOPPING SUBSEQUENTS TRIALS, make sure max-resolution <= 2048`)
-              breakCondition = true
+              console.warn(`For ${c.filename}, Error occured during downloading. Error ${error}`)
+              // Do not send message 'STOPPING SUBSEQUENTS TRIALS'
+              setSnackbarMessage(`For ${c.filename}, Error occured during downloading`)
+              // breakCondition = true
             })
         })
       ).catch((error) => {
@@ -772,7 +773,7 @@ function ControlPanel(props: any) {
 
       // await timer(PROMISES_BATCH_DELAY);
       if (breakCondition) {
-        setSnackbarMessage(`Error occured during downloading, STOPPING SUBSEQUENTS TRIALS, make sure max-resolution <= 2048`)
+        setSnackbarMessage(`Error occured during downloading`)
         break
       }
     }
@@ -872,7 +873,7 @@ function ControlPanel(props: any) {
                     https://mui.com/material-ui/react-autocomplete/#creatable
                   */}
                   {Object.entries(basemapsTmsSources).map(([key, value]) => (
-                    <MenuItem value={key} key={key} >
+                    <MenuItem value={value} key={key} >
                       {BasemapsIds[key] + (timeControlled(key) ? ' 📅' : collectionDateAvailable(key) ? ' 🕒' : '')}
                     </MenuItem>
                   ))}
