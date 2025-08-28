@@ -873,7 +873,7 @@ function ControlPanel(props: any) {
                     https://mui.com/material-ui/react-autocomplete/#creatable
                   */}
                   {Object.entries(basemapsTmsSources).map(([key, value]) => (
-                    <MenuItem value={value} key={key} >
+                    <MenuItem value={key} key={key} >
                       {BasemapsIds[key] + (timeControlled(key) ? ' 📅' : collectionDateAvailable(key) ? ' 🕒' : '')}
                     </MenuItem>
                   ))}
