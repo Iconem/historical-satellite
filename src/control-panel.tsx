@@ -763,7 +763,7 @@ function ControlPanel(props: any) {
             .catch((error) => {
               console.warn(`For ${c.filename}, Error occured during downloading. Error ${error}`)
               // Do not send message 'STOPPING SUBSEQUENTS TRIALS'
-              setSnackbarMessage(`For ${c.filename}, Error occured during downloading`)
+              setSnackbarMessage(`Error downloading ${c.filename}`)
               // breakCondition = true
             })
         })
