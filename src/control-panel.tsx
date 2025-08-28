@@ -183,8 +183,14 @@ function generateZip(zip: JSZip, foldername: any) {
 }
 
 // Send batches of PROMISES_BATCH_SIZE POST requests to ApolloMapping API server
-async function fetchTitilerFramesBatches(gdalTranslateCmds: any, foldername: string, zip: JSZip, setProgress: ((arg0: number) => void)) {
-  setProgress(0);
+async function fetchTitilerFramesBatches(
+  gdalTranslateCmds: any, 
+  foldername: string, 
+  zip: JSZip, 
+  setDownloadProgress: ((arg0: number) => void), 
+  setSnackbarMessage: ((arg0: string) => void)
+) {
+  setDownloadProgress(0);
   const total = gdalTranslateCmds.length;
   let completed = 0;
 
@@ -194,25 +200,29 @@ async function fetchTitilerFramesBatches(gdalTranslateCmds: any, foldername: str
     // Await all promises of chunk fetching
     await Promise.all(
       chunk.map((c: any) => {
-        fetch(c.downloadUrl)
-          .then((response) => response.blob())
-          .then(async (blob) => {
-            const arrayBuffer = await blob.arrayBuffer();
-            if (c.provider === ProviderOptions.ESRIWayback) {
-              var ESRI_wayback = zip.folder("ESRI_wayback");
-              ESRI_wayback?.file(`${c.filename}_titiler.tif`, arrayBuffer);
-            } else if (c.provider === ProviderOptions.PlanetMonthly) {
-              var planet_monthly = zip.folder("planet_monthly");
-              planet_monthly?.file(`${c.filename}_titiler.tif`, arrayBuffer);
-            } else {
-              var all_others = zip.folder("all_others");
-              all_others?.file(`${c.filename}_titiler.tif`, arrayBuffer);
-            }
-
-            completed += 1;
-            setProgress((completed / total) * 100);
-
-          });
+        try {
+          fetch(c.downloadUrl)
+            .then((response) => response.blob())
+            .then(async (blob) => {
+              const arrayBuffer = await blob.arrayBuffer();
+              if (c.provider === ProviderOptions.ESRIWayback) {
+                var ESRI_wayback = zip.folder("ESRI_wayback");
+                ESRI_wayback?.file(`${c.filename}_titiler.tif`, arrayBuffer);
+              } else if (c.provider === ProviderOptions.PlanetMonthly) {
+                var planet_monthly = zip.folder("planet_monthly");
+                planet_monthly?.file(`${c.filename}_titiler.tif`, arrayBuffer);
+              } else {
+                var all_others = zip.folder("all_others");
+                all_others?.file(`${c.filename}_titiler.tif`, arrayBuffer);
+              }
+  
+              completed += 1;
+              setDownloadProgress((completed / total) * 100);
+            });
+          } catch (error) {
+            console.error(`Error on fetching frame ${c.filename} : ${error.message}`);
+            setSnackbarMessage(`Error on fetching frame ${c.filename}, make sure max-resolution <= 2048`)
+          }
       })
     );
     await timer(PROMISES_BATCH_DELAY);
@@ -388,7 +398,8 @@ function ControlPanel(props: any) {
   const setMaxDate = props.clickedMap == "left" ? setLeftMaxDate : setRightMaxDate
 
   //for linearProgress
-  const [progress, setProgress] = useState(0); // 0 à 100
+  const [snackbarMessage, setSnackbarMessage] = useState(''); 
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
 
   const collectionDateRetrievable: BasemapsIds[] = [BasemapsIds.Bing, BasemapsIds.ESRI]
@@ -526,7 +537,8 @@ function ControlPanel(props: any) {
     // html-to-image can do both export with clipPath and mixBlendMode, although seem a bit slower than html2canvas!
     // Note html2canvas cannot export with mixBlendModes and clipPath yet, see https://github.com/niklasvh/html2canvas/issues/580
     setIsDownloading(true);
-    setProgress(0);
+    setDownloadProgress(0);
+    setSnackbarMessage('Downloading Zip... ');
     var zip = new JSZip();
     if (exportFramesMode == ExportButtonOptions.COMPOSITED) {
       const bbox = {
@@ -640,7 +652,9 @@ function ControlPanel(props: any) {
 
       const gdalTranslateCmds_other = Object.entries(basemapsTmsSources)
         .filter(([key, value]) => {
-          return key !== BasemapsIds.PlanetMonthly && key !== BasemapsIds.ESRIWayback
+          return key !== BasemapsIds.PlanetMonthly // handled in gdalTranslateCmds_planet
+            && key !== BasemapsIds.ESRIWayback     // handled in gdalTranslateCmds_wayBack
+            && key !== BasemapsIds.Mapbox          // mapbox prevents direct access to tiles
         })
         .map(([key, value]) => {
           const filename = BasemapsIds[key]
@@ -739,12 +753,13 @@ function ControlPanel(props: any) {
         // // --- METHOD 2 : batches ---
         zip.file("gdal_commands.bat", gdal_commands);
         const cmdsToDownload = gdalTranslateCmds.filter(cmd => cmd.active);
-        await fetchTitilerFramesBatches(cmdsToDownload, foldername, zip, setProgress);
+        await fetchTitilerFramesBatches(cmdsToDownload, foldername, zip, setDownloadProgress);
 
       }
     }
-    setProgress(100);
+    setDownloadProgress(100);
     setIsDownloading(false);
+    setSnackbarMessage('');
   }
 
   const timeControlled = (tms: any) => [BasemapsIds.ESRIWayback, BasemapsIds.PlanetMonthly].includes(tms)
@@ -938,9 +953,10 @@ function ControlPanel(props: any) {
               anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
               sx={{ zIndex: 9999, }}
             >
+              {snackbarMessage}
               <SnackbarContent
                 sx={{ 'background': "rgba(255, 255, 255, 1);" }}
-                message={<LinearProgressWithLabel value={progress} />}
+                message={<LinearProgressWithLabel value={downloadProgress} />}
               />
             </Snackbar>
 
