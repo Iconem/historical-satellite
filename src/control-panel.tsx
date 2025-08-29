@@ -812,7 +812,7 @@ function ControlPanel(props: any) {
           textAlign: "center",
           padding: "30px",
           background: "#fffc",
-          // width: "100%",
+          width: "100%", // seem to break on ffox when smaller screen, otherwise breaks on webkit-browsers
           alignSelf: "flex-end",
           position: "relative",
           height: "auto",
