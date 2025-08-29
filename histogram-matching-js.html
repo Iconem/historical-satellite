@@ -1,0 +1,299 @@
+<html>
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script> 
+
+    <style>
+.flex-grid {
+  display: flex;
+}
+.col {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+}
+.flex-grid-thirds {
+  display: flex;
+  justify-content: space-between;
+}
+.flex-grid-thirds .col {
+  width: 32%;
+}
+    </style>
+  </head>
+  <body>
+
+    <div class="flex-grid-thirds">
+      <div class="col"> SOURCE <input type="file" id="source-input" accept="image/png, image/jpeg" /> </div> 
+      <!-- onChange="onChangeInput(this)" -->
+      <div class="col"> TARGET <input type="file" id="target-input" accept="image/png, image/jpeg" /> </div>
+      <div class="col"> MATCHED OUTPUT </div>
+    </div>
+    <div class="flex-grid-thirds">
+      <div class="col" id="source-img-div"></div>
+      <div class="col" id="target-img-div"></div>
+      <div class="col" id="matched-img-div"></div>
+    </div>
+
+    <script type="module">
+// Implement histogram matching, heavily inspired by scikit-image 
+// // See [doc](https://scikit-image.org/docs/stable/auto_examples/color_exposure/plot_histogram_matching.html) and [histogram_matching.py](https://github.com/scikit-image/scikit-image/blob/v0.25.2/skimage/exposure/histogram_matching.py#L33-L93
+// Relies on numpy bincount, cumsum, interp, reimplemented below with some assumptions
+
+const img_objs = [];
+let source_filepath = './source2.jpg';
+let target_filepath = './reference2.jpg';
+
+
+// Compute histogram bins for an array, with optional min/max for faster compute, and optional normalization parameter
+export function bincount(arr, binCount, min, max, normalize = false) {
+  if (min === undefined) min = Math.min(...arr);
+  if (max === undefined) max = Math.max(...arr);
+
+  let bins = new Uint32Array(binCount);
+  for (let i = 0; i < arr.length; i++) {
+    let bin = (arr[i] - min) * (binCount - 1) / (max - min);
+    // clamping should not be needed given above formula
+    // bin = Math.floor(Math.min(Math.max(bin, 0), binCount - 1));
+    bin = Math.floor(bin);
+    bins[bin]++;
+  }
+
+  // Float32Array or Float64Array ? 
+  if (normalize) 
+    bins = Float64Array.from(bins, b => b / arr.length); 
+  
+  return bins;
+}
+
+// cumulative sum of array
+export function cumsum(arr) {
+  const n = arr.length;
+  const out = new Float64Array(n);
+  let s = 0;
+  for (let i = 0; i < n; i++) {
+    s += arr[i];
+    out[i] = s;
+  }
+  return out;
+}
+
+// That one is a bit tricky, https://numpy.org/doc/stable/reference/generated/numpy.interp.html
+export function interp(x, xp, fp) {
+  const out = new Float64Array(x.length);
+
+  for (let i = 0; i < x.length; i++) {
+    const xi = x[i];
+
+    // left of xp[0] → clamp
+    if (xi <= xp[0]) {
+      out[i] = fp[0];
+      continue;
+    }
+
+    // right of xp[-1] → clamp
+    if (xi >= xp[xp.length - 1]) {
+      out[i] = fp[fp.length - 1];
+      continue;
+    }
+
+    // binary search would be faster, but linear scan is fine
+    let j = 1;
+    while (xi > xp[j]) j++;
+
+    const x0 = xp[j - 1], x1 = xp[j];
+    const y0 = fp[j - 1], y1 = fp[j];
+    const t = (xi - x0) / (x1 - x0);
+    out[i] = y0 + t * (y1 - y0);
+  }
+
+  return out;
+}
+
+// helper for uint8 histograms
+function getNormalizedCdfUint8(arr) {
+  // console.log('arr', arr)
+  const normalize = true // 
+  const bins = bincount(arr, 256, 0, 255, normalize);
+  // console.log('bins', bins)
+
+  const cumsums = cumsum(bins)
+  console.log('cumsums', cumsums)
+  return cumsums;
+}
+
+// compute mapping between source and target
+export function matchCumulativeCdf(source, target) {
+  const srcCdf = getNormalizedCdfUint8(source);
+  const tgtCdf = getNormalizedCdfUint8(target);
+  console.log('srcCdf', srcCdf, tgtCdf)
+
+  const values = Array.from({ length: 256 }, (_, i) => i);
+
+  // const mapping = interp(values, srcCdf, tgtCdf)
+  // For each source intensity, find the CDF value, then find which target intensity has the closest CDF value.
+  const mapping = interp(srcCdf, tgtCdf, values);
+
+  // TODO: check the mapping do not have to be DE-normalized by binCount ? 
+
+  console.log('--- MAPPING RESULT', mapping)
+  return mapping;
+}
+
+// ------------------- high-level API -------------------
+
+/**
+ * Match histograms of two raw JS images.
+ * Works for grayscale, RGB, or RGBA.
+ *
+ * @param {Uint8Array} source - Source image array (flat 1D, 1/3/4 channels interleaved).
+ * @param {Uint8Array} target - Target image array (same shape/channels as source).
+ * @param {'MAPPING'|'MATCHED_DATA'} returnType - Whether to return mappings or matched data.
+ * @returns {{mappings: Float64Array[], matched?: Uint8Array}}
+ */
+export function matchHistograms(source, target, channels = 3, returnType = 'MATCHED_DATA') {
+//   const channels = source.length % 4 === 0 ? 4 :
+//                    source.length % 3 === 0 ? 3 : 1;
+  console.log('channels', channels)
+  const mappings = []
+
+  if (channels === 1) {
+    mappings[0] = matchCumulativeCdf(source, target);
+    console.log('mappings', mappings)
+    if (returnType === 'MAPPING') return {mappings};
+    const out = new Uint8Array(source.length);
+    for (let i = 0; i < source.length; i++) {
+      out[i] = mapping[source[i]];
+    }
+    return {mappings, matched: out};
+  }
+  else if (channels === 3 || channels == 4){
+    
+    // RGB / RGBA
+    const mappings = [];
+    for (let c = 0; c < 3; c++) {
+        const srcChannel = [];
+        const tgtChannel = [];
+        for (let i = c; i < source.length; i += channels) srcChannel.push(source[i]);
+        for (let i = c; i < target.length; i += channels) tgtChannel.push(target[i]);
+        mappings[c] = matchCumulativeCdf(srcChannel, tgtChannel);
+    }
+    console.log('mappings', mappings)
+
+    if (returnType === 'MAPPING') return {mappings};
+
+    // BEWARE MAPPINGS IS NOT A FUNCTION THAT TAKES FLOAT, BUT AN ARRAY LOOKUP TABLE SO HAS TO TAKE INTEGER VALUES
+
+    const out = new Uint8Array(source.length);
+    for (let i = 0; i < source.length; i += channels) {
+      for (let c = 0; c < 3; c++) {
+        out[i + c]     = mappings[0 + c][source[i + c]];     // R
+        // out[i + 1] = mappings[1][source[i + 1]]; // G
+        // out[i + 2] = mappings[2][source[i + 2]]; // B
+      }
+        if (channels === 4) out[i + 3] = source[i + 3]; // keep alpha
+    }
+    return {mappings, matched: out};
+  }
+}
+
+
+
+function newImageWithOnload(filepath) {
+  const img = new Image(); 
+  img.onload = function() {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    img_objs.push({ filepath, ctx, img, canvas });
+
+    if (img_objs.length === 2) {
+      const source = img_objs.find(i => i.filepath === source_filepath);
+      const target = img_objs.find(i => i.filepath === target_filepath);
+      console.log('source', source, target)
+
+      const source_arr = source.ctx.getImageData(0, 0, source.canvas.width, source.canvas.height);
+      const target_arr = target.ctx.getImageData(0, 0, target.canvas.width, target.canvas.height);
+      console.log('source_arr', source_arr, target_arr)
+
+      const returnType = 'MATCHED_DATA'
+      const channels = 3 // should be computed from image, or getImageData is always same type?
+      const matched = matchHistograms(source_arr.data, target_arr.data, channels, returnType);
+      console.log('matched', matched, 'mappings slice')
+      console.log(matched.mappings[0].slice(0, 30))
+
+      // Render matched image
+      const canvas_out = document.createElement("canvas");
+      canvas_out.width = source.img.width;
+      canvas_out.height = source.img.height;
+      const ctx_out = canvas_out.getContext("2d");
+      const imageData = ctx_out.createImageData(canvas_out.width, canvas_out.height);
+      imageData.data.set(matched.matched);
+      ctx_out.putImageData(imageData, 0, 0);
+      
+      container = document.getElementById('matched-img-div');
+      container.replaceChildren(canvas_out);
+    }
+  }
+  img.src = filepath;
+  let container
+  if (filepath === source_filepath) 
+    container = document.getElementById('source-img-div');
+  else 
+    container = document.getElementById('target-img-div');
+  container.replaceChildren(img);
+}
+
+let img_source = newImageWithOnload(source_filepath)
+let img_target = newImageWithOnload(target_filepath)
+console.log('done loading image, will start processing callbacks to compute Histogram Matching')
+
+
+let obj
+function onChangeInput (event) {
+  console.log(event)
+  const target = event.target
+  const srcId = target.id
+  console.log(srcId)
+  if (srcId == 'source-input') {
+      obj = img_objs.find(i => i.filepath === source_filepath);
+      source_filepath = target.value
+      console.log('source-input')
+  } else if (srcId == 'target-input') {
+      obj = img_objs.find(i => i.filepath === target_filepath);
+      target_filepath = target.value
+      console.log('target-input')
+  }
+  console.log(obj, source_filepath, target_filepath)
+  var file = target.files[0];
+  console.log(file)
+  var reader  = new FileReader();
+  reader.onloadend = function () {
+    console.log('loadend')
+    obj.img.src = reader.result;
+    console.log('end of loadend')
+  }
+  if (file) {
+    console.log('readAsDataURL', file);
+    reader.readAsDataURL(file);
+    console.log('readAsDataURL done');
+  } else {
+    preview.src = "";
+  }
+};
+window.onChangeInput = onChangeInput
+document.getElementById('source-input').onchange = onChangeInput
+document.getElementById('target-input').onchange = onChangeInput
+
+
+
+// import * as htmlToImage from 'https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.js';
+// import htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js';
+// console.log('htmlToImage')
+// console.log(htmlToImage)
+
+</script>
+
+</body>
+</html>
