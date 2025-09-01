@@ -26,7 +26,7 @@ body {
   </head>
   <body>
     <div style="padding: 30px; ">
-      <h3>Pure JS Histogram Matching - client-side</h3>
+      <h3>Pure JS, client-side, Histogram Matching</h3>
       <p>
 Inspired by <a href="https://github.com/mapbox/rio-hist/issues/3">mapbox/rio-hist</a> (python), this demo showcases pure-JS Histogram Matching. <br/>Implementation based on scikit-image (<a href="https://scikit-image.org/docs/stable/auto_examples/color_exposure/plot_histogram_matching.html">doc</a> and <a href="https://github.com/scikit-image/scikit-image/blob/v0.25.2/skimage/exposure/histogram_matching.py#L33-L93">code</a>) which simply relies on numpy <code>bincount, cumsum, interp</code>. <br/>scikit-image and numpy use BSD3 License. 
       </p>
@@ -47,10 +47,6 @@ Inspired by <a href="https://github.com/mapbox/rio-hist/issues/3">mapbox/rio-his
 // Implement histogram matching, heavily inspired by scikit-image 
 // // See [doc](https://scikit-image.org/docs/stable/auto_examples/color_exposure/plot_histogram_matching.html) and [histogram_matching.py](https://github.com/scikit-image/scikit-image/blob/v0.25.2/skimage/exposure/histogram_matching.py#L33-L93
 // Relies on numpy bincount, cumsum, interp, reimplemented below with some assumptions
-
-const img_objs = [];
-let source_filepath = './source1.jpg';
-let target_filepath = './reference1.jpg';
 
 
 // Compute histogram bins for an array, with optional min/max for faster compute, and optional normalization parameter
@@ -169,122 +165,100 @@ export function matchHistograms(source, target, channels = 3, returnType = 'MATC
 
 
 
-function newImageWithOnload(filepath) {
-  const img = new Image(); 
+// --- image handling ---
+const img_objs = {};
+// slot is source or target, indexing img_objs, mapped to input and img slot+"-img-div
+function loadImage(fileOrUrl, slot) {
+  const img = new Image();
   img.onload = function() {
     const canvas = document.createElement("canvas");
-    canvas.width = img.width;
-    canvas.height = img.height;
+    canvas.width = img.naturalWidth;   // naturalWidth instead of width
+    canvas.height = img.naturalHeight; // naturalHeight instead of height
     const ctx = canvas.getContext("2d");
     ctx.drawImage(img, 0, 0);
-    img_objs.push({ filepath, ctx, img, canvas });
+    img_objs[slot] = {ctx, img, canvas};
+    document.getElementById(slot+"-img-div").replaceChildren(img);
 
-    if (img_objs.length === 2) {
-      const source = img_objs.find(i => i.filepath === source_filepath);
-      const target = img_objs.find(i => i.filepath === target_filepath);
-      console.log('source', source, target)
+    if (img_objs.source && img_objs.target) {
+      // Get source and target arrays from dom imgs
+      const source_canvas = img_objs.source.canvas
+      const target_canvas = img_objs.target.canvas
+      const sourceArr = img_objs.source.ctx.getImageData(0,0,source_canvas.width,source_canvas.height).data;
+      const targetArr = img_objs.target.ctx.getImageData(0,0,target_canvas.width,target_canvas.height).data;
 
-      const source_arr = source.ctx.getImageData(0, 0, source.canvas.width, source.canvas.height);
-      const target_arr = target.ctx.getImageData(0, 0, target.canvas.width, target.canvas.height);
-      console.log('source_arr', source_arr, target_arr)
-
+      // Match Histograms Computation
+      // Check getImageData always return 4 channels RGBA 
       const start = Date.now();
-      const returnType = 'MATCHED_DATA'
-      const channels = 3 // should be computed from image, or getImageData is always same type?
-      const matched = matchHistograms(source_arr.data, target_arr.data, channels, returnType);
-      console.log('matched', matched, 'mappings slice')
-      console.log(matched.mappings[0].slice(0, 30))
+      const matched = matchHistograms(sourceArr, targetArr, 4, 'MATCHED_DATA');
       const elapsed_ms = Date.now() - start
 
-      // Render matched image
-      const canvas_out = document.createElement("canvas");
-      canvas_out.width = source.img.width;
-      canvas_out.height = source.img.height;
-      const ctx_out = canvas_out.getContext("2d");
-      const imageData = ctx_out.createImageData(canvas_out.width, canvas_out.height);
-      imageData.data.set(matched.matched);
-      ctx_out.putImageData(imageData, 0, 0);
-      
-      container = document.getElementById('matched-img-div');
+      // Write matched image to outCanvas
+      const outCanvas = document.createElement("canvas");
+      outCanvas.width = source_canvas.width;
+      outCanvas.height = source_canvas.height;
+      const ctxOut = outCanvas.getContext("2d");
+      const outData = ctxOut.createImageData(outCanvas.width, outCanvas.height);
+      outData.data.set(matched.matched);
+      ctxOut.putImageData(outData, 0, 0);
 
-      const stats_div = document.createElement("div");
+      // Display to user and log stats
+      const container = document.getElementById('matched-img-div');
+      console.log('matched', matched, 'mappings slice')
+      console.log(matched.mappings[0].slice(0, 30))
+      const stats_div = document.createElement("pre");
       const statsObj = {
         source: {
-          width: source.img.width, 
-          height: source.img.height,
-          Mpix: Math.floor(source.img.width * source.img.height / 1000000),
+          width: img_objs.source.canvas.width, 
+          height: img_objs.source.canvas.height,
+          Mpix: 0.01 * Math.floor(img_objs.source.canvas.width * img_objs.source.canvas.height / 1000000 * 100),
         }, 
         target: {
-          width: target.img.width, 
-          height: target.img.height,
-          Mpix: Math.floor(target.img.width * target.img.height / 1000000),
+          width: img_objs.target.canvas.width, 
+          height: img_objs.target.canvas.height,
+          Mpix: 0.01 * Math.floor(img_objs.target.canvas.width * img_objs.target.canvas.height / 1000000 * 100),
         }, 
         timings: {
           ms: elapsed_ms
         }
       }
-      stats_div.innerHTML = JSON.stringify(statsObj, null, " ");
+      const statsStr = JSON.stringify(statsObj, null, " ")
+      console.log(statsStr)
+      stats_div.textContent = `Histogram matching took ${statsObj.timings.ms}ms\n` + statsStr;
+      stats_div.style = 'text-align: left; padding: 20px;'
 
-      // container.replaceChildren(canvas_out);
-      canvas_out.toBlob(function(blob) {
+      // container.replaceChildren(outCanvas);
+      outCanvas.toBlob(function(blob) {
         const url = URL.createObjectURL(blob);
         const img = document.createElement("img");
         img.src = url;
         container.replaceChildren(img);
 
-        container.addChildren(stats_div)
+        container.appendChild(stats_div)
       }, "image/png");
+
     }
-  }
-  img.src = filepath;
-  let container
-  if (filepath === source_filepath) 
-    container = document.getElementById('source-img-div');
-  else 
-    container = document.getElementById('target-img-div');
-  container.replaceChildren(img);
+  };
+  img.src = fileOrUrl;
 }
 
-let img_source = newImageWithOnload(source_filepath)
-let img_target = newImageWithOnload(target_filepath)
-console.log('done loading image, will start processing callbacks to compute Histogram Matching')
+function handleInputChange(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  // reader.onload = ev => loadImage(ev.target.result, e.target.id.split("-")[0]);
+  reader.onload = ev => loadImage(ev.target.result, e.target.id.includes('source') ? 'source' : 'target');
+  reader.readAsDataURL(file);
+}
 
+document.getElementById("source-input").addEventListener("change", handleInputChange);
+document.getElementById("target-input").addEventListener("change", handleInputChange);
 
-let obj
-function onChangeInput (event) {
-  console.log(event)
-  const target = event.target
-  const srcId = target.id
-  console.log(srcId)
-  if (srcId == 'source-input') {
-      obj = img_objs.find(i => i.filepath === source_filepath);
-      source_filepath = target.value
-      console.log('source-input')
-  } else if (srcId == 'target-input') {
-      obj = img_objs.find(i => i.filepath === target_filepath);
-      target_filepath = target.value
-      console.log('target-input')
-  }
-  console.log(obj, source_filepath, target_filepath)
-  var file = target.files[0];
-  console.log(file)
-  var reader  = new FileReader();
-  reader.onloadend = function () {
-    console.log('loadend')
-    obj.img.src = reader.result;
-    console.log('end of loadend')
-  }
-  if (file) {
-    console.log('readAsDataURL', file);
-    reader.readAsDataURL(file);
-    console.log('readAsDataURL done');
-  } else {
-    preview.src = "";
-  }
-};
-window.onChangeInput = onChangeInput
-document.getElementById('source-input').onchange = onChangeInput
-document.getElementById('target-input').onchange = onChangeInput
+// preload defaults
+let source_filepath = './source1.jpg';
+let target_filepath = './reference1.jpg';
+
+loadImage(source_filepath, "source");
+loadImage(target_filepath, "target");
 
 </script>
 
