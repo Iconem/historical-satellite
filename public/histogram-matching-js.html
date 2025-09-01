@@ -1,8 +1,9 @@
 <html>
   <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script> 
-
     <style>
+body {
+  font-family: "Roboto", sans-serif;
+}
 .flex-grid {
   display: flex;
 }
@@ -18,10 +19,18 @@
 .flex-grid-thirds .col {
   width: 32%;
 }
+.col img, .col canvas {
+  max-width: 100%;
+}
     </style>
   </head>
   <body>
-
+    <div style="padding: 30px; ">
+      <h3>Pure JS Histogram Matching - client-side</h3>
+      <p>
+Inspired by <a href="https://github.com/mapbox/rio-hist/issues/3">mapbox/rio-hist</a> (python), this demo showcases pure-JS Histogram Matching. <br/>Implementation based on scikit-image (<a href="https://scikit-image.org/docs/stable/auto_examples/color_exposure/plot_histogram_matching.html">doc</a> and <a href="https://github.com/scikit-image/scikit-image/blob/v0.25.2/skimage/exposure/histogram_matching.py#L33-L93">code</a>) which simply relies on numpy <code>bincount, cumsum, interp</code>. <br/>scikit-image and numpy use BSD3 License. 
+      </p>
+    </div>
     <div class="flex-grid-thirds">
       <div class="col"> SOURCE <input type="file" id="source-input" accept="image/png, image/jpeg" /> </div> 
       <!-- onChange="onChangeInput(this)" -->
@@ -40,8 +49,8 @@
 // Relies on numpy bincount, cumsum, interp, reimplemented below with some assumptions
 
 const img_objs = [];
-let source_filepath = './source2.jpg';
-let target_filepath = './reference2.jpg';
+let source_filepath = './source1.jpg';
+let target_filepath = './reference1.jpg';
 
 
 // Compute histogram bins for an array, with optional min/max for faster compute, and optional normalization parameter
@@ -51,14 +60,10 @@ export function bincount(arr, binCount, min, max, normalize = false) {
 
   let bins = new Uint32Array(binCount);
   for (let i = 0; i < arr.length; i++) {
-    let bin = (arr[i] - min) * (binCount - 1) / (max - min);
-    // clamping should not be needed given above formula
-    // bin = Math.floor(Math.min(Math.max(bin, 0), binCount - 1));
-    bin = Math.floor(bin);
-    bins[bin]++;
+    // Clamping not needed under the assumption items do not exceed min-max range, otherwise will overflow
+    const bin = (arr[i] - min) * (binCount - 1) / (max - min);
+    bins[Math.floor(bin)]++;
   }
-
-  // Float32Array or Float64Array ? 
   if (normalize) 
     bins = Float64Array.from(bins, b => b / arr.length); 
   
@@ -111,32 +116,17 @@ export function interp(x, xp, fp) {
 
 // helper for uint8 histograms
 function getNormalizedCdfUint8(arr) {
-  // console.log('arr', arr)
-  const normalize = true // 
-  const bins = bincount(arr, 256, 0, 255, normalize);
-  // console.log('bins', bins)
-
-  const cumsums = cumsum(bins)
-  console.log('cumsums', cumsums)
-  return cumsums;
+  return cumsum(bincount(arr, 256, 0, 255, true));
 }
 
 // compute mapping between source and target
 export function matchCumulativeCdf(source, target) {
   const srcCdf = getNormalizedCdfUint8(source);
   const tgtCdf = getNormalizedCdfUint8(target);
-  console.log('srcCdf', srcCdf, tgtCdf)
-
   const values = Array.from({ length: 256 }, (_, i) => i);
 
-  // const mapping = interp(values, srcCdf, tgtCdf)
   // For each source intensity, find the CDF value, then find which target intensity has the closest CDF value.
-  const mapping = interp(srcCdf, tgtCdf, values);
-
-  // TODO: check the mapping do not have to be DE-normalized by binCount ? 
-
-  console.log('--- MAPPING RESULT', mapping)
-  return mapping;
+  return interp(srcCdf, tgtCdf, values);
 }
 
 // ------------------- high-level API -------------------
@@ -144,56 +134,37 @@ export function matchCumulativeCdf(source, target) {
 /**
  * Match histograms of two raw JS images.
  * Works for grayscale, RGB, or RGBA.
+ * BEWARE RETURNED MAPPINGS IS NOT A FUNCTION THAT TAKES FLOAT, BUT AN ARRAY LOOKUP TABLE, CAN ONLY TAKE INTEGER VALUES
  *
  * @param {Uint8Array} source - Source image array (flat 1D, 1/3/4 channels interleaved).
  * @param {Uint8Array} target - Target image array (same shape/channels as source).
+ * @param Number channels - count of channels to do correct de-interleaving of RGB channels values.
  * @param {'MAPPING'|'MATCHED_DATA'} returnType - Whether to return mappings or matched data.
  * @returns {{mappings: Float64Array[], matched?: Uint8Array}}
  */
 export function matchHistograms(source, target, channels = 3, returnType = 'MATCHED_DATA') {
 //   const channels = source.length % 4 === 0 ? 4 :
 //                    source.length % 3 === 0 ? 3 : 1;
-  console.log('channels', channels)
-  const mappings = []
-
-  if (channels === 1) {
-    mappings[0] = matchCumulativeCdf(source, target);
-    console.log('mappings', mappings)
-    if (returnType === 'MAPPING') return {mappings};
-    const out = new Uint8Array(source.length);
-    for (let i = 0; i < source.length; i++) {
-      out[i] = mapping[source[i]];
-    }
-    return {mappings, matched: out};
+  // RGB / RGBA
+  const mappings = [];
+  for (let c = 0; c < Math.min(3, channels); c++) {
+      const srcChannel = [];
+      const tgtChannel = [];
+      for (let i = c; i < source.length; i += channels) srcChannel.push(source[i]);
+      for (let i = c; i < target.length; i += channels) tgtChannel.push(target[i]);
+      mappings[c] = matchCumulativeCdf(srcChannel, tgtChannel);
   }
-  else if (channels === 3 || channels == 4){
-    
-    // RGB / RGBA
-    const mappings = [];
+  console.log('mappings', mappings)
+
+  if (returnType === 'MAPPING') return {mappings};
+  const out = new Uint8Array(source.length);
+  for (let i = 0; i < source.length; i += channels) {
     for (let c = 0; c < 3; c++) {
-        const srcChannel = [];
-        const tgtChannel = [];
-        for (let i = c; i < source.length; i += channels) srcChannel.push(source[i]);
-        for (let i = c; i < target.length; i += channels) tgtChannel.push(target[i]);
-        mappings[c] = matchCumulativeCdf(srcChannel, tgtChannel);
+      out[i + c]     = mappings[0 + c][source[i + c]];
     }
-    console.log('mappings', mappings)
-
-    if (returnType === 'MAPPING') return {mappings};
-
-    // BEWARE MAPPINGS IS NOT A FUNCTION THAT TAKES FLOAT, BUT AN ARRAY LOOKUP TABLE SO HAS TO TAKE INTEGER VALUES
-
-    const out = new Uint8Array(source.length);
-    for (let i = 0; i < source.length; i += channels) {
-      for (let c = 0; c < 3; c++) {
-        out[i + c]     = mappings[0 + c][source[i + c]];     // R
-        // out[i + 1] = mappings[1][source[i + 1]]; // G
-        // out[i + 2] = mappings[2][source[i + 2]]; // B
-      }
-        if (channels === 4) out[i + 3] = source[i + 3]; // keep alpha
-    }
-    return {mappings, matched: out};
+    if (channels === 4) out[i + 3] = source[i + 3]; // keep alpha
   }
+  return {mappings, matched: out};
 }
 
 
@@ -217,11 +188,13 @@ function newImageWithOnload(filepath) {
       const target_arr = target.ctx.getImageData(0, 0, target.canvas.width, target.canvas.height);
       console.log('source_arr', source_arr, target_arr)
 
+      const start = Date.now();
       const returnType = 'MATCHED_DATA'
       const channels = 3 // should be computed from image, or getImageData is always same type?
       const matched = matchHistograms(source_arr.data, target_arr.data, channels, returnType);
       console.log('matched', matched, 'mappings slice')
       console.log(matched.mappings[0].slice(0, 30))
+      const elapsed_ms = Date.now() - start
 
       // Render matched image
       const canvas_out = document.createElement("canvas");
@@ -233,7 +206,34 @@ function newImageWithOnload(filepath) {
       ctx_out.putImageData(imageData, 0, 0);
       
       container = document.getElementById('matched-img-div');
-      container.replaceChildren(canvas_out);
+
+      const stats_div = document.createElement("div");
+      const statsObj = {
+        source: {
+          width: source.img.width, 
+          height: source.img.height,
+          Mpix: Math.floor(source.img.width * source.img.height / 1000000),
+        }, 
+        target: {
+          width: target.img.width, 
+          height: target.img.height,
+          Mpix: Math.floor(target.img.width * target.img.height / 1000000),
+        }, 
+        timings: {
+          ms: elapsed_ms
+        }
+      }
+      stats_div.innerHTML = JSON.stringify(statsObj, null, " ");
+
+      // container.replaceChildren(canvas_out);
+      canvas_out.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const img = document.createElement("img");
+        img.src = url;
+        container.replaceChildren(img);
+
+        container.addChildren(stats_div)
+      }, "image/png");
     }
   }
   img.src = filepath;
@@ -285,13 +285,6 @@ function onChangeInput (event) {
 window.onChangeInput = onChangeInput
 document.getElementById('source-input').onchange = onChangeInput
 document.getElementById('target-input').onchange = onChangeInput
-
-
-
-// import * as htmlToImage from 'https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.js';
-// import htmlToImage from 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js';
-// console.log('htmlToImage')
-// console.log(htmlToImage)
 
 </script>
 
