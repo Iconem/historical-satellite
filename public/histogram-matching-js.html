@@ -1,5 +1,6 @@
 <html>
   <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
 body {
   font-family: "Roboto", sans-serif;
@@ -117,8 +118,8 @@ function getNormalizedCdfUint8(arr) {
   return { bincounts, cdf };
 }
 
-// compute mapping between source and target
-export function matchCumulativeCdf(source, target) {
+// compute mapping between source and target by matching cumulative density functions
+export function matchCdf(source, target) {
   const srcCdf = getNormalizedCdfUint8(source);
   const tgtCdf = getNormalizedCdfUint8(target);
   const values = Array.from({ length: 256 }, (_, i) => i);
@@ -164,7 +165,7 @@ export function matchHistograms(source, target, channels = 3, returnType = 'MATC
       const tgtChannel = [];
       for (let i = c; i < source.length; i += channels * srcDownsample) srcChannel.push(source[i]);
       for (let i = c; i < target.length; i += channels * tgtDownsample) tgtChannel.push(target[i]);
-      mappings[c] = matchCumulativeCdf(srcChannel, tgtChannel);
+      mappings[c] = matchCdf(srcChannel, tgtChannel);
   }
   console.log('mappings', mappings)
 
@@ -178,6 +179,69 @@ export function matchHistograms(source, target, channels = 3, returnType = 'MATC
   }
   return {mappings, matched: out};
 }
+
+// Helper function to display chartjs histograms
+// CDNs like jsDelivr, cdnjs serve .esm.js files with text/plain or text/html instead of application/javascript, yielding browser blocking remote ESM imports
+// import { Chart } from "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.esm.js";
+function renderHistogram(histData, domElement) {
+  const commonLineOpts = {
+      fill: true,
+      // pointStyle: false,
+      pointRadius: 0,
+      borderWidth: 1,
+  }
+  // Hide legend, tooltip, ticks but display grid with given stepSize
+  const histChartOpts = {
+      plugins: { 
+        title: { display: true, text: 'Histogram'}, 
+        legend: { display: false }, 
+        tooltip: { enabled: false }
+      },
+      scales: {
+        x: {
+          type: 'linear',   
+          ticks: { display: false, stepSize: 50 },
+          grid: { display: true },
+        },
+        y: {
+          type: 'linear',
+          ticks: { display: false, stepSize: 0.005 },
+          grid: { display: true }, 
+        }
+      }
+    }
+  return new Chart(
+    domElement, {
+    type: 'line',
+    data: {
+      labels: Array.from({length: histData.R.length}, (_, i) => i),
+      datasets: [
+        {
+          data: histData.R,
+          borderColor: 'rgba(255,0,0,0.8)',
+          backgroundColor: 'rgba(255,0,0,0.15)',
+          ...commonLineOpts
+        },
+        {
+          data: histData.G,
+          borderColor: 'rgba(0,255,0,0.8)',
+          backgroundColor: 'rgba(0,255,0,0.15)',
+          ...commonLineOpts
+        },
+        {
+          data: histData.B,
+          borderColor: 'rgba(0,0,255,0.8)',
+          backgroundColor: 'rgba(0,0,255,0.15)',
+          ...commonLineOpts
+        }
+      ]
+    },
+    options: histChartOpts
+  });
+}
+
+// Example usage: call after computing histograms
+// histData = { R: [...256 bins...], G: [...], B: [...] }
 
 // --- image handling ---
 const img_objs = {};
@@ -224,26 +288,23 @@ function loadImage(fileOrUrl, slot, maxMpx=-1) { // TODO 2 is for testing defaul
       console.log(matched.mappings[0].mapping.slice(0, 30))
 
       const stats_div = document.createElement("pre");
-      const statsObj = {
-        source: {
-          width: img_objs.source.canvas.width, 
-          height: img_objs.source.canvas.height,
-          Mpix: 0.01 * Math.floor(img_objs.source.canvas.width * img_objs.source.canvas.height / 1000000 * 100),
-        }, 
-        target: {
-          width: img_objs.target.canvas.width, 
-          height: img_objs.target.canvas.height,
-          Mpix: 0.01 * Math.floor(img_objs.target.canvas.width * img_objs.target.canvas.height / 1000000 * 100),
-        }, 
-        timings: {
-          ms: elapsed_ms
-        }
-      }
-      const statsStr = JSON.stringify(statsObj, null, " ")
-      console.log(statsStr)
-      stats_div.textContent = `Histogram matching took ${statsObj.timings.ms}ms\n` + statsStr;
+      const sourceMpix = (img_objs.source.canvas.width * img_objs.source.canvas.height / 1e6).toFixed(2)
+      const targetMpix = (img_objs.target.canvas.width * img_objs.target.canvas.height / 1e6).toFixed(2)
+      stats_div.textContent = `Histogram matching took ${elapsed_ms}ms\nSource: ${sourceMpix}Mpx (${img_objs.source.canvas.width} x ${img_objs.source.canvas.height})\nTarget: ${targetMpix}Mpx (${img_objs.target.canvas.width} x ${img_objs.target.canvas.height})` 
       stats_div.style = 'text-align: left; padding: 20px;'
 
+      // Add histograms charts to divs
+      const srcHistData= {R: matched.mappings[0].srcHist, G: matched.mappings[1].srcHist, B: matched.mappings[2].srcHist}
+      const tgtHistData= {R: matched.mappings[0].tgtHist, G: matched.mappings[1].tgtHist, B: matched.mappings[2].tgtHist}
+      const srcHistCanvas = document.createElement("canvas");
+      const srcHistChart = renderHistogram(srcHistData, srcHistCanvas) 
+      document.getElementById("source-img-div").appendChild(srcHistCanvas);
+      const tgtHistCanvas = document.createElement("canvas");
+      const tgtHistChart = renderHistogram(tgtHistData, tgtHistCanvas) 
+      document.getElementById("target-img-div").appendChild(tgtHistCanvas);
+      
+
+      // Add output to DOM as image rather than canvas
       // container.replaceChildren(outCanvas);
       outCanvas.toBlob(function(blob) {
         // Add image resulting from histogram matching to output div
@@ -253,14 +314,7 @@ function loadImage(fileOrUrl, slot, maxMpx=-1) { // TODO 2 is for testing defaul
         container.replaceChildren(img);
 
         // Also show some stats
-        const stats_details = document.createElement('details');
-        stats_details.style = "text-align: left;"
-        const summary = document.createElement("summary");
-        summary.textContent = "Show stats";
-        stats_details.appendChild(summary);
-        stats_details.appendChild(stats_div);
-        stats_details.open = true;
-        container.appendChild(stats_details)
+        container.appendChild(stats_div);
       }, "image/png");
 
     }
