@@ -29,13 +29,21 @@ body {
     <div style="padding: 30px; ">
       <h3>Pure JS, client-side, Histogram Matching</h3>
       <p>
-Inspired by <a href="https://github.com/mapbox/rio-hist/issues/3">mapbox/rio-hist</a> (python), this demo showcases pure-JS Histogram Matching. <br/>Implementation based on scikit-image (<a href="https://scikit-image.org/docs/stable/auto_examples/color_exposure/plot_histogram_matching.html">doc</a> and <a href="https://github.com/scikit-image/scikit-image/blob/v0.25.2/skimage/exposure/histogram_matching.py#L33-L93">code</a>) which simply relies on numpy <code>bincount, cumsum, interp</code>. <br/>scikit-image and numpy use BSD3 License. 
+        Inspired by <a href="https://github.com/mapbox/rio-hist/issues/3">mapbox/rio-hist</a> (python), this demo showcases pure-JS Histogram Matching. 
+        <br/>
+        Implementation based on scikit-image (<a href="https://scikit-image.org/docs/stable/auto_examples/color_exposure/plot_histogram_matching.html">doc</a> and <a href="https://github.com/scikit-image/scikit-image/blob/v0.25.2/skimage/exposure/histogram_matching.py#L33-L93">code</a>) which simply relies on numpy <code>bincount, cumsum, interp</code>. 
+        <br/>
+        scikit-image and numpy use BSD3 License (<a href="https://github.com/scikit-image/scikit-image?tab=License-1-ov-file">[1]</a> and <a href="https://github.com/numpy/numpy?tab=License-1-ov-file">[2]</a>). 
+        <br/>
+        <br/>
+        BETA: If source raster image is geotiff, then the matched-to-target will be downloaded
+        <br/> It has to be, because no browser natively support rendering tiff (which would allow right-click save-as)
       </p>
     </div>
     <div class="flex-grid-thirds">
-      <div class="col"> SOURCE <input type="file" id="source-input" accept="image/png, image/jpeg" /> </div> 
+      <div class="col"> SOURCE <input type="file" id="source-input" accept="image/png, image/jpeg, image/tiff" /> </div> 
       <!-- onChange="onChangeInput(this)" -->
-      <div class="col"> TARGET <input type="file" id="target-input" accept="image/png, image/jpeg" /> </div>
+      <div class="col"> TARGET <input type="file" id="target-input" accept="image/png, image/jpeg, image/tiff" /> </div>
       <div class="col"> MATCHED OUTPUT </div>
     </div>
     <div class="flex-grid-thirds">
@@ -210,6 +218,9 @@ function renderHistogram(histData, domElement) {
         }
       }
     }
+  if (Chart.getChart(domElement)) {
+    Chart.getChart(domElement).destroy();
+  }
   return new Chart(
     domElement, {
     type: 'line',
@@ -240,15 +251,157 @@ function renderHistogram(histData, domElement) {
   });
 }
 
-// Example usage: call after computing histograms
-// histData = { R: [...256 bins...], G: [...], B: [...] }
+// jsDeliver and cdnjs use wrong mime-types, browsers disallow importing in esm modules
+import { fromArrayBuffer, writeArrayBuffer } from "https://esm.sh/geotiff@2.1.4-beta.0";
+
+async function exportGeoTIFF(raster, geoMetadata) {
+  const { ModelPixelScale, ModelTiepoint, 
+    ImageWidth: width, ImageLength: height 
+  } = geoMetadata.fileDirectory;
+  const metadata = {
+    GeographicTypeGeoKey: geoMetadata.geoKeys.GeographicTypeGeoKey,
+    width,
+    height,
+    ModelPixelScale,
+    ModelTiepoint,
+    // ...geoMetadata.geoKeys, ...geoMetadata.fileDirectory, ...geoMetadata.fileDirectory
+  };
+  const arrayBuffer = await writeArrayBuffer(raster, metadata);
+  const blob = new Blob([arrayBuffer], { type: "image/tiff" });
+  return URL.createObjectURL(blob);
+}
+
+
+async function processMatching(maxMpx) {
+  // Get source and target arrays from dom imgs
+  const source_canvas = img_objs.source.canvas
+  const target_canvas = img_objs.target.canvas
+  const sourceArr = img_objs.source.ctx.getImageData(0,0,source_canvas.width,source_canvas.height).data;
+  const targetArr = img_objs.target.ctx.getImageData(0,0,target_canvas.width,target_canvas.height).data;
+
+  // Match Histograms Computation
+  // Check getImageData always return 4 channels RGBA 
+  const start = Date.now();
+  const matched = matchHistograms(sourceArr, targetArr, 4, 'MATCHED_DATA', maxMpx);
+  const elapsed_ms = Date.now() - start
+
+  // Write matched image to outCanvas
+  const outCanvas = document.createElement("canvas");
+  outCanvas.width = source_canvas.width;
+  outCanvas.height = source_canvas.height;
+  const ctxOut = outCanvas.getContext("2d");
+  const outData = ctxOut.createImageData(outCanvas.width, outCanvas.height);
+  outData.data.set(matched.matched);
+  ctxOut.putImageData(outData, 0, 0);
+
+  // Display to user and log stats
+  const container = document.getElementById('matched-img-div');
+  console.log('matched', matched, 'mappings slice')
+  console.log(matched.mappings[0].mapping.slice(0, 30))
+
+  const stats_div = document.createElement("pre");
+  const sourceMpix = (img_objs.source.canvas.width * img_objs.source.canvas.height / 1e6).toFixed(2)
+  const targetMpix = (img_objs.target.canvas.width * img_objs.target.canvas.height / 1e6).toFixed(2)
+  stats_div.textContent = `Histogram matching took ${elapsed_ms}ms\nSource: ${sourceMpix}Mpx (${img_objs.source.canvas.width} x ${img_objs.source.canvas.height})\nTarget: ${targetMpix}Mpx (${img_objs.target.canvas.width} x ${img_objs.target.canvas.height})` 
+  stats_div.style = 'text-align: left; padding: 20px;'
+
+  // Add histograms charts to divs
+  // Create DOM divs for histograms canvases if they do not exist
+  let srcHistCanvas = document.getElementById('source-histogram-div');
+  if (!srcHistCanvas) {
+    srcHistCanvas = document.createElement("canvas");
+    srcHistCanvas.id = 'source-histogram-div'
+    document.getElementById("source-img-div").appendChild(srcHistCanvas);
+  }
+  let tgtHistCanvas = document.getElementById('target-histogram-div');
+  if (!tgtHistCanvas) {
+    tgtHistCanvas = document.createElement("canvas");
+    tgtHistCanvas.id = 'target-histogram-div'
+    document.getElementById("target-img-div").appendChild(tgtHistCanvas);
+  }
+  // Chart RGB Lines plots 
+  const srcHistData = {R: matched.mappings[0].srcHist, G: matched.mappings[1].srcHist, B: matched.mappings[2].srcHist}
+  const tgtHistData = {R: matched.mappings[0].tgtHist, G: matched.mappings[1].tgtHist, B: matched.mappings[2].tgtHist}
+  const srcHistChart = renderHistogram(srcHistData, srcHistCanvas) 
+  const tgtHistChart = renderHistogram(tgtHistData, tgtHistCanvas) 
+  
+  // If image is geotiff, handle it
+  if (img_objs.source.geoMetadata) {
+    const outUrl = await exportGeoTIFF(matched.matched, img_objs.source.geoMetadata);
+    const a = document.createElement("a");
+    document.body.appendChild(a);
+    a.style = "display: none";
+    a.href = outUrl;
+    a.download = 'sourced-geotiff-matched-to-target.tiff';
+    a.click();
+    // URL.revokeObjectURL(url);
+  } 
+  // If image can be handled by browser, display it as jpg/png. for geotiff, will need to download it since browser don't support rendering tiffs
+  // Add output to DOM as image rather than canvas
+  // container.replaceChildren(outCanvas);
+  outCanvas.toBlob(async function(blob) {
+    // Add image resulting from histogram matching to output div
+    const url = URL.createObjectURL(blob);
+    const img = document.createElement("img");
+    img.src = url;
+    container.replaceChildren(img);
+
+    // Also show some stats
+    container.appendChild(stats_div);
+  }, "image/png");
+  
+  
+}
 
 // --- image handling ---
 const img_objs = {};
 // slot is source or target, indexing img_objs, mapped to input and img slot+"-img-div
-function loadImage(fileOrUrl, slot, maxMpx=-1) { // TODO 2 is for testing default downscale = 1
+async function loadImage(fileOrUrl, slot, maxMpx=-1) { // TODO 2 is for testing default downscale = 1
+
+  // Handle GeoTIFF differently, via geotiffjs since not natively supported by browsers + we want geoMetadata
+  if (
+    (typeof fileOrUrl !== "string" && fileOrUrl.type === "image/tiff") ||
+    (typeof fileOrUrl === "string" && fileOrUrl.startsWith("data:image/tiff;base64,"))
+  ) {
+    let arrayBuffer;
+    if (typeof fileOrUrl === "string") {
+      const base64 = fileOrUrl.split(",")[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      arrayBuffer = bytes.buffer;
+    } else {
+      arrayBuffer = await fileOrUrl.arrayBuffer();
+    }
+    const tiff = await fromArrayBuffer(arrayBuffer); 
+    const image = await tiff.getImage();
+    console.log('GEOTIFF IMAGE', image)
+    const rasters = await image.readRasters({ interleave: true });
+
+    // Some code can probably be factorised with generic case below
+    const width = image.getWidth();
+    const height = image.getHeight();
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    const imageData = ctx.createImageData(width, height);
+    imageData.data.set(rasters);
+    ctx.putImageData(imageData, 0, 0);
+    img_objs[slot] = {ctx, canvas, geoMetadata: {geoKeys:image.getGeoKeys(), fileDirectory:image.fileDirectory, image}};
+    document.getElementById(slot+"-img-div").replaceChildren(canvas);
+    if (img_objs.source && img_objs.target) {
+      await processMatching(maxMpx);
+    }
+    return;
+  }
+
+  // Case for images that can be rendered by browser into canvas - jpeg, png, not tiff
   const img = new Image();
-  img.onload = function() {
+  img.onload = async function() {
+    console.log('onload start')
     const canvas = document.createElement("canvas");
     // naturalWidth / downscale to make canvas smaller and downsample naturally, downscale = 2 is nicer, but then would need to use source input and re-apply mapping, so passed source resolution instead
     canvas.width = img.naturalWidth;   // naturalWidth instead of width
@@ -260,63 +413,10 @@ function loadImage(fileOrUrl, slot, maxMpx=-1) { // TODO 2 is for testing defaul
     img_objs[slot] = {ctx, img, canvas};
     document.getElementById(slot+"-img-div").replaceChildren(img);
 
+    console.log(img, fileOrUrl.type)
+
     if (img_objs.source && img_objs.target) {
-      // Get source and target arrays from dom imgs
-      const source_canvas = img_objs.source.canvas
-      const target_canvas = img_objs.target.canvas
-      const sourceArr = img_objs.source.ctx.getImageData(0,0,source_canvas.width,source_canvas.height).data;
-      const targetArr = img_objs.target.ctx.getImageData(0,0,target_canvas.width,target_canvas.height).data;
-
-      // Match Histograms Computation
-      // Check getImageData always return 4 channels RGBA 
-      const start = Date.now();
-      const matched = matchHistograms(sourceArr, targetArr, 4, 'MATCHED_DATA', maxMpx);
-      const elapsed_ms = Date.now() - start
-
-      // Write matched image to outCanvas
-      const outCanvas = document.createElement("canvas");
-      outCanvas.width = source_canvas.width;
-      outCanvas.height = source_canvas.height;
-      const ctxOut = outCanvas.getContext("2d");
-      const outData = ctxOut.createImageData(outCanvas.width, outCanvas.height);
-      outData.data.set(matched.matched);
-      ctxOut.putImageData(outData, 0, 0);
-
-      // Display to user and log stats
-      const container = document.getElementById('matched-img-div');
-      console.log('matched', matched, 'mappings slice')
-      console.log(matched.mappings[0].mapping.slice(0, 30))
-
-      const stats_div = document.createElement("pre");
-      const sourceMpix = (img_objs.source.canvas.width * img_objs.source.canvas.height / 1e6).toFixed(2)
-      const targetMpix = (img_objs.target.canvas.width * img_objs.target.canvas.height / 1e6).toFixed(2)
-      stats_div.textContent = `Histogram matching took ${elapsed_ms}ms\nSource: ${sourceMpix}Mpx (${img_objs.source.canvas.width} x ${img_objs.source.canvas.height})\nTarget: ${targetMpix}Mpx (${img_objs.target.canvas.width} x ${img_objs.target.canvas.height})` 
-      stats_div.style = 'text-align: left; padding: 20px;'
-
-      // Add histograms charts to divs
-      const srcHistData= {R: matched.mappings[0].srcHist, G: matched.mappings[1].srcHist, B: matched.mappings[2].srcHist}
-      const tgtHistData= {R: matched.mappings[0].tgtHist, G: matched.mappings[1].tgtHist, B: matched.mappings[2].tgtHist}
-      const srcHistCanvas = document.createElement("canvas");
-      const srcHistChart = renderHistogram(srcHistData, srcHistCanvas) 
-      document.getElementById("source-img-div").appendChild(srcHistCanvas);
-      const tgtHistCanvas = document.createElement("canvas");
-      const tgtHistChart = renderHistogram(tgtHistData, tgtHistCanvas) 
-      document.getElementById("target-img-div").appendChild(tgtHistCanvas);
-      
-
-      // Add output to DOM as image rather than canvas
-      // container.replaceChildren(outCanvas);
-      outCanvas.toBlob(function(blob) {
-        // Add image resulting from histogram matching to output div
-        const url = URL.createObjectURL(blob);
-        const img = document.createElement("img");
-        img.src = url;
-        container.replaceChildren(img);
-
-        // Also show some stats
-        container.appendChild(stats_div);
-      }, "image/png");
-
+      await processMatching(maxMpx)
     }
   };
   img.src = fileOrUrl;
