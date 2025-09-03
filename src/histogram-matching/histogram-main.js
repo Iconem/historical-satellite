@@ -179,7 +179,7 @@ async function displayResults(outCanvas, matched, elapsed_ms) {
     statsDiv.style = 'text-align: left; padding: 20px;'
     const sourceMpix = (imageObjects.source.canvas.width * imageObjects.source.canvas.height / 1e6).toFixed(2);
     const targetMpix = (imageObjects.target.canvas.width * imageObjects.target.canvas.height / 1e6).toFixed(2);
-    statsDiv.textContent = `YO Histogram matching took ${elapsed_ms}ms\nSource: ${sourceMpix}Mpx (${imageObjects.source.canvas.width} x ${imageObjects.source.canvas.height})\nTarget: ${targetMpix}Mpx (${imageObjects.target.canvas.width} x ${imageObjects.target.canvas.height})`;
+    statsDiv.textContent = `Histogram matching took ${elapsed_ms}ms (maxMpx: ${maxMpx === -1? 'uncapped' : maxMpx + 'Mpx'})\nSource: ${sourceMpix}Mpx (${imageObjects.source.canvas.width} x ${imageObjects.source.canvas.height})\nTarget: ${targetMpix}Mpx (${imageObjects.target.canvas.width} x ${imageObjects.target.canvas.height})`;
     container.appendChild(statsDiv);
   }, "image/png");
 

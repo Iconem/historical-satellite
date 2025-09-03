@@ -67,7 +67,7 @@ h1 {
       <h1>Pure JS, client-side, Histogram Matching</h1>
       <div class="description">
         <p>
-          Inspired by <a href="https://github.com/mapbox/rio-hist/issues/3">mapbox/rio-hist</a> (python), this demo showcases pure-JS Histogram Matching. 
+          Inspired by <a href="https://github.com/mapbox/rio-hist/issues/3">mapbox/rio-hist</a> (python), this demo showcases pure-JS, client-side, Histogram Matching. 
         </p>
         <p>
           Implementation based on scikit-image (<a href="https://scikit-image.org/docs/stable/auto_examples/color_exposure/plot_histogram_matching.html">doc</a> and <a href="https://github.com/scikit-image/scikit-image/blob/v0.25.2/skimage/exposure/histogram_matching.py#L33-L93">code</a>) which simply relies on numpy <code>bincount</code>, <code>cumsum</code>, <code>interp</code>. 
@@ -76,7 +76,7 @@ h1 {
           scikit-image and numpy use BSD3 License (<a href="https://github.com/scikit-image/scikit-image?tab=License-1-ov-file">[1]</a> and <a href="https://github.com/numpy/numpy?tab=License-1-ov-file">[2]</a>). 
         </p>
         <div class="beta-notice">
-          <strong>BETA:</strong> If source raster image is GeoTIFF, the matched-to-target image will be downloadable as GeoTIFF with as much geometadata geotiff.js <a href="https://geotiffjs.github.io/geotiff.js"> writeArrayBuffer </a>supports 
+          <strong>BETA:</strong> If source image is GeoTIFF, the matched output will be downloadable as GeoTIFF with as much geometadata geotiff.js <a href="https://geotiffjs.github.io/geotiff.js">writeArrayBuffer</a> supports 
         </div>
       </div>
     </div>
