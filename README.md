@@ -5,18 +5,16 @@
 
 ## Intro
 
-Simple app made to select through Planet Historical Monthly Basemaps and compare it against other TMS basemaps (like Google, Bing, Here, ESRI, Mapbox, Yandex, Apple). Useful for analyses like [Dilbarjin | LeMonde](https://www.lemonde.fr/international/article/2023/04/07/en-afghanistan-le-pillage-massif-d-un-site-archeologique-attribue-a-l-ei_6168703_3210.html) outside Qgis, directly within a web browser (inside or outside of Iconem).
+Simple app made to select through Historical Basemaps like Planet monthly mosaics or ESRI Wayback Machine, and compare it against other TMS basemaps (like Google, Bing, Here, ESRI, Mapbox, Yandex, Apple). Useful for analyses like [Dilbarjin | LeMonde](https://www.lemonde.fr/international/article/2023/04/07/en-afghanistan-le-pillage-massif-d-un-site-archeologique-attribue-a-l-ei_6168703_3210.html) outside Qgis, directly within a web browser (inside or outside of Iconem).
 
-Rough initial version, with:
-
-- Downloads all planet-basemaps-monthly from 2016-01 to present with the map viewport as extent
-- Side-by-side comparison of imagery datasets (Planet monthly at 2 different timestamps, or satellite imagery sources from planet/google/bing/here/esri/mapbox/yandex/apple)
-- Downloaded images are geotiffs, so can be drag-and-dropped to qgis to get their location
+- Downloads all esri-wayback and planet-basemaps-monthly from 2016-01 to present with the map viewport as extent
+- Side-by-side or split-view comparison of imagery datasets (Planet monthly/ESRI Wayback at 2 different timestamps, or satellite imagery sources from planet/google/bing/here/esri/mapbox/yandex/apple)
+- Downloaded images are geotiffs, so can be drag-and-dropped to qgis 
 
 ## Features:
 
 - 2 Maps in a Split view (split-screen or side-by-side)
-- Settings component to select planet basemap timestamp
+- Settings component to select historical basemap timestamp
 - Slider with play capabilities (forward/backward, play/pause or step-by-step and FPS control)
 - Selector to choose raster source TMS url (via a TMS URL, or a planet monthly basemap)
 - downloads planet monthly basemaps frames from 2016-01 to present via TiTiler (merge/crop tiles automagically and export to geotiff)
@@ -28,6 +26,10 @@ Rough initial version, with:
 
 - mapbox-gl-js [feature request](https://github.com/mapbox/mapbox-gl-js/issues/12707) to `Avoid tile popping/flicker on RasterTileSource setTiles` and associated [react-map-gl issue](https://github.com/visgl/react-map-gl/issues/1876)
 
+## Histogram Matching Helper
+Simple app at [histogram-matching-js](https://historical-satellite.iconem.com/histogram-matching-js.html) made to match source and target histograms, display histograms and matched raster, and allow download, as geotiff if source is geotiff. 
+
+
 # Similar work
 
 ## Other Periodic whole-world mosaics
@@ -36,7 +38,10 @@ Cross-posting a [twitter thread](https://twitter.com/jo_chemla/status/1656686529
 
 Looking for cloud-free, worldwide, periodic (yearly/monthly) mosaics like
 
+ - See all links at bottom of historical-satellite, viewport context-aware, redirecting to existing useful historical basemaps
+ - open-data Sentinel/Landsat, 10-30m, via [EarthSearch](https://console.earth-search.aws.element84.com/) from Element84 - check option Mosaics 
 - [Google Earth Web](https://earth.google.com/web/@53.15559085,-1.0098299,428.20825693a,5430806.16808712d,35y,0h,0t,0r/data=CgwqBggBEgAYAUICCAFKDQj___________8BEAA) now supports both high-res historical imagery as well as [Google Earth Timelapse](https://earthengine.google.com/timelapse/) (yearly 1984-2020) from Landsat/Sentinel data, mp4 tiles
+- ESRI Wayback Machine
 - [Planet monthly basemaps](https://www.planet.com/products/basemap/) for 2016-01 - present
 - [ESA WorldCover](https://esa-worldcover.org/en) 2020-2021 from Sentinel with large time coverage
 

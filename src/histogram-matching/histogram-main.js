@@ -144,7 +144,7 @@ async function processMatching(maxMpx = -1) {
   ctxOut.putImageData(outData, 0, 0);
 
   // Display results and handle exports
-  await displayResults(outCanvas, matched, elapsed_ms);
+  await displayResults(outCanvas, matched, elapsed_ms, maxMpx);
 }
 
 /**
@@ -154,7 +154,7 @@ async function processMatching(maxMpx = -1) {
  * @param {number} elapsed_ms - Processing time
  * @returns {Promise<void>}
  */
-async function displayResults(outCanvas, matched, elapsed_ms) {
+async function displayResults(outCanvas, matched, elapsed_ms, maxMpx) {
   const container = document.getElementById('matched-img-div');
 
   // Make download Link/Button
@@ -174,13 +174,14 @@ async function displayResults(outCanvas, matched, elapsed_ms) {
     container.replaceChildren(img);
 
     // Add statistics
-    const statsDiv = document.createElement("pre");
+    const statsDiv = document.getElementById('output-stats')
+    // const statsDiv = document.createElement("pre");
     // statsDiv.className = "stats";
-    statsDiv.style = 'text-align: left; padding: 20px;'
+    // statsDiv.style = 'text-align: left; padding: 20px;'
     const sourceMpix = (imageObjects.source.canvas.width * imageObjects.source.canvas.height / 1e6).toFixed(2);
     const targetMpix = (imageObjects.target.canvas.width * imageObjects.target.canvas.height / 1e6).toFixed(2);
-    statsDiv.textContent = `Histogram matching took ${elapsed_ms}ms (maxMpx: ${maxMpx === -1? 'uncapped' : maxMpx + 'Mpx'})\nSource: ${sourceMpix}Mpx (${imageObjects.source.canvas.width} x ${imageObjects.source.canvas.height})\nTarget: ${targetMpix}Mpx (${imageObjects.target.canvas.width} x ${imageObjects.target.canvas.height})`;
-    container.appendChild(statsDiv);
+    statsDiv.textContent = `Histogram matching took ${elapsed_ms}ms (maxMpx: ${maxMpx <= 0 ? 'uncapped' : maxMpx + 'Mpx'})\nSource: ${sourceMpix}Mpx (${imageObjects.source.canvas.width} x ${imageObjects.source.canvas.height})\nTarget: ${targetMpix}Mpx (${imageObjects.target.canvas.width} x ${imageObjects.target.canvas.height})`;
+    // statsContainer.replaceChildren(statsDiv);
   }, "image/png");
 
   // Handle GeoTIFF export
@@ -218,17 +219,27 @@ async function exportGeoTIFF(raster, geoMetadata) {
 }
 
 /**
+ * Get current maxMpx value from input
+ * @returns {number} Current maxMpx value
+ */
+function getInputMaxMpx() {
+  const input = document.getElementById('max-mpx-input');
+  return input ? parseFloat(input.value) || 0 : 0;
+}
+
+/**
  * Handle file input change
  * @param {Event} e - Input change event
  */
 function handleFileInput(e) {
+  const maxMpx = getInputMaxMpx()
   const file = e.target.files[0];
   if (!file) return;
   
   const reader = new FileReader();
   reader.onload = (ev) => {
     const slot = e.target.id.includes('source') ? 'source' : 'target';
-    loadImage(ev.target.result, slot);
+    loadImage(ev.target.result, slot, maxMpx);
   };
   reader.readAsDataURL(file);
 }
@@ -319,7 +330,7 @@ function getOrCreateHistogramCanvas(containerId, canvasId) {
   if (!canvas) {
     canvas = document.createElement("canvas");
     canvas.id = canvasId;
-    document.getElementById(containerId).appendChild(canvas);
+    document.getElementById(containerId).replaceChildren(canvas);
   }
   return canvas;
 }
@@ -330,8 +341,8 @@ function getOrCreateHistogramCanvas(containerId, canvasId) {
  */
 function renderHistograms(mappings) {
   // Create histogram canvases if they don't exist
-  const srcHistCanvas = getOrCreateHistogramCanvas('source-img-div', 'source-histogram');
-  const tgtHistCanvas = getOrCreateHistogramCanvas('target-img-div', 'target-histogram');
+  const srcHistCanvas = getOrCreateHistogramCanvas('source-hist-chart', 'source-histogram');
+  const tgtHistCanvas = getOrCreateHistogramCanvas('target-hist-chart', 'target-histogram');
 
   // Prepare histogram data
   const srcHistData = { 
@@ -365,6 +376,7 @@ let imageObjects = {}
 function setupEventListeners() {
   const sourceInput = document.getElementById("source-input");
   const targetInput = document.getElementById("target-input");
+  const maxMpxInput = document.getElementById("max-mpx-input");
   
   if (sourceInput) {
     sourceInput.addEventListener("change", (e) => handleFileInput(e));
@@ -372,16 +384,24 @@ function setupEventListeners() {
   if (targetInput) {
     targetInput.addEventListener("change", (e) => handleFileInput(e));
   }
+  if (maxMpxInput) {
+    maxMpxInput.addEventListener("change", async (e) => {
+      const maxMpx = getInputMaxMpx()
+      await processMatching(maxMpx)
+    });
+  }
 }
 
 /**
  * Load default images if available
  */
 async function loadDefaultImages() {
+  const maxMpx = getInputMaxMpx()
+  console.log('maxMpx', maxMpx)
   try {
     await Promise.allSettled([
-      loadImage('./source1.jpg', "source"),
-      loadImage('./reference1.jpg', "target")
+      loadImage('./source1.jpg', "source", maxMpx),
+      loadImage('./reference1.jpg', "target", maxMpx)
     ]);
   } catch (error) {
     console.log('Default images not available, waiting for user input');

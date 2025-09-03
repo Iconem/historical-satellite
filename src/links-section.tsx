@@ -14,6 +14,13 @@ function LinksSection(props: { mapRef: any }) {
       {" "}
       Useful:{" "}
       <Link
+        href={`/histogram-matching-js.html`}
+        target={"_blank"}
+      >
+        Histogram Matching JS
+      </Link>
+      {" | "}
+      <Link
         href={`https://earth.google.com/web/@${center?.lat},${center?.lng},0a,${((38000 * 4096) / Math.pow(2, zoom)) *
           Math.cos((center?.lat * Math.PI) / 180)
           }d,35y,0h,0t,0r/data=CgwqBggBEgAYAUICCAE6AwoBMEoNCP___________wEQAA`}
@@ -28,14 +35,14 @@ function LinksSection(props: { mapRef: any }) {
       >
         Imagery Wayback Machine
       </Link>
-      {" | "}
-      <Link href={`https://qms.nextgis.com/#`}>NextGIS QMS</Link>
-      {" | "}
+      {" | NextGIS "}
+      <Link href={`https://qms.nextgis.com/#`}>QMS</Link>
+      {" | BBBike "}
       <Link
         href={`https://mc.bbbike.org/mc/?lon=${center?.lng}&lat=${center?.lat}&zoom=${zoom}&num=4&mt0=mapnik-german&mt1=cyclemap&mt2=bing-hybrid`}
         target={"_blank"}
       >
-        BBBike MapCompare
+        MapCompare
       </Link>
       {" | Qiusheng Wu "}
       <Link href={`https://giswqs-streamlit.hf.space/Timelapse`} target={"_blank"}>
