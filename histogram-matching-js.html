@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histogram Matching JS</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+body {
+  font-family: "Roboto", sans-serif;
+  color: #666;
+  line-height: 1.6;
+}
+.flex-grid {
+  display: flex;
+}
+.col {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+}
+.flex-grid-thirds {
+  display: flex;
+  justify-content: space-between;
+}
+.flex-grid-thirds .col {
+  width: 32%;
+}
+.col img, .col canvas {
+  max-width: 100%;
+}
+h1 {
+  font-size: 2rem;
+  font-weight: 300;
+  color: #333;
+}
+
+
+.description a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.description a:hover {
+  text-decoration: underline;
+}
+
+.description code {
+  background: #f1f1f1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.beta-notice {
+  background: #cde8ff;
+  border: 1px solid #9fb4c6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  /* color: #856404; */
+}
+  </style>
+</head>
+<body>
+    <div style="padding: 30px; ">
+      <h1>Pure JS, client-side, Histogram Matching</h1>
+      <div class="description">
+        <p>
+          Inspired by <a href="https://github.com/mapbox/rio-hist/issues/3">mapbox/rio-hist</a> (python), this demo showcases pure-JS Histogram Matching. 
+        </p>
+        <p>
+          Implementation based on scikit-image (<a href="https://scikit-image.org/docs/stable/auto_examples/color_exposure/plot_histogram_matching.html">doc</a> and <a href="https://github.com/scikit-image/scikit-image/blob/v0.25.2/skimage/exposure/histogram_matching.py#L33-L93">code</a>) which simply relies on numpy <code>bincount</code>, <code>cumsum</code>, <code>interp</code>. 
+        </p>
+        <p>
+          scikit-image and numpy use BSD3 License (<a href="https://github.com/scikit-image/scikit-image?tab=License-1-ov-file">[1]</a> and <a href="https://github.com/numpy/numpy?tab=License-1-ov-file">[2]</a>). 
+        </p>
+        <div class="beta-notice">
+          <strong>BETA:</strong> If source raster image is GeoTIFF, the matched-to-target image will be downloadable as GeoTIFF with as much geometadata geotiff.js <a href="https://geotiffjs.github.io/geotiff.js"> writeArrayBuffer </a>supports 
+        </div>
+      </div>
+    </div>
+    <div class="flex-grid-thirds">
+      <div class="col">
+        <p> SOURCE <br/><input type="file" id="source-input" accept="image/png, image/jpeg, image/tiff" /></p> 
+        <div id="source-img-div"></div>
+      </div>
+      <div class="col">
+        <p> TARGET <br/><input type="file" id="target-input" accept="image/*" /> </p>
+        <div id="target-img-div"></div>
+      </div>
+      <div class="col">
+        <p id="matched-header"> MATCHED OUTPUT </p>
+        <div id="matched-img-div"></div>
+      </div>
+    </div>
+
+  <!-- Main VITE entry point -->
+  <script type="module" src="./src/histogram-matching/histogram-main.js"></script>
+</body>
+</html>
