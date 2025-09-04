@@ -45,31 +45,40 @@ async function loadImage(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
  * @returns {Promise<void>}
  */
 async function loadRegularImage(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = async () => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0);
-        const pixelsArr = ctx.getImageData(0, 0, width, height).data;
+  let imageBitmap, canvas, ctx;
+  if (fileOrUrl instanceof Blob) {
+    // Local File or Blob → direct decode
+    imageBitmap = await createImageBitmap(fileOrUrl);
+    canvas = document.createElement("canvas");
+    canvas.width = imageBitmap.width;
+    canvas.height = imageBitmap.height;
+    ctx = canvas.getContext("2d");
+    ctx.drawImage(imageBitmap, 0, 0);
+  } else if (typeof fileOrUrl === "string") {
+    // URL or data URL → load via <img>
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = reject;
+      im.src = fileOrUrl;
+    });
+    canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+  } else {
+    throw new Error("Unsupported fileOrUrl type in loadRegularImage");
+  }
 
-        imageObjects[slot] = { img, canvas, pixelsArr };
-        document.getElementById(slot + "-img-div").replaceChildren(img);
+  const pixelsArr = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
 
-        if (imageObjects.source && imageObjects.target) {
-          await processMatching(settings);
-        }
-        resolve();
-      } catch (error) {
-        reject(error);
-      }
-    };
-    img.onerror = () => reject(new Error(`Failed to load image: ${fileOrUrl}`));
-    img.src = fileOrUrl;
-  });
+  imageObjects[slot] = {
+    ctx,
+    canvas,
+    pixelsArr,
+  };
+  document.getElementById(slot + "-img-div").replaceChildren(canvas);
 }
 
 /**
@@ -79,7 +88,7 @@ async function loadRegularImage(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
  * @param {number} maxMpx - Max megapixels for processing
  * @returns {Promise<void>}
  */
-async function loadGeoTIFF(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
+async function loadGeoTIFF(file, slot, settings=DEFAULT_SETTINGS) {
   // const { fromArrayBuffer } = await import("https://esm.sh/geotiff@2.1.4-beta.0");
   
   // let arrayBuffer;
@@ -95,8 +104,8 @@ async function loadGeoTIFF(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
   //   arrayBuffer = await fileOrUrl.arrayBuffer();
   // }
   
-  // const tiff = await fromBlob(fileOrUrl);
-  const tiff = await fromArrayBuffer(arrayBuffer);
+  const tiff = await fromBlob(file);
+  // const tiff = await fromArrayBuffer(arrayBuffer);
   const image = await tiff.getImage();
   const rasters = await image.readRasters({ interleave: true });
 
@@ -122,10 +131,6 @@ async function loadGeoTIFF(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
   };
 
   document.getElementById(slot + "-img-div").replaceChildren(canvas);
-  
-  if (imageObjects.source && imageObjects.target) {
-    await processMatching(settings);
-  }
 }
 
 /**
@@ -279,17 +284,21 @@ function getInputSettings() {
  * Handle file input change
  * @param {Event} e - Input change event
  */
-function handleFileInput(e) {
-  const settings = getInputSettings()
+async function handleFileInput(e) {
+  const slot = e.target.id.includes('source') ? 'source' : 'target';
   const file = e.target.files[0];
   if (!file) return;
+  const settings = getInputSettings()
   
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    const slot = e.target.id.includes('source') ? 'source' : 'target';
-    loadImage(ev.target.result, slot, settings);
-  };
-  reader.readAsDataURL(file);
+  // const reader = new FileReader();
+  // reader.onload = (ev) => {
+  //   loadImage(ev.target.result, slot, settings);
+  // };
+  // reader.readAsDataURL(file);
+  await loadImage(file, slot, settings);
+  if (imageObjects.source && imageObjects.target) {
+    await processMatching(settings);
+  }
 }
 
 
@@ -471,6 +480,9 @@ async function loadDefaultImages() {
       loadImage('./source1.jpg', "source", settings),
       loadImage('./reference1.jpg', "target", settings)
     ]);
+    if (imageObjects.source && imageObjects.target) {
+      await processMatching(settings);
+    }
   } catch (error) {
     console.log('Default images not available, waiting for user input');
   }
