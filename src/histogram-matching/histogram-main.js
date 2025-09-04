@@ -1,12 +1,12 @@
 import { matchHistogramsRGB, matchHistogramsColorspaces, COLOR_SPACE } from './histogram-utils.js';
-import { writeArrayBuffer } from 'geotiff'
+import { fromArrayBuffer, fromBlob, writeArrayBuffer } from 'geotiff'
 
 /**
- * Check if file is GeoTIFF
+ * Check if file is TIFF
  * @param {File|string} fileOrUrl - File object or data URL
- * @returns {boolean} True if GeoTIFF
+ * @returns {boolean} True if TIFF
  */
-function isGeoTIFF(fileOrUrl) {
+function isTIFF(fileOrUrl) {
   return (typeof fileOrUrl !== "string" && fileOrUrl.type === "image/tiff") ||
           (typeof fileOrUrl === "string" && fileOrUrl.startsWith("data:image/tiff;base64,"));
 }
@@ -26,7 +26,7 @@ const DEFAULT_SETTINGS = {
  */
 async function loadImage(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
   try {
-    if (isGeoTIFF(fileOrUrl)) {
+    if (isTIFF(fileOrUrl)) {
       await loadGeoTIFF(fileOrUrl, slot, settings);
     } else {
       await loadRegularImage(fileOrUrl, slot, settings);
@@ -54,8 +54,9 @@ async function loadRegularImage(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
         canvas.height = img.naturalHeight;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0);
+        const pixelsArr = ctx.getImageData(0, 0, width, height).data;
 
-        imageObjects[slot] = { ctx, img, canvas };
+        imageObjects[slot] = { img, canvas, pixelsArr };
         document.getElementById(slot + "-img-div").replaceChildren(img);
 
         if (imageObjects.source && imageObjects.target) {
@@ -79,21 +80,22 @@ async function loadRegularImage(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
  * @returns {Promise<void>}
  */
 async function loadGeoTIFF(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
-  const { fromArrayBuffer } = await import("https://esm.sh/geotiff@2.1.4-beta.0");
+  // const { fromArrayBuffer } = await import("https://esm.sh/geotiff@2.1.4-beta.0");
   
-  let arrayBuffer;
-  if (typeof fileOrUrl === "string") {
-    const base64 = fileOrUrl.split(",")[1];
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    arrayBuffer = bytes.buffer;
-  } else {
-    arrayBuffer = await fileOrUrl.arrayBuffer();
-  }
-
+  // let arrayBuffer;
+  // if (typeof fileOrUrl === "string") {
+  //   const base64 = fileOrUrl.split(",")[1];
+  //   const binary = atob(base64);
+  //   const bytes = new Uint8Array(binary.length);
+  //   for (let i = 0; i < binary.length; i++) {
+  //     bytes[i] = binary.charCodeAt(i);
+  //   }
+  //   arrayBuffer = bytes.buffer;
+  // } else {
+  //   arrayBuffer = await fileOrUrl.arrayBuffer();
+  // }
+  
+  // const tiff = await fromBlob(fileOrUrl);
   const tiff = await fromArrayBuffer(arrayBuffer);
   const image = await tiff.getImage();
   const rasters = await image.readRasters({ interleave: true });
@@ -107,10 +109,11 @@ async function loadGeoTIFF(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
   const imageData = ctx.createImageData(width, height);
   imageData.data.set(rasters);
   ctx.putImageData(imageData, 0, 0);
+  const pixelsArr = ctx.getImageData(0, 0, width, height).data;
 
   imageObjects[slot] = {
-    ctx,
     canvas,
+    pixelsArr,
     geoMetadata: {
       geoKeys: image.getGeoKeys(),
       fileDirectory: image.fileDirectory,
@@ -132,9 +135,8 @@ async function loadGeoTIFF(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
  */
 async function processMatching(settings=DEFAULT_SETTINGS) {
   const sourceCanvas = imageObjects.source.canvas;
-  const targetCanvas = imageObjects.target.canvas;
-  const sourceArr = imageObjects.source.ctx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height).data;
-  const targetArr = imageObjects.target.ctx.getImageData(0, 0, targetCanvas.width, targetCanvas.height).data;
+  const sourceArr = imageObjects.source.pixelsArr;
+  const targetArr = imageObjects.target.pixelsArr;
 
   // Perform histogram matching
   const start = Date.now();
@@ -202,7 +204,8 @@ async function displayResults(outCanvas, matched, elapsed_ms) {
     const url = URL.createObjectURL(blob);
     const img = document.createElement("img");
     img.src = url;
-    a.href = url;
+    if (!imageObjects.source.geoMetadata)
+      a.href = url;
     container.replaceChildren(img);
 
     // Add statistics
