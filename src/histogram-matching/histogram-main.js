@@ -141,7 +141,7 @@ async function processMatching(settings=DEFAULT_SETTINGS) {
   // const matched = matchHistograms(sourceArr, targetArr, 4, 'MATCHED_DATA', maxMpx);
 
   let matched
-  if (settings) {
+  if (settings.colorSpace === COLOR_SPACE.RGB) {
     matched = matchHistogramsRGB(
         sourceArr,
         targetArr,
@@ -431,12 +431,16 @@ function setupEventListeners() {
 
   // Add settings
   async function handleSettingsChange (e) {
+    console.log('input', colorSpaceInput.value, COLOR_SPACE.RGB)
+    document.getElementById("bands-input").disabled = document.getElementById("binCount-input").disabled = (colorSpaceInput.value === COLOR_SPACE.RGB)
     const settings = getInputSettings()
     await processMatching(settings)
   }
   document.getElementById("max-mpx-input").addEventListener("change", handleSettingsChange);
-  document.getElementById("bands-input").addEventListener("change", handleSettingsChange);
-  document.getElementById("binCount-input").addEventListener("change", handleSettingsChange);
+  const bandsInput = document.getElementById("bands-input")
+  bandsInput.addEventListener("change", handleSettingsChange);
+  const binCountInput = document.getElementById("binCount-input")
+  binCountInput.addEventListener("change", handleSettingsChange);
 
   // Add options to color-spaces select
   const colorSpaceInput = document.getElementById("colorSpace-input")
@@ -449,6 +453,8 @@ function setupEventListeners() {
       colorSpaceInput.appendChild(opt);
     }
   }
+  colorSpaceInput.value = COLOR_SPACE.RGB
+  document.getElementById("bands-input").disabled = document.getElementById("binCount-input").disabled = (colorSpaceInput.value === COLOR_SPACE.RGB)
 }
 
 /**

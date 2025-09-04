@@ -89,7 +89,11 @@ details input, details select {
           scikit-image and numpy use BSD3 License (<a href="https://github.com/scikit-image/scikit-image?tab=License-1-ov-file">[1]</a> and <a href="https://github.com/numpy/numpy?tab=License-1-ov-file">[2]</a>). 
         </p>
         <div class="beta-notice">
-          <strong>BETA:</strong> If source image is GeoTIFF, the matched output will be downloadable as GeoTIFF with as much geometadata geotiff.js <a href="https://geotiffjs.github.io/geotiff.js">writeArrayBuffer</a> supports 
+          <strong>BETA:</strong> 
+          <ul>
+            <li>If source image is GeoTIFF, the matched output will be downloadable as GeoTIFF with as much geometadata <a href="https://geotiffjs.github.io/geotiff.js">geotiff.js</a> <code>writeArrayBuffer</code> supports </li>
+            <li>Implemented Matching Histograms in <code>Color Spaces</code> other than <code>RGB</code> (namely <code> HSL, HSV, XYZ, LAB, LCH</code>) based on <a href="https://github.com/Qix-/color-convert#readme">Qix-/color-convert</a>. Execution ~10x slower for RGB, so used original implementation in that case</li>
+          </ul>
         </div>
       </div>
     </div>
