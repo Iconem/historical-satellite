@@ -168,7 +168,7 @@ export const COLOR_SPACE = {
   XYZ: 'xyz',
   LAB: 'lab',
   LCH: 'lch',
-};
+}; 
 
 // Fixed scales per color space (not exposed by color-convert, taken from docs/specs)
 export const COLOR_SCALES = {

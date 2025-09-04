@@ -11,6 +11,12 @@ function isGeoTIFF(fileOrUrl) {
           (typeof fileOrUrl === "string" && fileOrUrl.startsWith("data:image/tiff;base64,"));
 }
 
+const DEFAULT_SETTINGS = {
+  maxMpx: -1, 
+  colorSpace: COLOR_SPACE.RGB,
+  bands: [1, 2, 3], 
+  binCount: 256
+}
 /**
  * Load image (regular or GeoTIFF)
  * @param {File|string} fileOrUrl - File object or URL
@@ -18,12 +24,12 @@ function isGeoTIFF(fileOrUrl) {
  * @param {number} maxMpx - Max megapixels for processing
  * @returns {Promise<void>}
  */
-async function loadImage(fileOrUrl, slot, maxMpx = -1) {
+async function loadImage(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
   try {
     if (isGeoTIFF(fileOrUrl)) {
-      await loadGeoTIFF(fileOrUrl, slot, maxMpx);
+      await loadGeoTIFF(fileOrUrl, slot, settings);
     } else {
-      await loadRegularImage(fileOrUrl, slot, maxMpx);
+      await loadRegularImage(fileOrUrl, slot, settings);
     }
   } catch (error) {
     console.error(`Failed to load ${slot} image:`, error);
@@ -38,7 +44,7 @@ async function loadImage(fileOrUrl, slot, maxMpx = -1) {
  * @param {number} maxMpx - Max megapixels for processing
  * @returns {Promise<void>}
  */
-async function loadRegularImage(fileOrUrl, slot, maxMpx) {
+async function loadRegularImage(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = async () => {
@@ -53,7 +59,7 @@ async function loadRegularImage(fileOrUrl, slot, maxMpx) {
         document.getElementById(slot + "-img-div").replaceChildren(img);
 
         if (imageObjects.source && imageObjects.target) {
-          await processMatching(maxMpx);
+          await processMatching(settings);
         }
         resolve();
       } catch (error) {
@@ -72,7 +78,7 @@ async function loadRegularImage(fileOrUrl, slot, maxMpx) {
  * @param {number} maxMpx - Max megapixels for processing
  * @returns {Promise<void>}
  */
-async function loadGeoTIFF(fileOrUrl, slot, maxMpx) {
+async function loadGeoTIFF(fileOrUrl, slot, settings=DEFAULT_SETTINGS) {
   const { fromArrayBuffer } = await import("https://esm.sh/geotiff@2.1.4-beta.0");
   
   let arrayBuffer;
@@ -115,7 +121,7 @@ async function loadGeoTIFF(fileOrUrl, slot, maxMpx) {
   document.getElementById(slot + "-img-div").replaceChildren(canvas);
   
   if (imageObjects.source && imageObjects.target) {
-    await processMatching(maxMpx);
+    await processMatching(settings);
   }
 }
 
@@ -124,7 +130,7 @@ async function loadGeoTIFF(fileOrUrl, slot, maxMpx) {
  * @param {number} maxMpx - Max megapixels for processing
  * @returns {Promise<void>}
  */
-async function processMatching(maxMpx = -1) {
+async function processMatching(settings=DEFAULT_SETTINGS) {
   const sourceCanvas = imageObjects.source.canvas;
   const targetCanvas = imageObjects.target.canvas;
   const sourceArr = imageObjects.source.ctx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height).data;
@@ -134,18 +140,29 @@ async function processMatching(maxMpx = -1) {
   const start = Date.now();
   // const matched = matchHistograms(sourceArr, targetArr, 4, 'MATCHED_DATA', maxMpx);
 
-  const matched = matchHistogramsColorspaces(
+  let matched
+  if (settings) {
+    matched = matchHistogramsRGB(
+        sourceArr,
+        targetArr,
+        4,
+        'MATCHED_DATA', settings.maxMpx
+      ) 
+  } else {
+    matched = matchHistogramsColorspaces(
     sourceArr,
     targetArr,
     4,
     {
       returnType: 'MATCHED_DATA',
-      maxMpx: 0,
-      colorSpace: COLOR_SPACE.LCH,
-      bands: [1, 2, 3],
-      binCount: 256,
+      ...settings
+      // maxMpx: 0,
+      // colorSpace: COLOR_SPACE.RGB,
+      // bands: [1, 2, 3],
+      // binCount: 256,
     } 
   ) 
+  }
 
   const elapsed_ms = Date.now() - start;
 
@@ -159,7 +176,7 @@ async function processMatching(maxMpx = -1) {
   ctxOut.putImageData(outData, 0, 0);
 
   // Display results and handle exports
-  await displayResults(outCanvas, matched, elapsed_ms, maxMpx);
+  await displayResults(outCanvas, matched, elapsed_ms);
 }
 
 /**
@@ -169,7 +186,7 @@ async function processMatching(maxMpx = -1) {
  * @param {number} elapsed_ms - Processing time
  * @returns {Promise<void>}
  */
-async function displayResults(outCanvas, matched, elapsed_ms, maxMpx) {
+async function displayResults(outCanvas, matched, elapsed_ms) {
   const container = document.getElementById('matched-img-div');
 
   // Make download Link/Button
@@ -195,7 +212,7 @@ async function displayResults(outCanvas, matched, elapsed_ms, maxMpx) {
     // statsDiv.style = 'text-align: left; padding: 20px;'
     const sourceMpix = (imageObjects.source.canvas.width * imageObjects.source.canvas.height / 1e6).toFixed(2);
     const targetMpix = (imageObjects.target.canvas.width * imageObjects.target.canvas.height / 1e6).toFixed(2);
-    statsDiv.textContent = `Histogram matching took ${elapsed_ms}ms (maxMpx: ${maxMpx <= 0 ? 'uncapped' : maxMpx + 'Mpx'})\nSource: ${sourceMpix}Mpx (${imageObjects.source.canvas.width} x ${imageObjects.source.canvas.height})\nTarget: ${targetMpix}Mpx (${imageObjects.target.canvas.width} x ${imageObjects.target.canvas.height})`;
+    statsDiv.textContent = `Histogram matching took ${elapsed_ms}ms \nSource: ${sourceMpix}Mpx (${imageObjects.source.canvas.width} x ${imageObjects.source.canvas.height})\nTarget: ${targetMpix}Mpx (${imageObjects.target.canvas.width} x ${imageObjects.target.canvas.height})`;
     // statsContainer.replaceChildren(statsDiv);
   }, "image/png");
 
@@ -237,9 +254,22 @@ async function exportGeoTIFF(raster, geoMetadata) {
  * Get current maxMpx value from input
  * @returns {number} Current maxMpx value
  */
-function getInputMaxMpx() {
-  const input = document.getElementById('max-mpx-input');
-  return input ? parseFloat(input.value) || 0 : 0;
+function getInputSettings() {
+  const maxMpxInput = document.getElementById("max-mpx-input");
+  const maxMpx = parseFloat(maxMpxInput.value) || 0;
+  const colorSpaceInput = document.getElementById("colorSpace-input");
+  const colorSpace = colorSpaceInput.value; // TODO MAP TO ENUM
+  const bandsInput = document.getElementById("bands-input");
+  const bands = bandsInput.value.trim().split(',')
+  const binCountInput = document.getElementById("binCount-input");
+  const binCount = parseFloat(binCountInput.value) || 256;
+
+  return {
+    maxMpx, 
+    colorSpace,
+    bands, 
+    binCount
+  }
 }
 
 /**
@@ -247,14 +277,14 @@ function getInputMaxMpx() {
  * @param {Event} e - Input change event
  */
 function handleFileInput(e) {
-  const maxMpx = getInputMaxMpx()
+  const settings = getInputSettings()
   const file = e.target.files[0];
   if (!file) return;
   
   const reader = new FileReader();
   reader.onload = (ev) => {
     const slot = e.target.id.includes('source') ? 'source' : 'target';
-    loadImage(ev.target.result, slot, maxMpx);
+    loadImage(ev.target.result, slot, settings);
   };
   reader.readAsDataURL(file);
 }
@@ -391,7 +421,6 @@ let imageObjects = {}
 function setupEventListeners() {
   const sourceInput = document.getElementById("source-input");
   const targetInput = document.getElementById("target-input");
-  const maxMpxInput = document.getElementById("max-mpx-input");
   
   if (sourceInput) {
     sourceInput.addEventListener("change", (e) => handleFileInput(e));
@@ -399,11 +428,26 @@ function setupEventListeners() {
   if (targetInput) {
     targetInput.addEventListener("change", (e) => handleFileInput(e));
   }
-  if (maxMpxInput) {
-    maxMpxInput.addEventListener("change", async (e) => {
-      const maxMpx = getInputMaxMpx()
-      await processMatching(maxMpx)
-    });
+
+  // Add settings
+  async function handleSettingsChange (e) {
+    const settings = getInputSettings()
+    await processMatching(settings)
+  }
+  document.getElementById("max-mpx-input").addEventListener("change", handleSettingsChange);
+  document.getElementById("bands-input").addEventListener("change", handleSettingsChange);
+  document.getElementById("binCount-input").addEventListener("change", handleSettingsChange);
+
+  // Add options to color-spaces select
+  const colorSpaceInput = document.getElementById("colorSpace-input")
+  colorSpaceInput.addEventListener("change", handleSettingsChange);
+  if (colorSpaceInput.children.length == 0) {
+    for (const [key, value] of Object.entries(COLOR_SPACE)) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.innerHTML = key;
+      colorSpaceInput.appendChild(opt);
+    }
   }
 }
 
@@ -411,12 +455,12 @@ function setupEventListeners() {
  * Load default images if available
  */
 async function loadDefaultImages() {
-  const maxMpx = getInputMaxMpx()
-  console.log('maxMpx', maxMpx)
+  const settings = getInputSettings()
+  console.log('settings', settings)
   try {
     await Promise.allSettled([
-      loadImage('./source1.jpg', "source", maxMpx),
-      loadImage('./reference1.jpg', "target", maxMpx)
+      loadImage('./source1.jpg', "source", settings),
+      loadImage('./reference1.jpg', "target", settings)
     ]);
   } catch (error) {
     console.log('Default images not available, waiting for user input');

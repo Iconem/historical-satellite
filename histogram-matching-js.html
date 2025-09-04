@@ -60,6 +60,19 @@ h1 {
   margin-bottom: 20px;
   /* color: #856404; */
 }
+
+details label {
+  min-width: 100px;
+  display: inline-block;
+}
+input, select {
+  font-family: monospace;
+}
+details input, details select {
+  width: 120px; 
+  margin: 10px; 
+  margin-top: 0;
+}
   </style>
 </head>
 <body>
@@ -99,8 +112,23 @@ h1 {
       <div class="col" id="target-hist-chart"></div>
       <div class="col">
         <div style="text-align: left;">
-          <label for="max-mpx-input"><tt>Max Mpx</tt></label>
-          <input type="number" id="max-mpx-input" value="0" min="0" step="0.1" style="width: 80px; margin: 10px; margin-top: 0;" title="Rasters Downsampling for histogram/CDF computation (0 = no limit)" >
+          <tt>
+            <details open>
+              <summary>Settings</summary>
+              <label for="max-mpx-input">Max Mpx</label>
+              <input type="number" id="max-mpx-input" value="0" min="0" step="0.1" title="Rasters Downsampling for histogram/CDF computation (0 = no limit)" >
+              <br/>
+              <label for="colorSpace-input">Color Space</label>
+              <select id="colorSpace-input" title="Color Space used to compute histogram matching" >
+                </select>
+              <br/>
+              <label for="bands-input">Bands</label>
+              <input type="text" id="bands-input" value="1,2,3" title="Apply matching LUT to these bands (default: 1,2,3)" >
+              <br/>
+              <label for="binCount-input">Bin Count</label>
+              <input type="number" id="binCount-input" value="256" min="0" max="256" step="1" title="Compute histograms on N bins" >
+            </details>
+          </tt>
         </div>
         <pre id="output-stats" style="text-align: left; padding: 0px;"></pre>
       </div>
