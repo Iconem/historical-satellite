@@ -119,10 +119,10 @@ export function matchCdf(source, target) {
  * @param {Uint8Array} target - Target image array
  * @param {number} channels - Number of channels (default: 3)
  * @param {string} returnType - 'MAPPING' or 'MATCHED_DATA' (default: 'MATCHED_DATA')
- * @param {number} maxMpx - Max megapixels for downsampling (default: -1, no limit)
+ * @param {number} maxMpx - Max megapixels for downsampling (default: 0, no limit)
  * @returns {Object} Object with mappings and optionally matched data
  */
-export function matchHistograms(source, target, channels = 3, returnType = 'MATCHED_DATA', maxMpx = -1) {
+export function matchHistogramsRGB(source, target, channels = 3, returnType = 'MATCHED_DATA', maxMpx = 0) {
   // Calculate downsampling if needed
   let srcDownsample = 1, tgtDownsample = 1;
   if (maxMpx > 0) {
@@ -156,5 +156,220 @@ export function matchHistograms(source, target, channels = 3, returnType = 'MATC
     if (channels === 4) out[i + 3] = source[i + 3]; // keep alpha
   }
 
+  return { mappings, matched: out };
+}
+
+// Apply Histogram Matching not only in RGB color space, but also other supported by mapbox/rio-hist
+import convert from 'color-convert';
+export const COLOR_SPACE = {
+  RGB: 'rgb',
+  HSL: 'hsl',
+  HSV: 'hsv',
+  XYZ: 'xyz',
+  LAB: 'lab',
+  LCH: 'lch',
+};
+
+// Fixed scales per color space (not exposed by color-convert, taken from docs/specs)
+export const COLOR_SCALES = {
+  rgb: {
+    0: { min: 0, max: 255, name: 'r' },
+    1: { min: 0, max: 255, name: 'g' },
+    2: { min: 0, max: 255, name: 'b' },
+  },
+  hsl: {
+    0: { min: 0, max: 360, name: 'h' },
+    1: { min: 0, max: 100, name: 's' },
+    2: { min: 0, max: 100, name: 'l' },
+  },
+  hsv: {
+    0: { min: 0, max: 360, name: 'h' },
+    1: { min: 0, max: 100, name: 's' },
+    2: { min: 0, max: 100, name: 'v' },
+  },
+  xyz: {
+    0: { min: 0, max: 95.047, name: 'x' },
+    1: { min: 0, max: 100, name: 'y' },
+    2: { min: 0, max: 108.883, name: 'z' },
+  },
+  lab: {
+    0: { min: 0, max: 100, name: 'l' },
+    1: { min: -127, max: 127, name: 'a' },
+    2: { min: -127, max: 127, name: 'b' },
+  },
+  lch: {
+    0: { min: 0, max: 100, name: 'l' },
+    1: { min: 0, max: 131, name: 'c' },
+    2: { min: 0, max: 360, name: 'h' },
+  },
+};
+
+// convert an RGB input triplet to passed colorspace
+function rgbToColorspace([r, g, b], colorspace = COLOR_SPACE.RGB) {
+  switch (colorspace) {
+    case COLOR_SPACE.RGB: return [r, g, b];
+    case COLOR_SPACE.HSL: return convert.rgb.hsl([r, g, b]);
+    case COLOR_SPACE.HSV: return convert.rgb.hsv([r, g, b]);
+    case COLOR_SPACE.XYZ: return convert.rgb.xyz([r, g, b]);
+    case COLOR_SPACE.LAB: return convert.rgb.lab([r, g, b]);
+    case COLOR_SPACE.LCH: return convert.rgb.lch([r, g, b]);
+    default:
+      throw new Error(`Unsupported color space: ${colorspace}`);
+  }
+}
+// convert an input triplet from passed colorspace to RGB
+function colorspaceToRGB([c0, c1, c2], colorspace = COLOR_SPACE.RGB) {
+  switch (colorspace) {
+    case COLOR_SPACE.RGB: return [c0, c1, c2];
+    case COLOR_SPACE.HSL: return convert.hsl.rgb([c0, c1, c2]);
+    case COLOR_SPACE.HSV: return convert.hsv.rgb([c0, c1, c2]);
+    case COLOR_SPACE.XYZ: return convert.xyz.rgb([c0, c1, c2]);
+    case COLOR_SPACE.LAB: return convert.lab.rgb([c0, c1, c2]);
+    case COLOR_SPACE.LCH: return convert.lch.rgb([c0, c1, c2]);
+    default:
+      throw new Error(`Unsupported color space: ${colorspace}`);
+  }
+}
+
+
+// Match CDF using fixed channel scales (from COLOR_SCALES)
+export function matchCdfGeneral(sourceVals, targetVals, binCount=256, { min, max }) {
+  const srcBins = bincount(sourceVals, binCount, min, max, true);
+  const tgtBins = bincount(targetVals, binCount, min, max, true);
+  const srcCdf = cumsum(srcBins);
+  const tgtCdf = cumsum(tgtBins);
+
+  // Remap values to min/max for interp sampling points
+  const step = (max - min) / (binCount - 1);
+  const values = Float64Array.from({ length: binCount }, (_, i) => min + i * step);
+  const mapping = interp(srcCdf, tgtCdf, values);
+  return { 
+    mapping, 
+    srcHist: srcBins, 
+    tgtHist: tgtBins,
+    min, max, binCount, 
+  };
+}
+
+/**
+ * Match histograms with optional color-space + selected bands (Mapbox rio-hist style).
+ * Only specified bands are matched; non-selected bands are copied from source.
+ *
+ * @param {Uint8Array} source - flat RGB interleaved 1/3/4 channels (Uint8)
+ * @param {Uint8Array} target - flat RGB interleaved 1/3/4 channels (Uint8)
+ * @param {number} channels - Number of channels (default: 3)
+ * @param {{ returnType?: string, maxMpx?: Number, colorSpace?: keyof typeof COLOR_SPACE, bands?: number[], binCount?: number }} options
+ *        returnType 'MAPPING' or 'MATCHED_DATA' (default: 'MATCHED_DATA')
+ *        maxMpx - Max megapixels threshold for downsampling (default 0: off)
+ *        colorSpace - Color space for matching from COLOR_SPACE enum (default: COLOR_SPACE.RGB)
+ *        bands - Bands to process, 1-based indices in that color space (1-indexed, default: [1, 2, 3])
+ *        binCount - number of bins to do the histogram binning (default 256)
+ * @returns {{mappings: any[], matched?: Uint8Array}}
+ */
+export function matchHistogramsColorspaces(
+  source,
+  target,
+  channels = 3,
+  {
+    returnType = 'MATCHED_DATA',
+    maxMpx = 0,
+    colorSpace = COLOR_SPACE.RGB,
+    bands = [1, 2, 3],
+    binCount = 256,
+  } = {}
+) {
+  if (!Object.values(COLOR_SPACE).includes(colorSpace)) {
+    throw new Error(`Unsupported color space: ${colorSpace}. Supported: ${Object.values(COLOR_SPACE).join(', ')}`);
+  }
+   // Downsample source and target arrays in case they exceed user-defined maxMpx param
+   let srcDownsample = 1, tgtDownsample = 1;
+   if (maxMpx > 0) {
+     srcDownsample = Math.ceil((source.length / channels / 1e6) / maxMpx)
+     tgtDownsample = Math.ceil((source.length / channels / 1e6) / maxMpx)
+     console.log('Downsampling factors', srcDownsample, tgtDownsample)
+   }
+ 
+  // // RGB / RGBA colorspace
+  // const mappings = [];
+  // for (let c = 0; c < Math.min(3, channels); c++) {
+  //     const srcChannel = [];
+  //     const tgtChannel = [];
+  //     for (let i = c; i < source.length; i += channels * srcDownsample) srcChannel.push(source[i]);
+  //     for (let i = c; i < target.length; i += channels * tgtDownsample) tgtChannel.push(target[i]);
+  //     mappings[c] = matchCdf(srcChannel, tgtChannel);
+  // }
+  // console.log('mappings', mappings)
+
+  // Build per-band arrays in requested color space (from RGB)
+  const srcBands = [[], [], []];
+  const tgtBands = [[], [], []];
+  for (let i = 0; i < source.length; i += channels * srcDownsample) {
+    const rgb = source.slice(i, i + 3);
+    const [c0, c1, c2] = rgbToColorspace(rgb, colorSpace);
+    srcBands[0].push(c0); 
+    srcBands[1].push(c1); 
+    srcBands[2].push(c2);
+  }
+  for (let i = 0; i < target.length; i += channels * tgtDownsample) {
+    const rgb = target.slice(i, i + 3);
+    const [c0, c1, c2] = rgbToColorspace(rgb, colorSpace);
+    tgtBands[0].push(c0); 
+    tgtBands[1].push(c1); 
+    tgtBands[2].push(c2);
+  }
+
+  // bands indices are 1-based to match rio / rio-hist convention
+  const bixs = bands.map(b => b - 1).filter(b => b >= 0 && b < channels);
+  if (bixs.length === 0) {
+    throw new Error('No valid bands specified');
+  }
+  const mappings = new Array(3).fill(null);
+  for (const bi of bixs) {
+    const scale = COLOR_SCALES[colorSpace][bi];
+    mappings[bi] = matchCdfGeneral(
+      srcBands[bi],
+      tgtBands[bi],
+      binCount,
+      { min: scale.min, max: scale.max }
+    );
+  }
+  console.log('mappings', mappings)
+  
+  if (returnType === 'MAPPING') return {mappings};
+
+  // // RGB / RGBA colorspace
+  // const out = new Uint8Array(source.length);
+  // for (let i = 0; i < source.length; i += channels) {
+  //   for (let c = 0; c < 3; c++) {
+  //     out[i + c] = mappings[0 + c].mapping[source[i + c]];
+  //   }
+  //   if (channels === 4) out[i + 3] = source[i + 3]; // keep alpha
+  // }
+  // return {mappings, matched: out};
+
+  // Apply LUTs ONLY to selected bands in CS; keep others from source
+  const out = new Uint8Array(source.length);
+  for (let i = 0; i < source.length; i += channels) {
+    const rgb = source.slice(i, i + 3), 
+      alpha = channels === 4 ? source[i + 3] : 255;
+    let csTriplet = rgbToColorspace(rgb, colorSpace);
+    // apply per selected band
+    for (const bi of bixs) {
+      const map = mappings[bi];
+      if (!map) continue; 
+      // compute source bin index for this band using the same [min,max] & binCount
+      const { min, max, binCount: B } = map;
+      const v = csTriplet[bi];
+      const idxFloat = (v - min) * (B - 1) / (max - min || 1);
+      const idx = Math.max(0, Math.min(B - 1, Math.floor(idxFloat)));
+      const mappedVal = map.mapping[idx];
+      csTriplet[bi] = mappedVal;
+    }
+    const [nr, ng, nb] = colorspaceToRGB(csTriplet, colorSpace);
+    out[i] = Math.max(0, Math.min(255, Math.round(nr)));
+    out[i + 1] = Math.max(0, Math.min(255, Math.round(ng)));
+    out[i + 2] = Math.max(0, Math.min(255, Math.round(nb)));
+    if (channels === 4) out[i + 3] = alpha; // keep alpha
+  }
   return { mappings, matched: out };
 }

@@ -1,4 +1,5 @@
-import { matchHistograms } from './histogram-utils.js';
+import { matchHistogramsRGB, matchHistogramsColorspaces, COLOR_SPACE } from './histogram-utils.js';
+import { writeArrayBuffer } from 'geotiff'
 
 /**
  * Check if file is GeoTIFF
@@ -131,7 +132,21 @@ async function processMatching(maxMpx = -1) {
 
   // Perform histogram matching
   const start = Date.now();
-  const matched = matchHistograms(sourceArr, targetArr, 4, 'MATCHED_DATA', maxMpx);
+  // const matched = matchHistograms(sourceArr, targetArr, 4, 'MATCHED_DATA', maxMpx);
+
+  const matched = matchHistogramsColorspaces(
+    sourceArr,
+    targetArr,
+    4,
+    {
+      returnType: 'MATCHED_DATA',
+      maxMpx: 0,
+      colorSpace: COLOR_SPACE.LCH,
+      bands: [1, 2, 3],
+      binCount: 256,
+    } 
+  ) 
+
   const elapsed_ms = Date.now() - start;
 
   // Create output canvas
@@ -202,7 +217,7 @@ async function displayResults(outCanvas, matched, elapsed_ms, maxMpx) {
  * @returns {Promise<string>} Download URL
  */
 async function exportGeoTIFF(raster, geoMetadata) {
-  const { writeArrayBuffer } = await import("https://esm.sh/geotiff@2.1.4-beta.0");
+  // const { writeArrayBuffer } = await import("https://esm.sh/geotiff@2.1.4-beta.0");
   
   const { ModelPixelScale, ModelTiepoint, ImageWidth: width, ImageLength: height } = geoMetadata.fileDirectory;
   const metadata = {
