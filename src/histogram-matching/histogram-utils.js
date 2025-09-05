@@ -11,21 +11,20 @@
  * @param {boolean} normalize - Whether to normalize (default: false)
  * @returns {Uint32Array|Float64Array} Histogram bins
  */
-export function bincount(arr, binCount, min, max, normalize = false) {
+export function bincount(arr, nbins, min, max, normalize = false) {
   if (min === undefined) min = Math.min(...arr);
   if (max === undefined) max = Math.max(...arr);
-  const scale = (binCount - 1) / (max - min)
+  const scale = nbins / (max - min)
 
-  let bins = new Uint32Array(binCount);
+  // Clamping is needed to avoid overflow when x == max for fixed-width bins
+  let bins = new Uint32Array(nbins);
   for (let i = 0; i < arr.length; i++) {
-    // Clamping not needed under the assumption items do not exceed min-max range, otherwise will overflow
-    const bin = (arr[i] - min) * scale;
-    bins[Math.floor(bin)]++;
+    const bin = Math.min(nbins - 1, Math.floor((arr[i] - min) * scale));
+    bins[bin]++;
   }
   
-  if (normalize) {
+  if (normalize) 
     bins = Float64Array.from(bins, b => b / arr.length);
-  }
   
   return bins;
 }
