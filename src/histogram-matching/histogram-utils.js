@@ -204,15 +204,15 @@ export const COLOR_SCALES = {
   },
 };
 
-// convert an RGB input triplet to passed colorspace
+// convert an RGB input triplet to passed colorspace. Use raw converters to avoid clamping output triplet to integer value
 function rgbToColorspace([r, g, b], colorspace = COLOR_SPACE.RGB) {
   switch (colorspace) {
     case COLOR_SPACE.RGB: return [r, g, b];
-    case COLOR_SPACE.HSL: return convert.rgb.hsl([r, g, b]);
-    case COLOR_SPACE.HSV: return convert.rgb.hsv([r, g, b]);
-    case COLOR_SPACE.XYZ: return convert.rgb.xyz([r, g, b]);
-    case COLOR_SPACE.LAB: return convert.rgb.lab([r, g, b]);
-    case COLOR_SPACE.LCH: return convert.rgb.lch([r, g, b]);
+    case COLOR_SPACE.HSL: return convert.rgb.hsl.raw([r, g, b]); // rounding mismatch looks like comb for H
+    case COLOR_SPACE.HSV: return convert.rgb.hsv.raw([r, g, b]); // rounding mismatch looks like comb for H, V
+    case COLOR_SPACE.XYZ: return convert.rgb.xyz.raw([r, g, b]);
+    case COLOR_SPACE.LAB: return convert.rgb.lab.raw([r, g, b]);
+    case COLOR_SPACE.LCH: return convert.rgb.lch.raw([r, g, b]); // rounding mismatch looks like comb for H
     default:
       throw new Error(`Unsupported color space: ${colorspace}`);
   }
@@ -249,6 +249,18 @@ export function matchCdfGeneral(sourceVals, targetVals, binCount=256, { min, max
     tgtHist: tgtBins,
     min, max, binCount, 
   };
+}
+
+// Utility to extract bands array in colorspace from rgb of interleaved input array
+function getCsBandsArr(bixs, interleavedRgb, stride, colorSpace) {
+  const colorspaceBands = [[], [], []];
+  for (let i = 0; i < interleavedRgb.length; i += stride) {
+    const rgb = interleavedRgb.slice(i, i + 3)
+    const colorspaced = rgbToColorspace(rgb, colorSpace);
+    for (const bi of bixs) 
+      colorspaceBands[bi].push(colorspaced[bi])
+  }
+  return colorspaceBands
 }
 
 /**
@@ -301,28 +313,14 @@ export function matchHistogramsColorspaces(
   // console.log('mappings', mappings)
 
   // Build per-band arrays in requested color space (from RGB)
-  const srcBands = [[], [], []];
-  const tgtBands = [[], [], []];
-  for (let i = 0; i < source.length; i += channels * srcDownsample) {
-    const rgb = source.slice(i, i + 3);
-    const [c0, c1, c2] = rgbToColorspace(rgb, colorSpace);
-    srcBands[0].push(c0); 
-    srcBands[1].push(c1); 
-    srcBands[2].push(c2);
-  }
-  for (let i = 0; i < target.length; i += channels * tgtDownsample) {
-    const rgb = target.slice(i, i + 3);
-    const [c0, c1, c2] = rgbToColorspace(rgb, colorSpace);
-    tgtBands[0].push(c0); 
-    tgtBands[1].push(c1); 
-    tgtBands[2].push(c2);
-  }
-
   // bands indices are 1-based to match rio / rio-hist convention
   const bixs = bands.map(b => b - 1).filter(b => b >= 0 && b < channels);
   if (bixs.length === 0) {
     throw new Error('No valid bands specified');
   }
+  const srcBands = getCsBandsArr(bixs, source, channels * srcDownsample, colorSpace)
+  const tgtBands = getCsBandsArr(bixs, target, channels * tgtDownsample, colorSpace)
+
   const mappings = new Array(3).fill(null);
   for (const bi of bixs) {
     const scale = COLOR_SCALES[colorSpace][bi];

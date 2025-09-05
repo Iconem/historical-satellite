@@ -348,22 +348,22 @@ function renderHistogram(histData, element, title = 'Histogram') {
   const chart = new Chart(element, {
     type: 'line',
     data: {
-      labels: Array.from({ length: histData.R.length }, (_, i) => i),
+      labels: Array.from({ length: histData[0].length }, (_, i) => i),
       datasets: [
         {
-          data: histData.R,
+          data: histData[0] || 0,
           borderColor: 'rgba(255,0,0,0.8)',
           backgroundColor: 'rgba(255,0,0,0.15)',
           ...commonLineOpts
         },
         {
-          data: histData.G,
+          data: histData[1] || 0,
           borderColor: 'rgba(0,255,0,0.8)',
           backgroundColor: 'rgba(0,255,0,0.15)',
           ...commonLineOpts
         },
         {
-          data: histData.B,
+          data: histData[2] || 0,
           borderColor: 'rgba(0,0,255,0.8)',
           backgroundColor: 'rgba(0,0,255,0.15)',
           ...commonLineOpts
@@ -402,16 +402,8 @@ function renderHistograms(mappings) {
   const tgtHistCanvas = getOrCreateHistogramCanvas('target-hist-chart', 'target-histogram');
 
   // Prepare histogram data
-  const srcHistData = { 
-    R: mappings[0].srcHist, 
-    G: mappings[1].srcHist, 
-    B: mappings[2].srcHist 
-  };
-  const tgtHistData = { 
-    R: mappings[0].tgtHist, 
-    G: mappings[1].tgtHist, 
-    B: mappings[2].tgtHist 
-  };
+  const srcHistData = [0, 1, 2].map(i => mappings[i]?.srcHist) 
+  const tgtHistData = [0, 1, 2].map(i => mappings[i]?.tgtHist) 
 
   // Render charts
   charts.source = renderHistogram(srcHistData, srcHistCanvas, 'Source Histogram');
@@ -443,7 +435,6 @@ function setupEventListeners() {
 
   // Add settings
   async function handleSettingsChange (e) {
-    console.log('input', colorSpaceInput.value, COLOR_SPACE.RGB)
     document.getElementById("bands-input").disabled = document.getElementById("binCount-input").disabled = (colorSpaceInput.value === COLOR_SPACE.RGB)
     const settings = getInputSettings()
     await processMatching(settings)
@@ -474,7 +465,6 @@ function setupEventListeners() {
  */
 async function loadDefaultImages() {
   const settings = getInputSettings()
-  console.log('settings', settings)
   try {
     await Promise.allSettled([
       loadImage('./source1.jpg', "source", settings),
