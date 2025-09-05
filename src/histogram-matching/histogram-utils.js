@@ -204,27 +204,27 @@ export const COLOR_SCALES = {
 };
 
 // convert an RGB input triplet to passed colorspace. Use raw converters to avoid clamping output triplet to integer value
-function rgbToColorspace([r, g, b], colorspace = COLOR_SPACE.RGB) {
+function rgbToColorspace(rgb, colorspace = COLOR_SPACE.RGB) {
   switch (colorspace) {
-    case COLOR_SPACE.RGB: return [r, g, b];
-    case COLOR_SPACE.HSL: return convert.rgb.hsl.raw([r, g, b]); // rounding mismatch looks like comb for H
-    case COLOR_SPACE.HSV: return convert.rgb.hsv.raw([r, g, b]); // rounding mismatch looks like comb for H, V
-    case COLOR_SPACE.XYZ: return convert.rgb.xyz.raw([r, g, b]);
-    case COLOR_SPACE.LAB: return convert.rgb.lab.raw([r, g, b]);
-    case COLOR_SPACE.LCH: return convert.rgb.lch.raw([r, g, b]); // rounding mismatch looks like comb for H
+    case COLOR_SPACE.RGB: return rgb;
+    case COLOR_SPACE.HSL: return convert.rgb.hsl.raw(rgb); 
+    case COLOR_SPACE.HSV: return convert.rgb.hsv.raw(rgb); 
+    case COLOR_SPACE.XYZ: return convert.rgb.xyz.raw(rgb);
+    case COLOR_SPACE.LAB: return convert.rgb.lab.raw(rgb);
+    case COLOR_SPACE.LCH: return convert.rgb.lch.raw(rgb); 
     default:
       throw new Error(`Unsupported color space: ${colorspace}`);
   }
 }
 // convert an input triplet from passed colorspace to RGB
-function colorspaceToRGB([c0, c1, c2], colorspace = COLOR_SPACE.RGB) {
+function colorspaceToRGB(color, colorspace = COLOR_SPACE.RGB) {
   switch (colorspace) {
-    case COLOR_SPACE.RGB: return [c0, c1, c2];
-    case COLOR_SPACE.HSL: return convert.hsl.rgb([c0, c1, c2]);
-    case COLOR_SPACE.HSV: return convert.hsv.rgb([c0, c1, c2]);
-    case COLOR_SPACE.XYZ: return convert.xyz.rgb([c0, c1, c2]);
-    case COLOR_SPACE.LAB: return convert.lab.rgb([c0, c1, c2]);
-    case COLOR_SPACE.LCH: return convert.lch.rgb([c0, c1, c2]);
+    case COLOR_SPACE.RGB: return color;
+    case COLOR_SPACE.HSL: return convert.hsl.rgb(color);
+    case COLOR_SPACE.HSV: return convert.hsv.rgb(color);
+    case COLOR_SPACE.XYZ: return convert.xyz.rgb(color);
+    case COLOR_SPACE.LAB: return convert.lab.rgb(color);
+    case COLOR_SPACE.LCH: return convert.lch.rgb(color);
     default:
       throw new Error(`Unsupported color space: ${colorspace}`);
   }
