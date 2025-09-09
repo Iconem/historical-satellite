@@ -226,6 +226,7 @@ async function displayResults(outCanvas, matched, elapsed_ms) {
 
   // Handle GeoTIFF export
   if (imageObjects.source.geoMetadata) {
+    console.log('imageObjects.source.geoMetadata', imageObjects.source.geoMetadata)
     const outUrl = await exportGeoTIFF(matched.matched, imageObjects.source.geoMetadata);
     a.href = outUrl;
     // downloadFile(outUrl, 'histogram-matched-geotiff.tiff');
@@ -246,12 +247,24 @@ async function exportGeoTIFF(raster, geoMetadata) {
   
   const { ModelPixelScale, ModelTiepoint, ImageWidth: width, ImageLength: height } = geoMetadata.fileDirectory;
   const metadata = {
-    GeographicTypeGeoKey: geoMetadata.geoKeys.GeographicTypeGeoKey,
     width,
     height,
     ModelPixelScale,
     ModelTiepoint,
+    // ...(geoMetadata.geoKeys), 
+    GTRasterTypeGeoKey: geoMetadata.geoKeys.GTRasterTypeGeoKey || 1, 
+    GTModelTypeGeoKey: geoMetadata.geoKeys.GTModelTypeGeoKey || 2, 
+    GeographicTypeGeoKey: geoMetadata.geoKeys.GeographicTypeGeoKey || 4326,
+    // HTML DOM canavs exports interleaved RGBA 8 bits per channel
+    SamplesPerPixel: 4,           // 4 channels RGBA from canvas
+    BitsPerSample: [8, 8, 8, 8],  // 8 bits per channel
+    PlanarConfiguration: 1,       // interleaved
+    PhotometricInterpretation: 2, // RGB
+    // couldn't get TIFFTagLocation for GeogSemiMajorAxisGeoKey, GeogInvFlatteningGeoKey
+    // ...geoMetadata.fileDirectory
   };
+  const metadata_ = JSON.parse(JSON.stringify(metadata));
+  console.log('\n\nmetadata', metadata, metadata_, '\ngeoMetadata', geoMetadata, '\ngeoKeys', geoMetadata.geoKeys, '\n\n')
 
   const arrayBuffer = await writeArrayBuffer(raster, metadata);
   const blob = new Blob([arrayBuffer], { type: "image/tiff" });

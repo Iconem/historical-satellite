@@ -521,17 +521,25 @@ function ControlPanel(props: any) {
         const pixelSizeY = (bbox.north - bbox.south) / height;
 
         const metaData = {
+          // GTRasterTypeGeoKey: 1, // (2: RasterPixelIsPoint vs 1: RasterPixelIsArea)
+          // GTModelTypeGeoKey: 2, // GTModelTypeGeoKey represents CRS Type
+          // // 0 undefined/unknown, 1 2D Projected, 2 Geographic 2D, 3 Geocentric Cartesian 3D, 32767 user-defined
+          // // Then indicate ProjectedCRSGeoKey/ProjectedCSTypeGeoKey if 1, or GeodeticCRSGeoKey (prev. GeographicTypeGeoKey) if 2 or 3
+          // // GeodeticCRSGeoKey is a superset of geographic 2D CRS, geographic 3D CRS and geocentric (earth-centred 3D Cartesian) CRS.
+          // GeographicTypeGeoKey: 4326,
+          GTModelTypeGeoKey: 2,
           GeographicTypeGeoKey: 4326,
           GeogCitationGeoKey: 'WGS 84',
+          // CRS definition finished with above GeoKeys
           height: height,
           width: width,
           ModelPixelScale: [pixelSizeX, pixelSizeY, 0],
           ModelTiepoint: [0, 0, 0, bbox.west, bbox.north, 0],
-          SamplesPerPixel: 4,
-          BitsPerSample: [8, 8, 8, 8],
-          PlanarConfiguration: 1,
-          PhotometricInterpretation: 2,
-
+          // Titiler exports interleaved RGBA 8 bits per channel
+          SamplesPerPixel: 4,           // 4 channels RGBA from canvas
+          BitsPerSample: [8, 8, 8, 8],  // 8 bits per channel
+          PlanarConfiguration: 1,       // interleaved
+          PhotometricInterpretation: 2, // RGB
         };
 
         const arrayBuffer = await writeArrayBuffer(data, metaData);
