@@ -389,9 +389,9 @@ function ControlPanel(props: any) {
     "collectionDateActivated",
     true
   );
-  const map = props.mapRef?.current?.getMap() as any;
 
   const onMoveEnd_esriWaybackMarks = useCallback((e: any) => {
+    const map = props.mapRef?.current?.getMap() as any;
     const center = map?.getCenter()
     getWaybackItemsWithLocalChanges(
       {
@@ -401,6 +401,7 @@ function ControlPanel(props: any) {
       map?.getZoom() || 0
     ).then(
       (waybackItemsWithLocalChanges: any) => {
+        console.log('waybackItemsWithLocalChanges', waybackItemsWithLocalChanges)
         props.setWaybackItemsWithLocalChanges(waybackItemsWithLocalChanges)
         const parsedItemsWithLocalChanges = Object.values(waybackItemsWithLocalChanges).map((item: any) => {
           const { itemURL, releaseDateLabel, releaseDatetime, releaseNum } = item
@@ -421,6 +422,7 @@ function ControlPanel(props: any) {
 
         // It should happen that this callback is remembered, and was setup when clickedMap was set to left or right
         // It is not updated via state/props
+        console.log('wayback slider dates: min/max/ticks', waybackMinDate, waybackMaxDate, esriWaybackMarks)
         if (clickedMapRef.current == 'left') {
           setLeftMinDate(waybackMinDate)
           setLeftMaxDate(waybackMaxDate)
