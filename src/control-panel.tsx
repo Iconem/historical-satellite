@@ -393,15 +393,15 @@ function ControlPanel(props: any) {
   const onMoveEnd_esriWaybackMarks = useCallback((e: any) => {
     const map = props.mapRef?.current?.getMap() as any;
     const center = map?.getCenter()
+    const longitude = center?.lng || 0
+    const latitude = center?.lat || 0
+    const zoom = map?.getZoom() || 0
     getWaybackItemsWithLocalChanges(
-      {
-        longitude: center?.lng || 0,
-        latitude: center?.lat || 0,
-      },
-      map?.getZoom() || 0
+      { longitude, latitude },
+      zoom
     ).then(
       (waybackItemsWithLocalChanges: any) => {
-        console.log('waybackItemsWithLocalChanges', waybackItemsWithLocalChanges)
+        console.log('waybackItemsWithLocalChanges at lat/lon/zoom', {lat, lon, zoom}, waybackItemsWithLocalChanges)
         props.setWaybackItemsWithLocalChanges(waybackItemsWithLocalChanges)
         const parsedItemsWithLocalChanges = Object.values(waybackItemsWithLocalChanges).map((item: any) => {
           const { itemURL, releaseDateLabel, releaseDatetime, releaseNum } = item
