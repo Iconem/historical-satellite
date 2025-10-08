@@ -6,7 +6,7 @@ import {
   eachYearOfInterval,
 } from "date-fns";
 import { useState, useEffect } from "react";
-import { getWaybackItems, getMetadata as getWaybackMetadata, getWaybackItemsWithLocalChanges } from '@vannizhang/wayback-core';
+import { getWaybackItems, getMetadata as getWaybackMetadata, getWaybackItemsWithLocalChanges } from '@esri/wayback-core';
 import ky from 'ky'
 import SphericalMercator from '@mapbox/sphericalmercator'
 import { LngLat } from "mapbox-gl";
