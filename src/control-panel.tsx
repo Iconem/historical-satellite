@@ -6,7 +6,7 @@ import { writeArrayBuffer } from "geotiff";
 
 import { LngLatBounds } from "mapbox-gl";
 
-import { getWaybackItemsWithLocalChanges } from '@vannizhang/wayback-core';
+import { getWaybackItemsWithLocalChanges } from '@esri/wayback-core';
 import {
   addMonths,
   subMonths,
