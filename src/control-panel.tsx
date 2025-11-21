@@ -3,9 +3,6 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { writeArrayBuffer } from "geotiff";
-
-import { LngLatBounds } from "mapbox-gl";
-
 import { getWaybackItemsWithLocalChanges } from '@esri/wayback-core';
 import {
   addMonths,
@@ -67,11 +64,11 @@ import {
   chunkArray
 } from "./utilities";
 
+import * as turf from "@turf/turf";
 
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
 const MAX_FRAME_RESOLUTION = 512; // 1024 - 2048 TODO 512 FOR TESTING? 2048 BETTER
 const PROMISES_BATCH_SIZE = 5;
-const PROMISES_BATCH_DELAY = 2000; // 2000ms
 
 function LinearProgressWithLabel(props: { value: number }) {
   return (
@@ -132,20 +129,16 @@ function buildGdalWmsXml(tmsUrl: string) {
     `<GDAL_WMS><Service name='VirtualEarth'><ServerUrl>${escapeTmsUrl(tmsUrl)}</ServerUrl></Service><MaxConnections>4</MaxConnections><Cache/></GDAL_WMS>`;
 }
 
-// See discussion here https://github.com/developmentseed/titiler/discussions/640
-function titilerCropUrl(
-  bounds: LngLatBounds,
+function titilerCropUrlPerFeature(
+  featureBbox: { east: any; north: any; south: any; west: any; },
   tmsUrl: string,
   maxFrameResolution: number = MAX_FRAME_RESOLUTION,
   titilerEndpoint: string = TITILER_ENDPOINT
 ) {
   const wmsUrl = buildGdalWmsXml(tmsUrl)
   // titiler returned image is in 4326 CRS, cannot be modified yet
-  const coords_str = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}.tif?max_size=${maxFrameResolution}&coord-crs=epsg:4326`; // 4326
+  const coords_str = `${featureBbox.west},${featureBbox.south},${featureBbox.east},${featureBbox.north}.tif?max_size=${maxFrameResolution}&coord-crs=epsg:4326`; // 4326
   // Bug with 3857 bounds, InternalServerError 500 on titiler, so feature-request to support dst-tms
-  // const ll_3857 = convertLatlonTo3857(bounds.getSouthWest());
-  // const ur_3857 = convertLatlonTo3857(bounds.getNorthEast());
-  // const coords_str = `${ll_3857.x},${ll_3857.y},${ur_3857.x},${ur_3857.y}.tif?max_size=${MAX_FRAME_SIZE}&coord-crs=epsg:3857`; // 3857
 
   // pre 0.15.0, endpoint is /cog/crop/ like on app.ico titiler endpoint at commit day
   // post 0.15.0 included, endpoint is /cog/bbox/
@@ -170,10 +163,6 @@ a = `${titilerEndpoint}/cog/crop/${coords_str}&url=${encodeURIComponent(
 // Download TiTiler images by batches to avoid too many requests
 // resulting in 500 internal server error
 // ------------------------------------------------------
-const timer = async (ms: number): Promise<any> =>
-  await new Promise((resolve) => setTimeout(resolve, ms));
-
-
 
 function generateZip(zip: JSZip, foldername: any) {
   zip.generateAsync({ type: "blob" })
@@ -302,18 +291,17 @@ function ControlPanelDrawer(props: any) {
   );
 }
 
-
 enum ProviderOptions {
   PlanetMonthly = "Planet",
   ESRIWayback = "Esri WayBack",
   ALL_OTHERS = "All Others",
 }
 
-
 // -----------------------------------------------------
 // Component: ControlPanel
 // ------------------------------------------------------
 function ControlPanel(props: any) {
+
   // ---------------------------
   // Slider control
   // For slider play/pause loops
@@ -401,7 +389,7 @@ function ControlPanel(props: any) {
       zoom
     ).then(
       (waybackItemsWithLocalChanges: any) => {
-        console.log('waybackItemsWithLocalChanges at lat/lon/zoom', {lat, lon, zoom}, waybackItemsWithLocalChanges)
+        console.log('waybackItemsWithLocalChanges at lat/lon/zoom', { lat, lon, zoom }, waybackItemsWithLocalChanges)
         props.setWaybackItemsWithLocalChanges(waybackItemsWithLocalChanges)
         const parsedItemsWithLocalChanges = Object.values(waybackItemsWithLocalChanges).map((item: any) => {
           const { itemURL, releaseDateLabel, releaseDatetime, releaseNum } = item
@@ -447,9 +435,6 @@ function ControlPanel(props: any) {
         map.off('moveend', onMoveEnd_esriWaybackMarks)
 
       if (props.selectedTms == BasemapsIds.PlanetMonthly) {
-        // setMinDate(validMinDate <= MIN_PLANET_DATE ? MIN_PLANET_DATE : validMinDate)
-        // setMaxDate(validMaxDate >= MAX_PLANET_DATE ? MAX_PLANET_DATE : validMaxDate)
-        // const planetMarks = getSliderMarksEveryYear(validMinDate, validMaxDate)
         setMinDate(MIN_PLANET_DATE)
         setMaxDate(MAX_PLANET_DATE)
         const planetMarks = getSliderMarksEveryYear(MIN_PLANET_DATE, MAX_PLANET_DATE)
@@ -481,18 +466,33 @@ function ControlPanel(props: any) {
 
   const mapRef = props.mapRef;
   const bounds = mapRef?.current?.getMap()?.getBounds();
+
   // select all export options by default
   const providerOptions = Object.values(ProviderOptions) // ['Planet', 'Esri WayBack', 'All Others']
   const [selectedProviders, setSelectedProviders] = useState<string[]>(providerOptions);
+  const [exportMode, setExportMode] = useState<string>('viewport');
+  const [featureBufferKm, setFeatureBufferKm] = useState<number>();
+  const terraDrawLeft = props.terraDrawLeftRef?.current;
+  const [openNoFeatures, setOpenNoFeatures] = useState(false);
+  const [openNoBuffer, setOpenNoBuffer] = useState(false);
+
+  const handleCloseNoFeatures = () => {
+    setOpenNoFeatures(false);
+  };
+  const handleCloseNoBuffer = () => {
+    setOpenNoBuffer(false);
+  };
 
   async function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES, selectedProviders: ProviderOptions[]) {
     // html-to-image can do both export with clipPath and mixBlendMode, although seem a bit slower than html2canvas!
     // Note html2canvas cannot export with mixBlendModes and clipPath yet, see https://github.com/niklasvh/html2canvas/issues/580
+
     setIsDownloading(true);
     setDownloadProgress(0);
     setSnackbarMessage('Downloading Zip... ');
     var zip = new JSZip();
     if (exportFramesMode == ExportButtonOptions.COMPOSITED) {
+
       const bbox = {
         west: bounds.getWest(),
         south: bounds.getSouth(),
@@ -555,42 +555,68 @@ function ControlPanel(props: any) {
     }
 
     else {
-      // Loop through each monthly basemap and download
-      const aDiv = document.getElementById(
-        "downloadFramesDiv"
-      ) as HTMLAnchorElement;
+      let featureBBoxes: Array<{ west: number, south: number, east: number, north: number }>;
 
+      if (exportMode === "viewport") {
+        featureBBoxes = [{
+          west: bounds.getWest(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          north: bounds.getNorth()
+        }];
+      } else { // per-feature
+        const features = terraDrawLeft?.getSnapshot()
+        if (!features || features.length === 0) {
+          setIsDownloading(false);
+          setOpenNoFeatures(true);
+          return;
+        }
+        if (featureBufferKm === undefined || featureBufferKm === null) {
+          setIsDownloading(false);
+          setOpenNoBuffer(true);
+          return;
+        }
+        featureBBoxes = features.map((feature: any) => {
+          const rawBbox = turf.bbox(feature);
+          const polygon = turf.bboxPolygon(rawBbox);
+          const buffered = turf.buffer(polygon, featureBufferKm, { units: "kilometers" });
+          const [west, south, east, north] = turf.bbox(buffered);
+          return { west, south, east, north };
+        });
+      }
+      // Loop through each monthly basemap and download
       const filteredPlanetDates =
         eachMonthOfInterval({
           start: validMinDate,
           end: validMaxDate,
         }).filter((_: Date, i: number) => i % exportInterval == 0)
 
-      function get_batch_cmd(tmsUrl: string, bounds, filename: string,) {
-        const downloadUrl = titilerCropUrl(
+      function get_batch_cmd(tmsUrl: string, bounds: { west: any; north: any; east: any; south: any; }, filename: string, feature_index: number) {
+        const downloadUrl = titilerCropUrlPerFeature(
           bounds,
           tmsUrl,
           maxFrameResolution,
-          titilerEndpoint
+          titilerEndpoint,
+
         );
 
         const batch_cmd = `REM ${filename}\nREM ${downloadUrl}\n` +
           // gdal_translate command
-          `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "${buildGdalWmsXml(tmsUrl)}" %DOWNLOAD_FOLDER%\\${filename + "_gdal.tif"
+          `%QGIS%\\bin\\gdal_translate -projwin ${bounds.west} ${bounds.north} ${bounds.east} ${bounds.south} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "${buildGdalWmsXml(tmsUrl)}" %DOWNLOAD_FOLDER%\\${filename + "_gdal.tif"
           }`;
-        return { downloadUrl, batch_cmd, filename }
+        return { downloadUrl, batch_cmd, filename, feature_index }
       }
 
-      const gdalTranslateCmds_planet = filteredPlanetDates.map((date) => {
+      const gdalTranslateCmds_planet = filteredPlanetDates.flatMap((date) => {
         const tmsUrl = planetBasemapUrl(date, props.customPlanetApiKey);
         const date_YYYY_MM = formatDate(date);
         // TRYING METHOD 2
         // https://medium.com/charisol-community/downloading-resources-in-html5-a-download-may-not-work-as-expected-bf63546e2baa
         // Also potentially useful: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
-        const filename = `PlanetMonthly_${date_YYYY_MM}`
-        const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
-
-        return cmd_obj;
+        return featureBBoxes.map((bbox: any, feature_index: any) => {
+          const filename = `PlanetMonthly_${date_YYYY_MM}_feature_${feature_index}`;
+          return get_batch_cmd(tmsUrl, bbox, filename, feature_index);
+        });
       });
 
       const center = mapRef?.current?.getMap()?.getCenter();
@@ -601,27 +627,28 @@ function ControlPanel(props: any) {
 
       const wayBackWithLocalChangesResponse = await wayBackWithLocalChangesUrl(center?.lat, center?.lng, zoom);
 
-      const gdalTranslateCmds_wayBack = wayBackWithLocalChangesResponse.map((item) => {
+      const gdalTranslateCmds_wayBack = wayBackWithLocalChangesResponse.flatMap((item) => {
         const tmsUrl = item.itemURL
         const date_YYYY_MM = formatDate(new Date(item.releaseDateLabel));
-        const filename = `Esri_WayBack_${date_YYYY_MM}`
-        const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
-        return cmd_obj;
+        return featureBBoxes.map((bbox: any, feature_index: any) => {
+          const filename = `Esri_WayBack_${date_YYYY_MM}_feature_${feature_index}`;
+          return get_batch_cmd(tmsUrl, bbox, filename, feature_index);
+        });
       });
 
-
       const gdalTranslateCmds_other = Object.entries(basemapsTmsSources)
-        .filter(([key, value]) => {
-          return key !== BasemapsIds.PlanetMonthly // handled in gdalTranslateCmds_planet
-            && key !== BasemapsIds.ESRIWayback     // handled in gdalTranslateCmds_wayBack
-        })
-        .map(([key, value]) => {
-          const filename = BasemapsIds[key]
-          const tmsUrl = basemapsTmsSources[key].url
+        .filter(([key]) =>
+          key !== BasemapsIds.PlanetMonthly &&
+          key !== BasemapsIds.ESRIWayback
+        )
+        .flatMap(([key]) => {
+          const tmsUrl = basemapsTmsSources[key].url;
 
-          const cmd_obj = get_batch_cmd(tmsUrl, bounds, filename)
-          return cmd_obj;
-        })
+          return featureBBoxes.map((bbox: any, feature_index: number) => {
+            const filename = `${BasemapsIds[key]}_feature_${feature_index}`;
+            return get_batch_cmd(tmsUrl, bbox, filename, feature_index);
+          });
+        });
 
       //Builds a list of gdalTranslateCmds command objects based on selected providers
       function buildGdalTranslateCmds(
@@ -715,15 +742,14 @@ function ControlPanel(props: any) {
         await fetchTitilerFramesBatches(cmdsToDownload, foldername, zip);
         console.log('Downloaded frames via Titiler instance')
       }
+
+      // Inform user, let message for 10s in case, useful in case error occured
+      setDownloadProgress(100);
+      setTimeout(() => {
+        setIsDownloading(false);
+        setSnackbarMessage('');
+      }, 10000)
     }
-
-    // Inform user, let message for 10s in case, useful in case error occured
-    setDownloadProgress(100);
-    setTimeout(() => {
-      setIsDownloading(false);
-      setSnackbarMessage('');
-    }, 10000)
-
   }
 
 
@@ -738,15 +764,11 @@ function ControlPanel(props: any) {
     let completed = 0;
 
     const chunked_cmds = [...chunkArray(gdalTranslateCmds, PROMISES_BATCH_SIZE)]
-    // await Promise.all(
     console.log('Downloading by batches and writing to zip, chunked_cmds', chunked_cmds)
-    // chunked_cmds.forEach(async (chunk: any) => {
     for (let chunk of chunked_cmds) {
-      // console.log('chunk', chunk)
       let breakCondition = false
       await Promise.allSettled(
         chunk.map(async (c: any) => {
-          // console.log('fetching', c.filename)
           await fetch(c.downloadUrl)
             .then((response) => {
               if (!response.ok) {
@@ -756,16 +778,19 @@ function ControlPanel(props: any) {
             })
             .then(async (blob) => {
               const arrayBuffer = await blob.arrayBuffer();
-              if (c.provider === ProviderOptions.ESRIWayback) {
-                var ESRI_wayback = zip.folder("ESRI_wayback");
-                ESRI_wayback?.file(`${c.filename}_titiler.tif`, arrayBuffer);
-              } else if (c.provider === ProviderOptions.PlanetMonthly) {
-                var planet_monthly = zip.folder("planet_monthly");
-                planet_monthly?.file(`${c.filename}_titiler.tif`, arrayBuffer);
-              } else {
-                var all_others = zip.folder("all_others");
-                all_others?.file(`${c.filename}_titiler.tif`, arrayBuffer);
+              const featureFolder = zip.folder(String(c.feature_index));
+              if (featureFolder) {
+                const providerFolderName =
+                  c.provider === ProviderOptions.ESRIWayback ? "ESRI_wayback" :
+                    c.provider === ProviderOptions.PlanetMonthly ? "planet_monthly" :
+                      "all_others";
+
+                const providerFolder = featureFolder.folder(providerFolderName);
+                if (providerFolder) {
+                  providerFolder.file(`${c.filename}_titiler.tif`, arrayBuffer);
+                }
               }
+
               completed += 1;
               setDownloadProgress((completed / total) * 100);
               setSnackbarMessage(`Downloaded ${c.filename}`)
@@ -774,7 +799,6 @@ function ControlPanel(props: any) {
               console.warn(`For ${c.filename}, Error occured during downloading. Error ${error}`)
               // Do not send message 'STOPPING SUBSEQUENTS TRIALS'
               setSnackbarMessage(`Error downloading ${c.filename}`)
-              // breakCondition = true
             })
         })
       ).catch((error) => {
@@ -938,7 +962,6 @@ function ControlPanel(props: any) {
                 opacity={props.opacity}
               />
             </Stack>
-            {/* )} */}
             <Stack
               spacing={2}
               direction="row"
@@ -979,8 +1002,27 @@ function ControlPanel(props: any) {
                 selectedProviders={selectedProviders}
                 setSelectedProviders={setSelectedProviders}
                 providerOptions={providerOptions}
+                exportMode={exportMode}
+                setExportMode={setExportMode}
+                featureBufferKm={featureBufferKm}
+                setFeatureBufferKm={setFeatureBufferKm}
               />
             </Stack>
+
+            <Snackbar
+              open={openNoFeatures}
+              onClose={handleCloseNoFeatures}
+              message="No features found. Please draw or export your features first."
+              autoHideDuration={4000}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            />
+            <Snackbar
+              open={openNoBuffer}
+              onClose={handleCloseNoBuffer}
+              message="No buffer found. Please choose your buffer in the settings first."
+              autoHideDuration={4000}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            />
 
             <Snackbar
               open={isDownloading}
@@ -988,7 +1030,7 @@ function ControlPanel(props: any) {
               sx={{ zIndex: 9999, }}
             >
               <SnackbarContent
-                sx={{ 'background': "rgba(255, 255, 255, 1);", textAlign: 'center' }} // the change is here }}
+                sx={{ 'background': "rgba(255, 255, 255, 1);", textAlign: 'center' }}
                 message={
                   <Box display="flex" flexDirection="column" alignItems="center"  >
                     <Typography variant="body2" color='black'>
@@ -1018,7 +1060,7 @@ function ControlPanel(props: any) {
               {(collectionDateActivated && collectionDateAvailable(props.selectedTms)) ? (
                 <Tooltip title={"Caution, Beta feature, only for Bing for now, Seems inacurate"}>
                   <Button
-                    variant="outlined" // outlined or text
+                    variant="outlined"
                     size="small"
                     sx={{ display: 'true' }}
                     onClick={() => {
@@ -1037,11 +1079,9 @@ function ControlPanel(props: any) {
             playbackSpeedFPS={playbackSpeedFPS}
             minDate={validMinDate}
             maxDate={validMaxDate}
-            //
             min={0}
             max={monthsCount}
             marks={marks}
-            //
             value={dateToSliderVal(props.timelineDate, validMinDate)}
             onChange={handleSliderChange}
             valueLabelFormat={(value: any) =>

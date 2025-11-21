@@ -13,7 +13,7 @@ import {
   // CheckboxChangeEvent,
 } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGear } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faGear, faLayerGroup } from "@fortawesome/free-solid-svg-icons";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -64,6 +64,36 @@ export default function SettingsModal(props: any) {
           <Typography id="modal-modal-title" variant="h6" component="h2">
             <FontAwesomeIcon icon={faGear} /> Settings
           </Typography>
+
+
+          <Typography id="modal-modal-description" sx={{ mt: 1, mb: 1 }}>
+            Export Mode
+          </Typography>
+          <ToggleButtonGroup
+            value={props.exportMode}
+            exclusive
+            onChange={(event, newMode) => {
+              if (newMode !== null) {
+                props.setExportMode(newMode);
+              }
+            }}
+            aria-label="Export mode"
+            color="primary"
+            size="small"
+            fullWidth
+          >
+            <ToggleButton value="viewport">
+              <FontAwesomeIcon icon={faEye} style={{ marginRight: '8px' }} />
+              Current Viewport
+            </ToggleButton>
+            <ToggleButton
+              value="perfeature"
+            >
+              <FontAwesomeIcon icon={faLayerGroup} style={{ marginRight: '8px' }} />
+              Per Feature
+            </ToggleButton>
+          </ToggleButtonGroup>
+
           <Typography id="modal-modal-description" sx={{ mt: 1, mb: 1 }}>
             Export Frames settings
           </Typography>{" "}
@@ -175,6 +205,25 @@ export default function SettingsModal(props: any) {
               shrink: true,
             }}
           />
+
+          {/* Show radius control only in batch mode */}
+          {props.exportMode === 'perfeature' && (
+            <TextField
+              style={{ width: "180px", marginBottom: "8px", marginTop: "8px" }}
+              size="small"
+              label="Feature Buffer (km)"
+              type="number"
+              value={`${props.featureBufferKm}`}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                props.setFeatureBufferKm(Math.max(0, parseFloat(event.target.value)));
+              }}
+              InputLabelProps={{
+                shrink: true,
+              }}
+
+            />
+          )}
+
           <Typography id="modal-modal-description" sx={{ mt: 1, mb: 1 }}>
             Playback settings
           </Typography>{" "}

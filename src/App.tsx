@@ -17,6 +17,7 @@ import {
   useLocalStorage,
   useWaybackUrl
 } from "./utilities";
+import { TerraDraw } from "terra-draw";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 // TODO Avoid tile popping on setTiles of rasterTileSet imagery source
@@ -27,6 +28,8 @@ function App() {
   // Maps refs
   const leftMapRef = useRef<MapRef>();
   const rightMapRef = useRef<MapRef>();
+  const terraDrawLeftRef = useRef<TerraDraw | null>(null);
+  const terraDrawRightRef = useRef<TerraDraw | null>(null);
 
   // State variables
   const [backgroundBasemapStyle, setBackgroundBasemapStyle] = useState<any>(
@@ -402,6 +405,9 @@ function App() {
             rightSelectedTms={rightSelectedTms}
             leftTimelineDate={leftTimelineDate}
             rightTimelineDate={rightTimelineDate}
+            terraDrawLeftRef={terraDrawLeftRef}
+            terraDrawRightRef={terraDrawRightRef}
+
           />
 
           {leftSelectedTms == BasemapsIds.PlanetMonthly ? (
@@ -575,6 +581,7 @@ function App() {
         leftMapRef={leftMapRef}
         rightMapRef={rightMapRef}
         setWaybackItemsWithLocalChanges={setWaybackItemsWithLocalChanges}
+        terraDrawLeftRef={terraDrawLeftRef}
       />
     </>
   );

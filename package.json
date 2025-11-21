@@ -12,6 +12,7 @@
   "dependencies": {
     "@emotion/react": "^11.10.8",
     "@emotion/styled": "^11.10.8",
+    "@esri/wayback-core": "^1.0.7",
     "@fortawesome/free-solid-svg-icons": "^6.4.0",
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@mapbox-controls/ruler": "^2.1.0",
@@ -24,7 +25,7 @@
     "@tmcw/togeojson": "^5.6.0",
     "@turf/bbox": "^7.0.0",
     "@turf/truncate": "^7.2.0",
-    "@esri/wayback-core": "^1.0.7",
+    "@turf/turf": "^7.3.0",
     "color-convert": "^3.1.0",
     "date-fns": "^2.30.0",
     "dayjs": "^1.11.7",
@@ -55,5 +56,6 @@
     "eslint-plugin-react-refresh": "^0.3.4",
     "typescript": "^5.0.2",
     "vite": "^4.3.2"
-  }
+  },
+  "packageManager": "yarn@4.4.0+sha512.91d93b445d9284e7ed52931369bc89a663414e5582d00eea45c67ddc459a2582919eece27c412d6ffd1bd0793ff35399381cb229326b961798ce4f4cc60ddfdb"
 }
