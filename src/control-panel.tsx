@@ -98,16 +98,6 @@ type PartOfGdalCmd = {
   filename: string;
 };
 
-// type FeatureBBox = {
-//   bbox: {
-//     west: number;
-//     south: number;
-//     east: number;
-//     north: number;
-//   };
-//   name: string;
-// };
-
 // Could integrate unknown TMS servers via NextGis QMS, but not needed since all major ones already there
 // https://docs.nextgis.com/qms_srv_dev/doc/api.html
 // https://qms.nextgis.com/api/v1/geoservices/?type=tms&search=satellite&limit=50&offset=0&submitter=&ordering=name
