@@ -73,6 +73,53 @@ function FileInput(props: any): ReactElement {
             geojsonFeatures = kml(xmlDoc)
             updateGeojsonFeatures(geojsonFeatures)
           });
+
+        //add imported KMZ file to terradraw
+        if (geojsonFeatures.type === "FeatureCollection" && Array.isArray(geojsonFeatures.features)) {
+
+          //round coordinates to solve the 'coordinates too precise error' of terradraw 
+          var truncated = turf_truncate(geojsonFeatures, { precision: 6, coordinates: 2 });
+
+          const updatedFeatures = truncated.features.map((feature: any) => {
+            let mode = "static";
+
+            switch (feature.geometry.type) {
+              case "Point":
+                mode = "point";
+                break;
+              case "Polygon":
+              case "MultiPolygon":
+                mode = "polygon";
+                break;
+              default:
+                console.warn("Unsupported geometry type:", feature.geometry.type);
+            }
+
+            return {
+              ...feature,
+              id: uuidv4(), // overwrite id with a new uuid so terradraw can draw it, cannot use standard integer ids
+              // id: feature.id || uuidv4(),
+              properties: {
+                ...(feature.properties || {}),
+                mode,
+              },
+            };
+          });
+          const terraDrawLeft = props.terraDrawLeftRef?.current;
+          const terraDrawRight = props.terraDrawRightRef?.current;
+
+          if (terraDrawLeft) {
+            terraDrawLeft.clear();
+            terraDrawLeft.addFeatures(updatedFeatures);
+          }
+
+          if (terraDrawRight) {
+            terraDrawRight.clear();
+            terraDrawRight.addFeatures(updatedFeatures);
+          }
+        } else {
+          console.error("Invalid GeoJSON format for TerraDraw");
+        }
       }
       else {
         const fileContent: string = e.target?.result as string
@@ -90,7 +137,7 @@ function FileInput(props: any): ReactElement {
         console.log('geojsonFeatures from input file', geojsonFeatures)
         updateGeojsonFeatures(geojsonFeatures)
 
-        //add imported geojson file to terradraw
+        //add imported geojson & KML file to terradraw
         if (geojsonFeatures.type === "FeatureCollection" && Array.isArray(geojsonFeatures.features)) {
 
           //round coordinates to solve the 'coordinates too precise error' of terradraw 
