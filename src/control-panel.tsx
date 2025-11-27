@@ -65,6 +65,7 @@ import {
 } from "./utilities";
 
 import * as turf from "@turf/turf";
+import { LngLatBounds } from "mapbox-gl";
 
 const TITILER_ENDPOINT = "https://titiler.xyz"; // https://app.iconem.com/titiler
 const MAX_FRAME_RESOLUTION = 512; // 1024 - 2048 TODO 512 FOR TESTING? 2048 BETTER
@@ -97,15 +98,15 @@ type PartOfGdalCmd = {
   filename: string;
 };
 
-type FeatureBBox = {
-  bbox: {
-    west: number;
-    south: number;
-    east: number;
-    north: number;
-  };
-  name: string;
-};
+// type FeatureBBox = {
+//   bbox: {
+//     west: number;
+//     south: number;
+//     east: number;
+//     north: number;
+//   };
+//   name: string;
+// };
 
 // Could integrate unknown TMS servers via NextGis QMS, but not needed since all major ones already there
 // https://docs.nextgis.com/qms_srv_dev/doc/api.html
@@ -118,6 +119,10 @@ type FeatureBBox = {
 // Uses the gdal mini-driver WMS/TMS xml string representation
 // See this discussion: https://github.com/developmentseed/titiler/discussions/640
 // https://titiler.xyz/cog/crop/-110,-70,110,70.png?url=%3CGDAL_WMS%3E%3CService%20name%3D%27TMS%27%3E%3CServerUrl%3Ehttp%3A%2F%2Fmt.google.com%2Fvt%2Flyrs%3Dy%26amp%3Bx%3D%24%7Bx%7D%26amp%3By%3D%24%7By%7D%26amp%3Bz%3D%24%7Bz%7D%3C%2FServerUrl%3E%3C%2FService%3E%3CDataWindow%3E%3CUpperLeftX%3E-20037508.34%3C%2FUpperLeftX%3E%3CUpperLeftY%3E20037508.34%3C%2FUpperLeftY%3E%3CLowerRightX%3E20037508.34%3C%2FLowerRightX%3E%3CLowerRightY%3E-20037508.34%3C%2FLowerRightY%3E%3CTileLevel%3E18%3C%2FTileLevel%3E%3CTileCountX%3E1%3C%2FTileCountX%3E%3CTileCountY%3E1%3C%2FTileCountY%3E%3CYOrigin%3Etop%3C%2FYOrigin%3E%3C%2FDataWindow%3E%3CProjection%3EEPSG%3A3857%3C%2FProjection%3E%3CBlockSizeX%3E256%3C%2FBlockSizeX%3E%3CBlockSizeY%3E256%3C%2FBlockSizeY%3E%3CBandsCount%3E3%3C%2FBandsCount%3E%3CCache%20%2F%3E%3C%2FGDAL_WMS%3E
+type FeatureBBox = {
+  bbox: LngLatBounds;
+  name: string;
+};
 
 const escapeTmsUrl = (url: string) =>
   url
@@ -139,14 +144,14 @@ function buildGdalWmsXml(tmsUrl: string) {
 }
 
 function titilerCropUrlPerFeature(
-  featureBbox: { east: any; north: any; south: any; west: any; },
+  featureBbox: { getWest?: any; getNorth?: any; getEast?: any; getSouth?: any },
   tmsUrl: string,
   maxFrameResolution: number = MAX_FRAME_RESOLUTION,
   titilerEndpoint: string = TITILER_ENDPOINT
 ) {
   const wmsUrl = buildGdalWmsXml(tmsUrl)
   // titiler returned image is in 4326 CRS, cannot be modified yet
-  const coords_str = `${featureBbox.west},${featureBbox.south},${featureBbox.east},${featureBbox.north}.tif?max_size=${maxFrameResolution}&coord-crs=epsg:4326`; // 4326
+  const coords_str = `${featureBbox.getWest()},${featureBbox.getSouth()},${featureBbox.getEast()},${featureBbox.getNorth()}.tif?max_size=${maxFrameResolution}&coord-crs=epsg:4326`; // 4326
   // Bug with 3857 bounds, InternalServerError 500 on titiler, so feature-request to support dst-tms
 
   // pre 0.15.0, endpoint is /cog/crop/ like on app.ico titiler endpoint at commit day
@@ -484,13 +489,8 @@ function ControlPanel(props: any) {
   const terraDrawLeft = props.terraDrawLeftRef?.current;
   const [openNoFeatures, setOpenNoFeatures] = useState(false);
   const [openNoBuffer, setOpenNoBuffer] = useState(false);
-
-  const handleCloseNoFeatures = () => {
-    setOpenNoFeatures(false);
-  };
-  const handleCloseNoBuffer = () => {
-    setOpenNoBuffer(false);
-  };
+  const [noExportMetaData, setNoExportMetaData] = useState(false);
+  const [messageNoMetaData, setMessageNoMetaData] = useState("");
 
   async function handleExportButtonClick(exportFramesMode: ExportButtonOptions = ExportButtonOptions.ALL_FRAMES, selectedProviders: ProviderOptions[]) {
     // html-to-image can do both export with clipPath and mixBlendMode, although seem a bit slower than html2canvas!
@@ -567,37 +567,40 @@ function ControlPanel(props: any) {
       if (exportMode === "viewport") {
         featureBBoxes = [
           {
-            bbox: {
-              west: bounds.getWest(),
-              south: bounds.getSouth(),
-              east: bounds.getEast(),
-              north: bounds.getNorth(),
-            },
+            bbox: bounds,
             name: "viewport",
           }
         ];
       } else { // per-feature
         const features = terraDrawLeft?.getSnapshot()
-        console.log('featuresssssssss ', features);
+        // Manage missing metadata for per-feature export
+        const fail = (message?: string) => {
+          setIsDownloading(false);
+          setNoExportMetaData(true);
+          if (message) {
+            setMessageNoMetaData(message);
+          }
+          return;
+        };
 
         if (!features || features.length === 0) {
-          setIsDownloading(false);
-          setOpenNoFeatures(true);
-          return;
+          return fail("No features found. Please draw or import your features first.");
         }
-        if (featureBufferKm === undefined || featureBufferKm === null) {
-          setIsDownloading(false);
-          setOpenNoBuffer(true);
-          return;
+
+        // This checks for null / undefined (NOT zero)
+        if (featureBufferKm == null) {
+          return fail("Feature buffer is missing. Please set a buffer in the settings.");
         }
+
         const hasPointFeatureWithZeroAsBuffer = features.some(
           (f: any) => f?.properties?.mode === "point" && featureBufferKm === 0
         );
+
         if (hasPointFeatureWithZeroAsBuffer) {
-          setIsDownloading(false);
-          setOpenNoBuffer(true);
-          return;
+          return fail("A buffer of 0 is not allowed for point features. Please choose a valid buffer.");
         }
+
+        // Create the bbox for features
         featureBBoxes = features.map((feature: any, index: number) => {
           const rawBbox = turf.bbox(feature);
           const polygon = turf.bboxPolygon(rawBbox);
@@ -612,11 +615,11 @@ function ControlPanel(props: any) {
               : feature?.properties?.id ?? `feature_${index}`;
 
           return {
-            bbox: { west, south, east, north },
+            bbox: new LngLatBounds([west, south], [east, north]),
             name: featureName
           };
         });
-        console.log('featurebbooxxxxxxxxxs', featureBBoxes);
+        console.log('featurebbooxxxxxxxxxs', featureBBoxes, featureBBoxes[0].bbox.getWest());
 
       }
       // Loop through each monthly basemap and download
@@ -626,7 +629,7 @@ function ControlPanel(props: any) {
           end: validMaxDate,
         }).filter((_: Date, i: number) => i % exportInterval == 0)
 
-      function get_batch_cmd(tmsUrl: string, bounds: { west: any; north: any; east: any; south: any; }, filename: string, feature_name: number) {
+      function get_batch_cmd(tmsUrl: string, bounds: { getWest?: any; getNorth?: any; getEast?: any; getSouth?: any }, filename: string, feature_name: number) {
         const downloadUrl = titilerCropUrlPerFeature(
           bounds,
           tmsUrl,
@@ -637,7 +640,7 @@ function ControlPanel(props: any) {
 
         const batch_cmd = `REM ${filename}\nREM ${downloadUrl}\n` +
           // gdal_translate command
-          `%QGIS%\\bin\\gdal_translate -projwin ${bounds.west} ${bounds.north} ${bounds.east} ${bounds.south} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "${buildGdalWmsXml(tmsUrl)}" %DOWNLOAD_FOLDER%\\${filename + "_gdal.tif"
+          `%QGIS%\\bin\\gdal_translate -projwin ${bounds.getWest()} ${bounds.getNorth()} ${bounds.getEast()} ${bounds.getSouth()} -projwin_srs EPSG:4326 -outsize %BASEMAP_WIDTH% 0 "${buildGdalWmsXml(tmsUrl)}" %DOWNLOAD_FOLDER%\\${filename + "_gdal.tif"
           }`;
         return { downloadUrl, batch_cmd, filename, feature_name }
       }
@@ -1068,19 +1071,17 @@ function ControlPanel(props: any) {
             </Stack>
 
             <Snackbar
-              open={openNoFeatures}
-              onClose={handleCloseNoFeatures}
-              message="No features found. Please draw or export your features first."
+              open={noExportMetaData}
+              onClose={() => setNoExportMetaData(false)}
               autoHideDuration={4000}
               anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            />
-            <Snackbar
-              open={openNoBuffer}
-              onClose={handleCloseNoBuffer}
-              message="No buffer found. Please choose your buffer in the settings first."
-              autoHideDuration={4000}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            />
+            >
+              <SnackbarContent
+                sx={{ backgroundColor: 'white', color: 'black', textAlign: 'center' }}
+                message={messageNoMetaData}
+              />
+            </Snackbar>
+
 
             <Snackbar
               open={isDownloading}
