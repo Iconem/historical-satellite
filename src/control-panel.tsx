@@ -393,7 +393,7 @@ function ControlPanel(props: any) {
       zoom
     ).then(
       (waybackItemsWithLocalChanges: any) => {
-        console.log('waybackItemsWithLocalChanges at lat/lon/zoom', { lat, lon, zoom }, waybackItemsWithLocalChanges)
+        console.log('waybackItemsWithLocalChanges at lat/lon/zoom', { latitude, longitude, zoom }, waybackItemsWithLocalChanges)
         props.setWaybackItemsWithLocalChanges(waybackItemsWithLocalChanges)
         const parsedItemsWithLocalChanges = Object.values(waybackItemsWithLocalChanges).map((item: any) => {
           const { itemURL, releaseDateLabel, releaseDatetime, releaseNum } = item
