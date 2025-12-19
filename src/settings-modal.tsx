@@ -200,7 +200,9 @@ export default function SettingsModal(props: any) {
             size={"small"}
             label="TiTiler Endpoint"
             value={`${props.titilerEndpoint}`}
-            onChange={props.setTitilerEndpoint}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+              props.setTitilerEndpoint(event.target.value);
+            }}
             InputLabelProps={{
               shrink: true,
             }}

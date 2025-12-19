@@ -370,7 +370,8 @@ function ControlPanel(props: any) {
     12
   );
 
-  const [titilerEndpoint, setTitilerEndpoint] = useState(
+  const [titilerEndpoint, setTitilerEndpoint] = useLocalStorage(
+    "export_titilerEndpoint",
     TITILER_ENDPOINT
   );
   const [maxFrameResolution, setMaxFrameResolution] = useLocalStorage(
@@ -625,7 +626,6 @@ function ControlPanel(props: any) {
           tmsUrl,
           maxFrameResolution,
           titilerEndpoint,
-
         );
 
         const batch_cmd = `REM ${filename}\nREM ${downloadUrl}\n` +
