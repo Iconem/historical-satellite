@@ -139,6 +139,9 @@ function FileInput(props: any): ReactElement {
 
         //add imported geojson & KML file to terradraw
         if (geojsonFeatures.type === "FeatureCollection" && Array.isArray(geojsonFeatures.features)) {
+          const n_features_before = geojsonFeatures.features.length
+          geojsonFeatures.features = geojsonFeatures.features.filter((feature) => feature.geometry !== null);
+          console.log(`${geojsonFeatures.features.length} / ${n_features_before} features have valid geometry and will be added to TerraDraw.`);
 
           //round coordinates to solve the 'coordinates too precise error' of terradraw 
           var truncated = turf_truncate(geojsonFeatures, { precision: 6, coordinates: 2 });
