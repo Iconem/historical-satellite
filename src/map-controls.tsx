@@ -149,7 +149,7 @@ function FileInput(props: any): ReactElement {
           const updatedFeatures = truncated.features.map((feature: any) => {
             let mode = "static";
 
-            switch (feature.geometry.type) {
+            switch (feature?.geometry?.type) {
               case "Point":
                 mode = "point";
                 break;
@@ -158,7 +158,7 @@ function FileInput(props: any): ReactElement {
                 mode = "polygon";
                 break;
               default:
-                console.warn("Unsupported geometry type:", feature.geometry.type);
+                console.warn("Unsupported geometry type:", feature?.geometry?.type);
             }
 
             return {
