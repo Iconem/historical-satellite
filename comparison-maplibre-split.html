@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- iframe embedding: this page sets no X-Frame-Options and no frame-ancestors CSP,
+       so it can be embedded freely. Host server must also not send X-Frame-Options headers.
+       Recommended iframe tag:
+         <iframe src="compare-maplibre.html?cog1=./a.tif&cog2=./b.tif"
+                 style="width:100%;height:600px;border:none;"
+                 allow="cross-origin-isolated">
+         </iframe>
+       If COGs are on a different origin, that server needs CORS headers:
+         Access-Control-Allow-Origin: *  (or your domain)
+
+compare-maplibre.html?cog1=./before.tif&cog2=./after.tif&label1=2019&label2=2024
+compare-osd.html?cog1=./before.tif&cog2=./after.tif&label1=RGB&label2=DSM
+
+iframe embed:
+
+<iframe
+  src="compare-maplibre.html?cog1=./before.tif&cog2=./after.tif&label1=Before&label2=After"
+  style="width:100%; height:600px; border:none;"
+  allow="cross-origin-isolated">
+</iframe>
+
+  -->
+<meta charset="utf-8" />
+<title>MapLibre Compare</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@geomatico/maplibre-cog-protocol@0.5.0/dist/index.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111; overflow: hidden; }
+
+  #stage {
+    position: relative;
+    width: 100vw; height: 100vh;
+  }
+
+  /* Both maps always fill stage; clip-path on after-map handled by JS */
+  .map { position: absolute; inset: 0; }
+
+  /* ── Divider (split mode) ── */
+  #divider {
+    position: absolute; top: 0; bottom: 0; left: 50%;
+    width: 44px;
+    transform: translateX(-50%);
+    cursor: ew-resize; z-index: 20;
+    touch-action: none;
+    display: none; /* shown only in split */
+  }
+  #divider-line {
+    position: absolute; top: 0; bottom: 0;
+    left: 50%; width: 2px;
+    background: rgba(255,255,255,0.85);
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  #divider-pill {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px; height: 40px;
+    background: #fff; border-radius: 50%;
+    box-shadow: 0 0 0 5px rgba(0,0,0,.18), 0 2px 10px rgba(0,0,0,.5);
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  #divider-pill svg { display: block; }
+
+  /* ── SBS gutter ── */
+  #sbs-gutter {
+    display: none;
+    position: absolute; top: 0; bottom: 0; left: 50%;
+    width: 2px; transform: translateX(-50%);
+    background: rgba(255,255,255,.35);
+    z-index: 5; pointer-events: none;
+  }
+
+  /* ── Labels ── */
+  .label {
+    position: absolute; top: 12px; z-index: 15;
+    background: rgba(0,0,0,.55); color: #fff;
+    font: 600 12px/1 sans-serif; letter-spacing: .05em;
+    padding: 4px 10px; border-radius: 4px; pointer-events: none;
+  }
+  #label-before { left: 12px; }
+  #label-after  { right: 12px; }
+
+  /* ── Mode toggle ── */
+  #toggle {
+    position: absolute; bottom: 16px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 30; display: flex;
+    background: rgba(0,0,0,.6); border-radius: 6px; overflow: hidden;
+  }
+  #toggle button {
+    padding: 6px 14px; border: none; background: transparent; color: #aaa;
+    font: 600 11px/1 sans-serif; letter-spacing: .05em;
+    cursor: pointer; transition: background .15s, color .15s;
+  }
+  #toggle button.active { background: #fff; color: #111; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="map-before" class="map"></div>
+  <div id="map-after"  class="map"></div>
+  <div id="divider">
+    <div id="divider-line"></div>
+    <div id="divider-pill">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 32 32">
+        <path fill="#555" d="M13 21l-5-5 5-5m6 0l5 5-5 5"/>
+      </svg>
+    </div>
+  </div>
+  <div id="sbs-gutter"></div>
+  <span class="label" id="label-before"></span>
+  <span class="label" id="label-after"></span>
+  <div id="toggle">
+    <button id="btn-split" class="active" onclick="setMode('split')">Split</button>
+    <button id="btn-sbs"               onclick="setMode('sbs')">Side by side</button>
+  </div>
+</div>
+
+<script>
+// ── COG protocol ──────────────────────────────────────────────────────────────
+maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
+
+// ── URL params ────────────────────────────────────────────────────────────────
+// Embed via iframe: <iframe src="compare-maplibre.html?cog1=./a.tif&cog2=./b.tif&label1=Before&label2=After">
+// cog1, cog2: URL or relative path to COG files (required, falls back to defaults)
+// label1, label2: optional display labels
+const _p = new URLSearchParams(window.location.search);
+const COG1   = _p.get('cog1')   || './IMG_PHR1A_PMS_202603120816196-uint8-3857.cog.tif';
+const COG2   = _p.get('cog2')   || './Tyre-before-ESRI-50cm-3857.cog.tif';
+const LABEL1 = _p.get('label1') || 'Before';
+const LABEL2 = _p.get('label2') || 'After';
+
+document.getElementById('label-before').textContent = LABEL1;
+document.getElementById('label-after').textContent  = LABEL2;
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+// pixelRatio:1 — protocol always delivers 256px tiles, no DPR scaling needed.
+// No minzoom on sources — let the protocol compute it from COG overview structure.
+// Setting minzoom:0 would request a full-res tile at low zoom → RangeError crash.
+function cogStyle(url) {
+  return {
+    version: 8,
+    sources: {
+      cog: { type: 'raster', url: 'cog://' + url, tileSize: 256 }
+    },
+    layers: [{ id: 'cog', type: 'raster', source: 'cog' }]
+  };
+}
+
+const STYLE_BEFORE = cogStyle(COG1);
+const STYLE_AFTER  = cogStyle(COG2);
+
+// Start at 0,0 — we'll fitBounds once the COG metadata is read
+const mapBefore = new maplibregl.Map({ container: 'map-before', style: STYLE_BEFORE, center: [0,0], zoom: 1, maxZoom: 24, pixelRatio: 1, attributionControl: false });
+const mapAfter  = new maplibregl.Map({ container: 'map-after',  style: STYLE_AFTER,  center: [0,0], zoom: 1, maxZoom: 24, pixelRatio: 1, attributionControl: false });
+
+// ── Sync ──────────────────────────────────────────────────────────────────────
+let syncing = false;
+function sync(src, dst) {
+  if (syncing) return; syncing = true;
+  dst.jumpTo({ center: src.getCenter(), zoom: src.getZoom(), bearing: src.getBearing(), pitch: src.getPitch() });
+  syncing = false;
+}
+mapBefore.on('move', () => sync(mapBefore, mapAfter));
+mapAfter.on('move',  () => sync(mapAfter,  mapBefore));
+
+// ── Autozoom + bounds on load ─────────────────────────────────────────────────
+// The geomatico COG protocol writes `bounds` ([minLng,minLat,maxLng,maxLat])
+// onto each raster source from the COG's internal georeferencing.
+// We union both COG footprints and use that as maxBounds + initial fitBounds.
+let loaded = 0;
+[mapBefore, mapAfter].forEach(m => m.on('load', () => {
+  m.resize();
+  if (++loaded < 2) return;
+
+  // Read bounds from each map's first source
+  const idBefore = Object.keys(STYLE_BEFORE.sources)[0];
+  const idAfter  = Object.keys(STYLE_AFTER.sources)[0];
+  const bB = mapBefore.getSource(idBefore)?.bounds; // [minLng,minLat,maxLng,maxLat]
+  const bA = mapAfter.getSource(idAfter)?.bounds;
+
+  console.log('bounds before:', bB);
+  console.log('bounds after: ', bA);
+
+  // Union: take the outermost corners of whichever bounds we have
+  const available = [bB, bA].filter(Boolean);
+  if (available.length === 0) {
+    console.warn('No bounds metadata found on either COG source');
+    return;
+  }
+
+  const union = available.reduce((acc, b) => [
+    Math.min(acc[0], b[0]),  // minLng
+    Math.min(acc[1], b[1]),  // minLat
+    Math.max(acc[2], b[2]),  // maxLng
+    Math.max(acc[3], b[3]),  // maxLat
+  ]);
+
+  const [minLng, minLat, maxLng, maxLat] = union;
+  const unionBounds = new maplibregl.LngLatBounds([minLng, minLat], [maxLng, maxLat]);
+
+  // Fit both maps to the union footprint
+  [mapBefore, mapAfter].forEach(m =>
+    m.fitBounds(unionBounds, { padding: 32, animate: false })
+  );
+
+  // maxBounds = exactly the union — no padding, user cannot leave the data footprint
+  [mapBefore, mapAfter].forEach(m => m.setMaxBounds(unionBounds));
+}));
+
+// ── Layout helpers ────────────────────────────────────────────────────────────
+const stage    = document.getElementById('stage');
+const divider  = document.getElementById('divider');
+const afterEl  = document.getElementById('map-after');
+const beforeEl = document.getElementById('map-before');
+const gutter   = document.getElementById('sbs-gutter');
+const labelAfter = document.getElementById('label-after');
+
+let sliderPct = 50;
+let mode = null;
+
+function applySlider(pct) {
+  sliderPct = Math.min(Math.max(pct, 1), 99);
+  divider.style.left     = sliderPct + '%';
+  afterEl.style.clipPath = `inset(0 0 0 ${sliderPct}%)`;
+}
+
+function setMode(m) {
+  if (mode === m) return;
+  mode = m;
+  const isSplit = m === 'split';
+
+  // Reset map container styles
+  [beforeEl, afterEl].forEach(el => {
+    el.style.position = 'absolute';
+    el.style.inset    = '0';
+    el.style.width    = '100%';
+    el.style.height   = '100%';
+  });
+
+  if (isSplit) {
+    afterEl.style.clipPath = `inset(0 0 0 ${sliderPct}%)`;
+    divider.style.display  = 'block';
+    gutter.style.display   = 'none';
+    labelAfter.style.right = '12px'; labelAfter.style.left = '';
+  } else {
+    // Side by side: before = left half, after = right half, no clipping
+    beforeEl.style.width   = '50%';
+    afterEl.style.left     = '50%';
+    afterEl.style.width    = '50%';
+    afterEl.style.clipPath = 'none';
+    divider.style.display  = 'none';
+    gutter.style.display   = 'block';
+    labelAfter.style.right = '12px'; labelAfter.style.left = '';
+  }
+
+  document.getElementById('btn-split').classList.toggle('active', isSplit);
+  document.getElementById('btn-sbs').classList.toggle('active', !isSplit);
+
+  requestAnimationFrame(() => { mapBefore.resize(); mapAfter.resize(); });
+}
+
+// ── Slider drag ───────────────────────────────────────────────────────────────
+function moveFromClient(clientX) {
+  const rect = stage.getBoundingClientRect();
+  applySlider((clientX - rect.left) / rect.width * 100);
+}
+
+let dragging = false;
+divider.addEventListener('mousedown',  e => { dragging = true; e.preventDefault(); });
+divider.addEventListener('touchstart', () => dragging = true, { passive: true });
+window.addEventListener('mouseup',   () => dragging = false);
+window.addEventListener('touchend',  () => dragging = false);
+window.addEventListener('mousemove', e => { if (dragging && mode === 'split') moveFromClient(e.clientX); });
+window.addEventListener('touchmove', e => { if (dragging && mode === 'split') moveFromClient(e.touches[0].clientX); }, { passive: true });
+window.addEventListener('keydown', e => {
+  if (mode !== 'split') return;
+  const rect = stage.getBoundingClientRect();
+  if (e.key === 'ArrowLeft')  applySlider(sliderPct - 2);
+  if (e.key === 'ArrowRight') applySlider(sliderPct + 2);
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+setMode('split');
+</script>
+</body>
+</html>
