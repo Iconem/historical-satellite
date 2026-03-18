@@ -10,7 +10,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        histogram: resolve(__dirname, 'histogram-matching-js.html')
+        histogram: resolve(__dirname, 'histogram-matching-js.html'), 
+        comparisonmaplibre: resolve(__dirname, 'comparison-maplibre-split.html')
       }
     }
   }
