@@ -4,23 +4,38 @@
   <!-- iframe embedding: this page sets no X-Frame-Options and no frame-ancestors CSP,
        so it can be embedded freely. Host server must also not send X-Frame-Options headers.
        Recommended iframe tag:
-         <iframe src="compare-maplibre.html?cog1=./a.tif&cog2=./b.tif"
+         <iframe src="compare-maplibre.html?src1=./a.tif&src2=./b.tif"
                  style="width:100%;height:600px;border:none;"
                  allow="cross-origin-isolated">
          </iframe>
        If COGs are on a different origin, that server needs CORS headers:
          Access-Control-Allow-Origin: *  (or your domain)
 
-compare-maplibre.html?cog1=./before.tif&cog2=./after.tif&label1=2019&label2=2024
-compare-osd.html?cog1=./before.tif&cog2=./after.tif&label1=RGB&label2=DSM
+         
+// ── Source resolution ─────────────────────────────────────────────────────────
+// URL params:
+//   src1 / src2      — the source value (COG path, TMS url template, JSON style, preset id)
+//   type1 / type2    — optional explicit type: 'cog' | 'tms' | 'style' | 'preset'
+//                      if omitted, type is inferred from the value
+//   label1 / label2  — display labels (default: Before / After)
+//
+// Presets (type=preset or auto-detected):
+//   osm, satellite, satellite-esri, satellite-bing, satellite-google, hybrid-google, satellite-here, topo
+//
+// Examples:
+//   comparison-maplibre-split.html?src1=./before.tif&src2=./after.tif
+//   ?src1=satellite&src2=./my.cog.tif&label1=Satellite&label2=My COG
+//   ?src1=osm&src2=satellite&type1=preset&type2=preset
+//   ?src1=https://example.com/tiles/{z}/{x}/{y}.png&type1=tms&src2=./my.tif
+//   ?src1={"version":8,"sources":{...},"layers":[...]}&type1=style
+// 
+// iframe embed:
+// <iframe
+//   src="compare-maplibre.html?cog1=./before.tif&cog2=./after.tif&label1=Before&label2=After"
+//   style="width:100%; height:600px; border:none;"
+//   allow="cross-origin-isolated">
+// </iframe>
 
-iframe embed:
-
-<iframe
-  src="compare-maplibre.html?cog1=./before.tif&cog2=./after.tif&label1=Before&label2=After"
-  style="width:100%; height:600px; border:none;"
-  allow="cross-origin-isolated">
-</iframe>
 
   -->
 <meta charset="utf-8" />
@@ -127,39 +142,96 @@ iframe embed:
 // ── COG protocol ──────────────────────────────────────────────────────────────
 maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
 
-// ── URL params ────────────────────────────────────────────────────────────────
-// Embed via iframe: <iframe src="compare-maplibre.html?cog1=./a.tif&cog2=./b.tif&label1=Before&label2=After">
-// cog1, cog2: URL or relative path to COG files (required, falls back to defaults)
-// label1, label2: optional display labels
 const _p = new URLSearchParams(window.location.search);
-const COG1   = _p.get('cog1')   || './IMG_PHR1A_PMS_202603120816196-uint8-3857.cog.tif';
-const COG2   = _p.get('cog2')   || './Tyre-before-ESRI-50cm-3857.cog.tif';
+
+const PRESETS = {
+  'satellite': null, // alias, filled below
+  'osm': {
+    version: 8,
+    sources: { s: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19, attribution: '© OpenStreetMap' }},
+    layers:  [{ id: 'l', type: 'raster', source: 's' }]
+  },
+  'satellite-esri': {
+    version: 8,
+    sources: { s: { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, maxzoom: 19, attribution: '© Esri' }},
+    layers:  [{ id: 'l', type: 'raster', source: 's' }]
+  },
+  'satellite-bing': {
+    version: 8,
+    sources: { s: { type: 'raster', tiles: ['https://ecn.t0.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=1'], tileSize: 256, maxzoom: 19, attribution: '© Microsoft Bing' }},
+    layers:  [{ id: 'l', type: 'raster', source: 's' }]
+  },
+  'satellite-google': {
+    version: 8,
+    sources: { s: { type: 'raster', tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize: 256, maxzoom: 20, attribution: '© Google' }},
+    layers:  [{ id: 'l', type: 'raster', source: 's' }]
+  },
+  'hybrid-google': {
+    version: 8,
+    sources: { s: { type: 'raster', tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'], tileSize: 256, maxzoom: 20, attribution: '© Google' }},
+    layers:  [{ id: 'l', type: 'raster', source: 's' }]
+  },
+  'satellite-here': {
+    version: 8,
+    sources: { s: { type: 'raster', tiles: ['https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/jpeg?style=satellite.day&apiKey=eAdkWGYRoc4RfxVo0Z4B&app_code=TrLJuXVK62IQk0vuXFzaig'], tileSize: 256, maxzoom: 20, attribution: '© HERE' }},
+    layers:  [{ id: 'l', type: 'raster', source: 's' }]
+  },
+  'topo': {
+    version: 8,
+    sources: { s: { type: 'raster', tiles: ['https://tile.opentopomap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 17, attribution: '© OpenTopoMap' }},
+    layers:  [{ id: 'l', type: 'raster', source: 's' }]
+  },
+};
+PRESETS['satellite'] = PRESETS['satellite-esri'];
+
+function inferType(val, explicit) {
+  if (explicit) return explicit;
+  if (!val) return 'cog';
+  if (PRESETS[val]) return 'preset';
+  if (val.trim().startsWith('{')) return 'style';
+  if (val.includes('{z}') && val.includes('{x}')) return 'tms';
+  return 'cog'; // default: treat as COG path
+}
+
+function buildStyle(val, type) {
+  switch (type) {
+    case 'preset':
+      return PRESETS[val] || PRESETS['osm'];
+    case 'style':
+      try { return JSON.parse(val); } catch(e) { console.error('Invalid style JSON', e); return PRESETS['osm']; }
+    case 'tms':
+      return { version: 8, sources: { s: { type: 'raster', tiles: [val], tileSize: 256 }}, layers: [{ id: 'l', type: 'raster', source: 's' }]};
+    case 'cog':
+    default:
+      return { version: 8, sources: { cog: { type: 'raster', url: 'cog://' + val, tileSize: 256 }}, layers: [{ id: 'cog', type: 'raster', source: 'cog' }]};
+  }
+}
+
+const SRC1  = _p.get('src1')   || './IMG_PHR1A_PMS_202603120816196-uint8-3857.cog.tif';
+const SRC2  = _p.get('src2')   || './Tyre-before-ESRI-50cm-3857.cog.tif';
+const TYPE1 = inferType(SRC1,  _p.get('type1'));
+const TYPE2 = inferType(SRC2,  _p.get('type2'));
 const LABEL1 = _p.get('label1') || 'Before';
 const LABEL2 = _p.get('label2') || 'After';
 
 document.getElementById('label-before').textContent = LABEL1;
 document.getElementById('label-after').textContent  = LABEL2;
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-// pixelRatio:1 — protocol always delivers 256px tiles, no DPR scaling needed.
-// No minzoom on sources — let the protocol compute it from COG overview structure.
-// Setting minzoom:0 would request a full-res tile at low zoom → RangeError crash.
-function cogStyle(url) {
-  return {
-    version: 8,
-    sources: {
-      cog: { type: 'raster', url: 'cog://' + url, tileSize: 256 }
-    },
-    layers: [{ id: 'cog', type: 'raster', source: 'cog' }]
-  };
-}
+const STYLE_BEFORE = buildStyle(SRC1, TYPE1);
+const STYLE_AFTER  = buildStyle(SRC2, TYPE2);
 
-const STYLE_BEFORE = cogStyle(COG1);
-const STYLE_AFTER  = cogStyle(COG2);
+// ── Maps ──────────────────────────────────────────────────────────────────────
+// backgroundColor:black so each panel only shows its own source on its side
+const MAP_OPTS = { center: [0,0], zoom: 1, maxZoom: 24, pixelRatio: 1, attributionControl: false, style: { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#000' }}]}};
 
-// Start at 0,0 — we'll fitBounds once the COG metadata is read
-const mapBefore = new maplibregl.Map({ container: 'map-before', style: STYLE_BEFORE, center: [0,0], zoom: 1, maxZoom: 24, pixelRatio: 1, attributionControl: false });
-const mapAfter  = new maplibregl.Map({ container: 'map-after',  style: STYLE_AFTER,  center: [0,0], zoom: 1, maxZoom: 24, pixelRatio: 1, attributionControl: false });
+const mapBefore = new maplibregl.Map({ container: 'map-before', ...MAP_OPTS });
+const mapAfter  = new maplibregl.Map({ container: 'map-after',  ...MAP_OPTS });
+
+// Set real styles after construction so background layer is always underneath
+// Use 'load' (blank style ready) to swap in real style, then 'style.load'
+// for subsequent fires. Track whether real style has been set per map.
+mapBefore.once('load', () => mapBefore.setStyle(STYLE_BEFORE));
+mapAfter.once('load',  () => mapAfter.setStyle(STYLE_AFTER));
 
 // ── Sync ──────────────────────────────────────────────────────────────────────
 let syncing = false;
@@ -172,48 +244,42 @@ mapBefore.on('move', () => sync(mapBefore, mapAfter));
 mapAfter.on('move',  () => sync(mapAfter,  mapBefore));
 
 // ── Autozoom + bounds on load ─────────────────────────────────────────────────
-// The geomatico COG protocol writes `bounds` ([minLng,minLat,maxLng,maxLat])
-// onto each raster source from the COG's internal georeferencing.
-// We union both COG footprints and use that as maxBounds + initial fitBounds.
-let loaded = 0;
-[mapBefore, mapAfter].forEach(m => m.on('load', () => {
-  m.resize();
-  if (++loaded < 2) return;
+// We listen for 'styledata' (fires after each setStyle resolves sources) rather
+// than 'load' (which fires twice: once for the blank bg style, once for setStyle).
+// Only COG sources expose .bounds — TMS/preset sources won't, that's fine:
+// we union whatever bounds we find and fitBounds accordingly.
+let styleLoaded = 0;
+function onStyleReady(map) {
+  map.resize();
+  if (++styleLoaded < 2) return;
 
-  // Read bounds from each map's first source
-  const idBefore = Object.keys(STYLE_BEFORE.sources)[0];
-  const idAfter  = Object.keys(STYLE_AFTER.sources)[0];
-  const bB = mapBefore.getSource(idBefore)?.bounds; // [minLng,minLat,maxLng,maxLat]
-  const bA = mapAfter.getSource(idAfter)?.bounds;
+  const idBefore = Object.keys(STYLE_BEFORE.sources || {})[0];
+  const idAfter  = Object.keys(STYLE_AFTER.sources  || {})[0];
+  const bB = idBefore ? mapBefore.getSource(idBefore)?.bounds : null;
+  const bA = idAfter  ? mapAfter.getSource(idAfter)?.bounds   : null;
 
   console.log('bounds before:', bB);
   console.log('bounds after: ', bA);
 
-  // Union: take the outermost corners of whichever bounds we have
   const available = [bB, bA].filter(Boolean);
-  if (available.length === 0) {
-    console.warn('No bounds metadata found on either COG source');
-    return;
-  }
+  if (available.length === 0) return; // no COG bounds — user must navigate manually
 
   const union = available.reduce((acc, b) => [
-    Math.min(acc[0], b[0]),  // minLng
-    Math.min(acc[1], b[1]),  // minLat
-    Math.max(acc[2], b[2]),  // maxLng
-    Math.max(acc[3], b[3]),  // maxLat
+    Math.min(acc[0], b[0]), Math.min(acc[1], b[1]),
+    Math.max(acc[2], b[2]), Math.max(acc[3], b[3]),
   ]);
+  const unionBounds = new maplibregl.LngLatBounds([union[0], union[1]], [union[2], union[3]]);
 
-  const [minLng, minLat, maxLng, maxLat] = union;
-  const unionBounds = new maplibregl.LngLatBounds([minLng, minLat], [maxLng, maxLat]);
+  [mapBefore, mapAfter].forEach(m => {
+    m.fitBounds(unionBounds, { padding: 32, animate: false });
+    m.setMaxBounds(unionBounds);
+  });
+}
 
-  // Fit both maps to the union footprint
-  [mapBefore, mapAfter].forEach(m =>
-    m.fitBounds(unionBounds, { padding: 32, animate: false })
-  );
-
-  // maxBounds = exactly the union — no padding, user cannot leave the data footprint
-  [mapBefore, mapAfter].forEach(m => m.setMaxBounds(unionBounds));
-}));
+// 'style.load' fires for blank style AND real style — skip the first (blank) fire
+let _beforeStyleSet = false, _afterStyleSet = false;
+mapBefore.on('style.load', () => { if (!_beforeStyleSet) { _beforeStyleSet = true; return; } onStyleReady(mapBefore); });
+mapAfter.on('style.load',  () => { if (!_afterStyleSet)  { _afterStyleSet  = true; return; } onStyleReady(mapAfter);  });
 
 // ── Layout helpers ────────────────────────────────────────────────────────────
 const stage    = document.getElementById('stage');
