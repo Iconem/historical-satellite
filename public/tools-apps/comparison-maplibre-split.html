@@ -53,17 +53,15 @@
     width: 100vw; height: 100vh;
   }
 
-  /* Both maps always fill stage; clip-path on after-map handled by JS */
   .map { position: absolute; inset: 0; }
 
-  /* ── Divider (split mode) ── */
   #divider {
     position: absolute; top: 0; bottom: 0; left: 50%;
     width: 44px;
     transform: translateX(-50%);
     cursor: ew-resize; z-index: 20;
     touch-action: none;
-    display: none; /* shown only in split */
+    display: none;
   }
   #divider-line {
     position: absolute; top: 0; bottom: 0;
@@ -83,7 +81,6 @@
   }
   #divider-pill svg { display: block; }
 
-  /* ── SBS gutter ── */
   #sbs-gutter {
     display: none;
     position: absolute; top: 0; bottom: 0; left: 50%;
@@ -92,7 +89,6 @@
     z-index: 5; pointer-events: none;
   }
 
-  /* ── Labels ── */
   .label {
     position: absolute; top: 12px; z-index: 15;
     background: rgba(0,0,0,.55); color: #fff;
@@ -102,7 +98,6 @@
   #label-before { left: 12px; }
   #label-after  { right: 12px; }
 
-  /* ── Mode toggle ── */
   #toggle {
     position: absolute; bottom: 16px; left: 50%;
     transform: translateX(-50%);
@@ -145,7 +140,6 @@ maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
 const _p = new URLSearchParams(window.location.search);
 
 const PRESETS = {
-  'satellite': null, // alias, filled below
   'osm': {
     version: 8,
     sources: { s: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19, attribution: '© OpenStreetMap' }},
@@ -190,27 +184,23 @@ function inferType(val, explicit) {
   if (PRESETS[val]) return 'preset';
   if (val.trim().startsWith('{')) return 'style';
   if (val.includes('{z}') && val.includes('{x}')) return 'tms';
-  return 'cog'; // default: treat as COG path
+  return 'cog';
 }
 
 function buildStyle(val, type) {
   switch (type) {
-    case 'preset':
-      return PRESETS[val] || PRESETS['osm'];
-    case 'style':
-      try { return JSON.parse(val); } catch(e) { console.error('Invalid style JSON', e); return PRESETS['osm']; }
-    case 'tms':
-      return { version: 8, sources: { s: { type: 'raster', tiles: [val], tileSize: 256 }}, layers: [{ id: 'l', type: 'raster', source: 's' }]};
+    case 'preset': return PRESETS[val] || PRESETS['osm'];
+    case 'style':  try { return JSON.parse(val); } catch(e) { return PRESETS['osm']; }
+    case 'tms':    return { version: 8, sources: { s: { type: 'raster', tiles: [val], tileSize: 256 }}, layers: [{ id: 'l', type: 'raster', source: 's' }]};
     case 'cog':
-    default:
-      return { version: 8, sources: { cog: { type: 'raster', url: 'cog://' + val, tileSize: 256 }}, layers: [{ id: 'cog', type: 'raster', source: 'cog' }]};
+    default:       return { version: 8, sources: { cog: { type: 'raster', url: 'cog://' + val, tileSize: 256 }}, layers: [{ id: 'cog', type: 'raster', source: 'cog' }]};
   }
 }
 
-const SRC1  = _p.get('src1')   || './IMG_PHR1A_PMS_202603120816196-uint8-3857.cog.tif';
-const SRC2  = _p.get('src2')   || './Tyre-before-ESRI-50cm-3857.cog.tif';
-const TYPE1 = inferType(SRC1,  _p.get('type1'));
-const TYPE2 = inferType(SRC2,  _p.get('type2'));
+const SRC1   = _p.get('src1')   || './IMG_PHR1A_PMS_202603120816196-uint8-3857.cog.tif';
+const SRC2   = _p.get('src2')   || './Tyre-before-ESRI-50cm-3857.cog.tif';
+const TYPE1  = inferType(SRC1, _p.get('type1'));
+const TYPE2  = inferType(SRC2, _p.get('type2'));
 const LABEL1 = _p.get('label1') || 'Before';
 const LABEL2 = _p.get('label2') || 'After';
 
@@ -221,15 +211,13 @@ const STYLE_BEFORE = buildStyle(SRC1, TYPE1);
 const STYLE_AFTER  = buildStyle(SRC2, TYPE2);
 
 // ── Maps ──────────────────────────────────────────────────────────────────────
-// backgroundColor:black so each panel only shows its own source on its side
-const MAP_OPTS = { center: [0,0], zoom: 1, maxZoom: 24, pixelRatio: 1, attributionControl: false, style: { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#000' }}]}};
+// Init with black background so each panel shows only its own source.
+const BG_STYLE = { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#000' }}]};
+const MAP_OPTS = { center: [0,0], zoom: 1, maxZoom: 24, pixelRatio: 1, attributionControl: false, style: BG_STYLE };
 
 const mapBefore = new maplibregl.Map({ container: 'map-before', ...MAP_OPTS });
 const mapAfter  = new maplibregl.Map({ container: 'map-after',  ...MAP_OPTS });
 
-// Set real styles after construction so background layer is always underneath
-// Use 'load' (blank style ready) to swap in real style, then 'style.load'
-// for subsequent fires. Track whether real style has been set per map.
 mapBefore.once('load', () => mapBefore.setStyle(STYLE_BEFORE));
 mapAfter.once('load',  () => mapAfter.setStyle(STYLE_AFTER));
 
@@ -243,26 +231,24 @@ function sync(src, dst) {
 mapBefore.on('move', () => sync(mapBefore, mapAfter));
 mapAfter.on('move',  () => sync(mapAfter,  mapBefore));
 
-// ── Autozoom + bounds on load ─────────────────────────────────────────────────
-// We listen for 'styledata' (fires after each setStyle resolves sources) rather
-// than 'load' (which fires twice: once for the blank bg style, once for setStyle).
-// Only COG sources expose .bounds — TMS/preset sources won't, that's fine:
-// we union whatever bounds we find and fitBounds accordingly.
+// ── Autozoom + bounds ─────────────────────────────────────────────────────────
+// Only COG sources expose .bounds on the MapLibre source object.
+// TMS/preset sources cover the whole world — ignore their bounds.
+// If at least one source is COG: union the COG bounds, fitBounds + setMaxBounds.
+// If no COG source: skip bounds, user navigates freely.
 let styleLoaded = 0;
 function onStyleReady(map) {
   map.resize();
   if (++styleLoaded < 2) return;
 
-  const idBefore = Object.keys(STYLE_BEFORE.sources || {})[0];
-  const idAfter  = Object.keys(STYLE_AFTER.sources  || {})[0];
-  const bB = idBefore ? mapBefore.getSource(idBefore)?.bounds : null;
-  const bA = idAfter  ? mapAfter.getSource(idAfter)?.bounds   : null;
+  const bB = TYPE1 === 'cog' ? mapBefore.getSource(Object.keys(STYLE_BEFORE.sources)[0])?.bounds : null;
+  const bA = TYPE2 === 'cog' ? mapAfter.getSource(Object.keys(STYLE_AFTER.sources)[0])?.bounds   : null;
 
-  console.log('bounds before:', bB);
-  console.log('bounds after: ', bA);
+  console.log('cog bounds before:', bB);
+  console.log('cog bounds after: ', bA);
 
   const available = [bB, bA].filter(Boolean);
-  if (available.length === 0) return; // no COG bounds — user must navigate manually
+  if (available.length === 0) return;
 
   const union = available.reduce((acc, b) => [
     Math.min(acc[0], b[0]), Math.min(acc[1], b[1]),
@@ -276,17 +262,17 @@ function onStyleReady(map) {
   });
 }
 
-// 'style.load' fires for blank style AND real style — skip the first (blank) fire
+// style.load fires twice per map (blank bg + real style) — skip the first
 let _beforeStyleSet = false, _afterStyleSet = false;
 mapBefore.on('style.load', () => { if (!_beforeStyleSet) { _beforeStyleSet = true; return; } onStyleReady(mapBefore); });
 mapAfter.on('style.load',  () => { if (!_afterStyleSet)  { _afterStyleSet  = true; return; } onStyleReady(mapAfter);  });
 
 // ── Layout helpers ────────────────────────────────────────────────────────────
-const stage    = document.getElementById('stage');
-const divider  = document.getElementById('divider');
-const afterEl  = document.getElementById('map-after');
-const beforeEl = document.getElementById('map-before');
-const gutter   = document.getElementById('sbs-gutter');
+const stage      = document.getElementById('stage');
+const divider    = document.getElementById('divider');
+const afterEl    = document.getElementById('map-after');
+const beforeEl   = document.getElementById('map-before');
+const gutter     = document.getElementById('sbs-gutter');
 const labelAfter = document.getElementById('label-after');
 
 let sliderPct = 50;
@@ -303,7 +289,6 @@ function setMode(m) {
   mode = m;
   const isSplit = m === 'split';
 
-  // Reset map container styles
   [beforeEl, afterEl].forEach(el => {
     el.style.position = 'absolute';
     el.style.inset    = '0';
@@ -317,7 +302,6 @@ function setMode(m) {
     gutter.style.display   = 'none';
     labelAfter.style.right = '12px'; labelAfter.style.left = '';
   } else {
-    // Side by side: before = left half, after = right half, no clipping
     beforeEl.style.width   = '50%';
     afterEl.style.left     = '50%';
     afterEl.style.width    = '50%';
@@ -348,7 +332,6 @@ window.addEventListener('mousemove', e => { if (dragging && mode === 'split') mo
 window.addEventListener('touchmove', e => { if (dragging && mode === 'split') moveFromClient(e.touches[0].clientX); }, { passive: true });
 window.addEventListener('keydown', e => {
   if (mode !== 'split') return;
-  const rect = stage.getBoundingClientRect();
   if (e.key === 'ArrowLeft')  applySlider(sliderPct - 2);
   if (e.key === 'ArrowRight') applySlider(sliderPct + 2);
 });
