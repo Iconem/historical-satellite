@@ -14,7 +14,7 @@ function LinksSection(props: { mapRef: any }) {
       {" "}
       Useful:{" "}
       <Link
-        href={`/histogram-matching-js.html`}
+        href={`/tools-apps/histogram-matching-js.html`}
         target={"_blank"}
       >
         Histogram Matching JS

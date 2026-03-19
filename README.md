@@ -26,8 +26,9 @@ Simple app made to select through Historical Basemaps like Planet monthly mosaic
 
 - mapbox-gl-js [feature request](https://github.com/mapbox/mapbox-gl-js/issues/12707) to `Avoid tile popping/flicker on RasterTileSource setTiles` and associated [react-map-gl issue](https://github.com/visgl/react-map-gl/issues/1876)
 
-## Histogram Matching Helper
-Simple app at [histogram-matching-js](https://historical-satellite.iconem.com/histogram-matching-js.html) made to match source and target histograms, display histograms and matched raster, and allow download, as geotiff if source is geotiff. 
+## Tools apps Helpers
+ - Histogram-matching: Simple app at [histogram-matching-js](https://historical-satellite.iconem.com/tools-apps/histogram-matching-js.html) made to match source and target histograms, display histograms and matched raster, and allow download, as geotiff if source is geotiff. 
+ - maplibre-compare [histogram-matching-js](https://historical-satellite.iconem.com/tools-apps/comparison-maplibre-split.html)
 
 
 # Similar work
