@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- iframe embedding: this page sets no X-Frame-Options and no frame-ancestors CSP,
+       so it can be embedded freely. Host server must also not send X-Frame-Options headers.
+       Recommended iframe tag:
+         <iframe src="compare-osd.html?cog1=./a.tif&cog2=./b.tif"
+                 style="width:100%;height:600px;border:none;"
+                 allow="cross-origin-isolated">
+         </iframe>
+       If COGs are on a different origin, that server needs CORS headers:
+         Access-Control-Allow-Origin: *  (or your domain)
+  -->
+<meta charset="utf-8" />
+<title>OSD Compare</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
+<script src="https://unpkg.com/geotiff-tilesource/dist/geotiff-tilesource.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #111; overflow: hidden; font-family: sans-serif; }
+  #stage { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+
+  #loading {
+    position: absolute; inset: 0; z-index: 50;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px;
+    background: #111; color: #aaa; font-size: 13px; letter-spacing: .05em;
+    transition: opacity .3s;
+  }
+  #loading.hidden { opacity: 0; pointer-events: none; }
+  #loading-detail { font-size: 11px; color: #666; font-family: monospace; }
+
+  #handle {
+    position: absolute; left: 50%; top: 0; bottom: 0;
+    width: 44px; transform: translateX(-50%);
+    cursor: ew-resize; z-index: 20; touch-action: none;
+  }
+  #handle::before {
+    content: '';
+    position: absolute; left: 50%; top: 0; bottom: 0; width: 2px;
+    background: rgba(255,255,255,0.85); transform: translateX(-50%);
+    pointer-events: none;
+  }
+  #handle-pill {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 0 5px rgba(0,0,0,.18), 0 2px 10px rgba(0,0,0,.5);
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  #handle-pill svg { display: block; }
+
+  .label {
+    position: absolute; top: 12px; z-index: 15;
+    background: rgba(0,0,0,.55); color: #fff;
+    font: 600 12px/1 sans-serif; letter-spacing: .05em;
+    padding: 4px 10px; border-radius: 4px; pointer-events: none;
+  }
+  #label-before { left: 12px; }
+  #label-after  { right: 12px; }
+
+  #sbs-left, #sbs-right {
+    display: none; position: absolute;
+    top: 0; bottom: 0; width: 50%; height: 100%;
+  }
+  #sbs-left  { left: 0; }
+  #sbs-right { left: 50%; }
+  #sbs-gutter {
+    display: none; position: absolute;
+    top: 0; bottom: 0; left: 50%; width: 2px;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,.35);
+    z-index: 5; pointer-events: none;
+  }
+
+  #toggle {
+    position: absolute; bottom: 16px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 30; display: flex;
+    background: rgba(0,0,0,.6); border-radius: 6px; overflow: hidden;
+  }
+  #toggle button {
+    padding: 6px 14px; border: none; background: transparent; color: #aaa;
+    font: 600 11px/1 sans-serif; letter-spacing: .05em;
+    cursor: pointer; transition: background .15s, color .15s;
+  }
+  #toggle button.active { background: #fff; color: #111; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="loading">
+    <span id="loading-msg">Loading COG sources…</span>
+    <span id="loading-detail"></span>
+  </div>
+
+  <div id="split-viewer" style="position:absolute;inset:0;width:100%;height:100%;"></div>
+
+  <div id="handle">
+    <div id="handle-pill">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 32 32">
+        <path fill="#555" d="M13 21l-5-5 5-5m6 0l5 5-5 5"/>
+      </svg>
+    </div>
+  </div>
+
+  <div id="sbs-left"></div>
+  <div id="sbs-right"></div>
+  <div id="sbs-gutter"></div>
+
+  <span class="label" id="label-before"></span>
+  <span class="label" id="label-after"></span>
+
+  <!-- 
+  <div id="toggle">
+    <button id="btn-split" class="active" onclick="setMode('split')">Split</button>
+    <button id="btn-sbs"               onclick="setMode('sbs')">Side by side</button>
+  </div>
+  -->
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+// ── URL params ────────────────────────────────────────────────────────────────
+// Embed via iframe: <iframe src="compare-osd.html?cog1=./a.tif&cog2=./b.tif&label1=Before&label2=After">
+// cog1, cog2: URL or relative path to COG (or any OSD tileSource URL)
+// label1, label2: optional display labels
+const _p = new URLSearchParams(window.location.search);
+const COG_BEFORE = _p.get('cog1')   || './Tyre-before-ESRI-50cm-3857.cog.tif';
+const COG_AFTER  = _p.get('cog2')   || './IMG_PHR1A_PMS_202603120816196-uint8-3857.cog.tif';
+const LABEL1     = _p.get('label1') || 'Before';
+const LABEL2     = _p.get('label2') || 'After';
+
+document.getElementById('label-before').textContent = LABEL1;
+document.getElementById('label-after').textContent  = LABEL2;
+
+const OSD_DEFAULTS = {
+  prefixUrl: 'https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/',
+  showNavigationControl: false,
+  showSequenceControl: false,
+  animationTime: 0.3,   // snappy — was 1.2
+  springStiffness: 15,  // stiffer spring — was 6.5
+  blendTime: 0.1,
+  constrainDuringPan: false,
+  maxZoomPixelRatio: 8,
+  visibilityRatio: 0.2,
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let splitViewer = null;
+let imgBefore   = null;
+let imgAfter    = null;
+let sbsLeft     = null;
+let sbsRight    = null;
+let sbsSyncing  = false;
+let sliderX     = window.innerWidth / 2;
+let mode        = null;
+
+// Tile sources resolved from COGs
+let tsBefore = null;
+let tsAfter  = null;
+
+// Geo extents in CRS units (used to align images)
+let extBefore = null; // {minX, minY, maxX, maxY, width, height} in CRS
+let extAfter  = null;
+
+const leftRect  = new OpenSeadragon.Rect(0, 0, 0, 0);
+const rightRect = new OpenSeadragon.Rect(0, 0, 0, 0);
+
+// ── Load ──────────────────────────────────────────────────────────────────────
+// GeoTIFF.js is bundled inside geotiff-tilesource UMD and exposed as window.GeoTIFF.
+// We use it directly to read the full geotransform (origin = NW corner, resolution).
+// This is more reliable than trying to fish internals out of GeoTIFFTileSource.
+async function loadAndInit() {
+  const detail = document.getElementById('loading-detail');
+  try {
+    detail.textContent = 'fetching headers…';
+
+    // Load tile sources AND raw geotiff images in parallel
+    const [arrB, arrA, rawB, rawA] = await Promise.all([
+      OpenSeadragon.GeoTIFFTileSource.getAllTileSources(COG_BEFORE, { logLatency: false }),
+      OpenSeadragon.GeoTIFFTileSource.getAllTileSources(COG_AFTER,  { logLatency: false }),
+      GeoTIFF.fromUrl(COG_BEFORE).then(t => t.getImage(0)),
+      GeoTIFF.fromUrl(COG_AFTER).then(t  => t.getImage(0)),
+    ]);
+
+    tsBefore = arrB[0];
+    tsAfter  = arrA[0];
+
+    extBefore = geoExtent(rawB);
+    extAfter  = geoExtent(rawA);
+
+    console.log('extBefore', extBefore);
+    console.log('extAfter',  extAfter);
+
+    detail.textContent = `before: ${fmtExt(extBefore)} | after: ${fmtExt(extAfter)}`;
+
+    document.getElementById('loading').classList.add('hidden');
+    setMode('split');
+
+  } catch (err) {
+    document.getElementById('loading-msg').textContent = 'Error: ' + err.message;
+    detail.textContent = '';
+    console.error(err);
+  }
+}
+
+// Read geo extent from a raw geotiff.js GeoTIFFImage.
+// getOrigin() → [x, y] = NW corner (top-left in CRS, i.e. minX, maxY)
+// getResolution() → [xRes, yRes] where yRes is NEGATIVE for north-up rasters
+// getBoundingBox() → [minX, minY, maxX, maxY]
+function geoExtent(img) {
+  const [minX, minY, maxX, maxY] = img.getBoundingBox();
+  const [ox, oy]  = img.getOrigin();    // NW corner: ox=minX, oy=maxY
+  const [rx, ry]  = img.getResolution(); // xRes>0, yRes<0 for north-up
+  const w = img.getWidth();
+  const h = img.getHeight();
+  return {
+    // bbox
+    minX, minY, maxX, maxY,
+    // NW corner (geotransform origin)
+    originX: ox,  // = minX
+    originY: oy,  // = maxY
+    // pixel size in CRS units (ry is negative)
+    resX: rx,
+    resY: ry,
+    // CRS extent
+    width:  maxX - minX,
+    height: maxY - minY,
+    // pixel dimensions
+    pixW: w,
+    pixH: h,
+  };
+}
+
+function fmtExt(e) {
+  return `[${e.minX.toFixed(1)},${e.minY.toFixed(1)},${e.maxX.toFixed(1)},${e.maxY.toFixed(1)}] ${e.pixW}×${e.pixH}px res=${e.resX.toFixed(3)}`;
+}
+
+// ── Compute addTiledImage placement from geo extents ─────────────────────────
+// OSD world space:
+//   "before" is placed at default: x=0, y=0, width=1
+//   Its NW corner (originX, originY) maps to OSD (0, 0)
+//   Its SE corner maps to OSD (1, pixH/pixW)  [aspect-correct]
+//   One CRS unit = 1 / eBefore.width  OSD world units  (isotropic)
+//
+// For "after":
+//   NW corner in CRS = (eAfter.originX, eAfter.originY)
+//   → OSD x = (eAfter.originX - eBefore.originX) / eBefore.width
+//   → OSD y = (eBefore.originY - eAfter.originY) / eBefore.width  [Y-flip]
+//   → OSD width = eAfter.width / eBefore.width
+//
+// This correctly handles:
+//   - different GSD (pixel sizes)
+//   - different extents / footprints
+//   - different pixel counts
+//   - any offset between the two NW corners
+function computePlacement(eBefore, eAfter) {
+  const scale = 1.0 / eBefore.width;  // OSD world units per CRS unit
+
+  const x     = (eAfter.originX - eBefore.originX) * scale;
+  const y     = (eBefore.originY - eAfter.originY) * scale;  // Y-flip: CRS Y up, OSD Y down
+  const width = eAfter.width * scale;
+
+  console.log(`placement: x=${x.toFixed(4)} y=${y.toFixed(4)} width=${width.toFixed(4)}`);
+  return { x, y, width };
+}
+
+// ── Split viewer (Moskvin single-viewer setClip) ──────────────────────────────
+//
+// Key sequencing to avoid getTileAtPoint assertion:
+//   1. Add imgBefore only. Wait for it to open (contentSize known).
+//   2. THEN add imgAfter. In its success callback, setClip to full image
+//      synchronously — this runs before OSD's next rAF draw, so the draw loop
+//      always sees a valid clip rect on imgAfter from frame 1.
+//   3. Wire animation handlers. Done.
+function initSplitViewer() {
+  if (splitViewer) return;
+
+  splitViewer = OpenSeadragon({
+    element: document.getElementById('split-viewer'),
+    ...OSD_DEFAULTS,
+    zoomPerClick: 2,
+  });
+
+  // Step 1: add imgBefore, wait for open
+  splitViewer.addTiledImage({
+    tileSource: tsBefore,
+    success: e => {
+      imgBefore = e.item;
+      // Wait for contentSize to be populated (GeoTIFF is async)
+      waitForBefore();
+    }
+  });
+}
+
+function waitForBefore() {
+  const sz = imgBefore.getContentSize();
+  if (sz.x === 0) { setTimeout(waitForBefore, 30); return; }
+  // Step 2: now add imgAfter with geo placement
+  addAfterImage();
+}
+
+function addAfterImage() {
+  const placement = computePlacement(extBefore, extAfter);
+  const afterOpts = placement
+    ? { tileSource: tsAfter, x: placement.x, y: placement.y, width: placement.width }
+    : { tileSource: tsAfter };
+
+  splitViewer.addTiledImage({
+    ...afterOpts,
+    success: e => {
+      imgAfter = e.item;
+      // Wait for imgAfter contentSize, then set full-image clip synchronously
+      // before OSD's draw loop can request tiles outside [0,0,w,h]
+      waitForAfter();
+    }
+  });
+}
+
+function waitForAfter() {
+  const sz = imgAfter.getContentSize();
+  if (sz.x === 0) { setTimeout(waitForAfter, 30); return; }
+  // Set full-image clip immediately — this is synchronous and runs before
+  // the next rAF, so OSD never draws imgAfter without a valid clip.
+  imgAfter.setClip(new OpenSeadragon.Rect(0, 0, sz.x, sz.y));
+  // Step 3: wire handlers
+  splitViewer.addHandler('animation',       clipFromViewer);
+  splitViewer.addHandler('animation-start', clipFromViewer);
+  clipFromViewer();
+}
+
+function clipFromViewer() {
+  if (!imgBefore || !imgAfter) return;
+  const lsz = imgBefore.getContentSize();
+  const rsz = imgAfter.getContentSize();
+  if (lsz.x === 0 || rsz.x === 0) return;
+  const pt  = new OpenSeadragon.Point(sliderX, splitViewer.element.clientHeight / 2);
+  const lox = imgBefore.viewerElementToImageCoordinates(pt).x;
+  const rox = imgAfter.viewerElementToImageCoordinates(pt).x;
+  doClip(lox, rox, lsz, rsz);
+}
+
+function doClip(lox, rox, lsz, rsz) {
+  lsz = lsz || imgBefore.getContentSize();
+  rsz = rsz || imgAfter.getContentSize();
+
+  leftRect.x = 0; leftRect.y = 0; leftRect.height = lsz.y;
+  leftRect.width = Math.max(0, Math.min(lox, lsz.x));
+
+  rightRect.y = 0; rightRect.height = rsz.y;
+  rightRect.x     = Math.max(0, Math.min(rox, rsz.x));
+  rightRect.width = Math.max(0, rsz.x - rightRect.x);
+
+  imgBefore.setClip(leftRect);
+  imgAfter.setClip(rightRect);
+}
+
+// ── SBS viewers ───────────────────────────────────────────────────────────────
+function initSbsViewers() {
+  if (sbsLeft) return;
+
+  const elLeft  = document.getElementById('sbs-left');
+  const elRight = document.getElementById('sbs-right');
+  void elLeft.offsetWidth;   // flush layout so OSD reads real dimensions
+  void elRight.offsetWidth;
+
+  sbsLeft  = OpenSeadragon({ element: elLeft,  tileSources: tsBefore, ...OSD_DEFAULTS });
+  sbsRight = OpenSeadragon({ element: elRight, tileSources: tsAfter,  ...OSD_DEFAULTS });
+
+  // Attach sync handlers only once both viewers have content loaded.
+  // 'open' fires too early (before contentSize is set); use 'tile-loaded'
+  // for the first tile, or just guard inside the handler.
+  // Simplest safe approach: add handlers immediately but guard on world item count.
+  sbsLeft.addHandler('animation',  syncSbsLR);
+  sbsRight.addHandler('animation', syncSbsRL);
+}
+
+function sbsReady(v) {
+  return v && v.viewport && v.world && v.world.getItemCount() > 0;
+}
+
+// SBS sync: convert viewport center through CRS so both viewers pan to the
+// same geographic position even when the two COGs have different pixel sizes.
+// world [0,1] in each viewer maps to that viewer's COG extent.
+// center in viewer A → fraction of A's world → CRS coords → fraction of B's world → panTo B
+function syncSbs(src, srcExt, dst, dstExt) {
+  if (sbsSyncing || !sbsReady(src) || !sbsReady(dst)) return;
+  sbsSyncing = true;
+
+  const srcZoom   = src.viewport.getZoom(true);
+  const srcCenter = src.viewport.getCenter(true); // viewport coords [0..1 world]
+
+  if (srcExt && dstExt) {
+    // srcCenter.x is in [0,1] world → fraction of src CRS width
+    const crsX = srcExt.minX + srcCenter.x * srcExt.width;
+    const crsY = srcExt.maxY - srcCenter.y * srcExt.width; // Y-flip (OSD y down, CRS y up)
+    const dstX = (crsX - dstExt.minX) / dstExt.width;
+    const dstY = (dstExt.maxY - crsY) / dstExt.width;
+    // zoom: scale by ratio of CRS widths so apparent zoom matches
+    const zoomScale = srcExt.width / dstExt.width;
+    dst.viewport.zoomTo(srcZoom * zoomScale, null, true);
+    dst.viewport.panTo(new OpenSeadragon.Point(dstX, dstY), true);
+  } else {
+    // No geo metadata — direct copy
+    dst.viewport.zoomTo(srcZoom, null, true);
+    dst.viewport.panTo(srcCenter, true);
+  }
+
+  sbsSyncing = false;
+}
+
+function syncSbsLR() { syncSbs(sbsLeft,  extBefore, sbsRight, extAfter);  }
+function syncSbsRL() { syncSbs(sbsRight, extAfter,  sbsLeft,  extBefore); }
+
+// ── Mode switching ────────────────────────────────────────────────────────────
+function setMode(m) {
+  if (mode === m) return;
+  mode = m;
+  const isSplit = m === 'split';
+
+  document.getElementById('split-viewer').style.display = isSplit ? 'block' : 'none';
+  document.getElementById('handle').style.display       = isSplit ? 'block' : 'none';
+  document.getElementById('sbs-left').style.display     = isSplit ? 'none'  : 'block';
+  document.getElementById('sbs-right').style.display    = isSplit ? 'none'  : 'block';
+  document.getElementById('sbs-gutter').style.display   = isSplit ? 'none'  : 'block';
+
+  const la = document.getElementById('label-after');
+  if (isSplit) { la.style.right = '12px'; la.style.left = ''; }
+  else         { la.style.right = '12px'; la.style.left = ''; }
+
+  document.getElementById('btn-split').classList.toggle('active', isSplit);
+  document.getElementById('btn-sbs').classList.toggle('active', !isSplit);
+
+  if (isSplit) {
+    initSplitViewer();
+  } else {
+    initSbsViewers(); // resize happens inside initSbsViewers after 'open'
+  }
+}
+
+// ── Slider ────────────────────────────────────────────────────────────────────
+const stage  = document.getElementById('stage');
+const handle = document.getElementById('handle');
+
+function moveSlider(clientX) {
+  const rect = stage.getBoundingClientRect();
+  sliderX = Math.min(Math.max(clientX - rect.left, 10), rect.width - 10);
+  handle.style.left = (sliderX / rect.width * 100) + '%';
+  if (splitViewer) clipFromViewer();
+}
+
+let dragging = false;
+handle.addEventListener('mousedown',  e => { dragging = true; e.preventDefault(); });
+handle.addEventListener('touchstart', () => { dragging = true; }, { passive: true });
+window.addEventListener('mouseup',   () => dragging = false);
+window.addEventListener('touchend',  () => dragging = false);
+window.addEventListener('mousemove', e => { if (dragging) moveSlider(e.clientX); });
+window.addEventListener('touchmove', e => { if (dragging) moveSlider(e.touches[0].clientX); }, { passive: true });
+window.addEventListener('keydown', e => {
+  if (mode !== 'split') return;
+  if (e.key === 'ArrowLeft')  moveSlider(sliderX - 10 + stage.getBoundingClientRect().left);
+  if (e.key === 'ArrowRight') moveSlider(sliderX + 10 + stage.getBoundingClientRect().left);
+});
+
+// ── Go ────────────────────────────────────────────────────────────────────────
+loadAndInit();
+</script>
+</body>
+</html>
