@@ -166,7 +166,9 @@ const basemapsTmsSources: any = {
     maxzoom: 22,
   },
   [BasemapsIds.Heremaps]: {
-    url: "https://2.aerial.maps.ls.hereapi.com/maptile/2.1/maptile/newest/satellite.day/{z}/{x}/{y}/256/png8?app_id=eAdkWGYRoc4RfxVo0Z4B&app_code=TrLJuXVK62IQk0vuXFzaig&lg=eng",
+    // url: "https://2.aerial.maps.ls.hereapi.com/maptile/2.1/maptile/newest/satellite.day/{z}/{x}/{y}/256/png8?app_id=eAdkWGYRoc4RfxVo0Z4B&app_code=TrLJuXVK62IQk0vuXFzaig&lg=eng",
+    // migrate v2 to v3 readme https://www.here.com/docs/bundle/raster-tile-api-migration-guide/page/README.html
+    url: "https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/jpeg?style=satellite.day&apiKey=eAdkWGYRoc4RfxVo0Z4B&app_code=TrLJuXVK62IQk0vuXFzaig",
     maxzoom: 20,
   },
   // Apple requires a changing accessKey
