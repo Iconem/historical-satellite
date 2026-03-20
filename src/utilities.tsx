@@ -35,6 +35,7 @@ const formatDate = (date: Date) => format(date, "yyyy-MM");
 // PlanetMonthly URLS
 const PLANET_BASEMAP_API_KEY = import.meta.env.VITE_PLANET_BASEMAP_API_KEY;
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const HEREMAPS_APIKEY = import.meta.env.VITE_HEREMAPS_APIKEY
 
 // Set min/max dates for planet monthly basemaps on component mount
 export const MIN_PLANET_DATE = new Date("2016-01-01T00:00:00.000");
@@ -168,7 +169,7 @@ const basemapsTmsSources: any = {
   [BasemapsIds.Heremaps]: {
     // url: "https://2.aerial.maps.ls.hereapi.com/maptile/2.1/maptile/newest/satellite.day/{z}/{x}/{y}/256/png8?app_id=eAdkWGYRoc4RfxVo0Z4B&app_code=TrLJuXVK62IQk0vuXFzaig&lg=eng",
     // migrate v2 to v3 readme https://www.here.com/docs/bundle/raster-tile-api-migration-guide/page/README.html
-    url: `https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png8?style=satellite.day&apiKey=${import.meta.env.VITE_HEREMAPS_APIKEY}`,
+    url: `https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png8?style=satellite.day&apiKey=${HEREMAPS_APIKEY}`,
     maxzoom: 20,
   },
   // Apple requires a changing accessKey
