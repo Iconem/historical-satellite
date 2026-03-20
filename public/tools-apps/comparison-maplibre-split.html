@@ -13,30 +13,20 @@
 
          
 // ── Source resolution ─────────────────────────────────────────────────────────
-// URL params:
-//   src1 / src2      — the source value (COG path, TMS url template, JSON style, preset id)
-//   type1 / type2    — optional explicit type: 'cog' | 'tms' | 'style' | 'preset'
-//                      if omitted, type is inferred from the value
-//   label1 / label2  — display labels (default: Before / After)
-//
-// Presets (type=preset or auto-detected):
-//   osm, satellite, satellite-esri, satellite-bing, satellite-google, hybrid-google, satellite-here, topo
-//
-// Examples:
-//   comparison-maplibre-split.html?src1=./before.tif&src2=./after.tif
-//   ?src1=satellite&src2=./my.cog.tif&label1=Satellite&label2=My COG
-//   ?src1=osm&src2=satellite&type1=preset&type2=preset
-//   ?src1=https://example.com/tiles/{z}/{x}/{y}.png&type1=tms&src2=./my.tif
-//   ?src1={"version":8,"sources":{...},"layers":[...]}&type1=style
-// 
-// iframe embed:
-// <iframe
-//   src="compare-maplibre.html?cog1=./before.tif&cog2=./after.tif&label1=Before&label2=After"
-//   style="width:100%; height:600px; border:none;"
-//   allow="cross-origin-isolated">
-// </iframe>
-
-
+  <!-- iframe embedding — no X-Frame-Options set, embed freely.
+       URL params:
+         src1 / src2      COG path, TMS template, preset id, or JSON style string
+         type1 / type2    'cog' | 'tms' | 'style' | 'preset'  (auto-inferred if omitted)
+         label1 / label2  display labels (default: Before / After)
+         bounds           'auto' (fit to COG extents) | 'none' | '[minLng,minLat,maxLng,maxLat]'
+                          default: 'auto'
+       Presets: osm · satellite · satellite-esri · satellite-bing · satellite-google · satellite-here · hybrid-google · topo
+       Examples:
+         ?src1=./before.tif&src2=./after.tif
+         ?src1=./before.tif&src2=satellite-google&label1=2019&label2=Satellite
+         ?src1=https://sentinel-cogs.s3.us-west-2.amazonaws.com/.../TCI.tif&src2=satellite-google
+         ?src1=osm&src2=satellite&bounds=none
+         ?src1=./a.tif&src2=./b.tif&bounds=[35.18,33.26,35.22,33.28]
   -->
 <meta charset="utf-8" />
 <title>MapLibre Compare</title>
@@ -44,37 +34,28 @@
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/@geomatico/maplibre-cog-protocol@0.5.0/dist/index.js"></script>
+<!-- geotiff.js for reading COG extents directly from headers -->
+<script src="https://unpkg.com/geotiff@2.1.3/dist-browser/geotiff.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #111; overflow: hidden; }
-
-  #stage {
-    position: relative;
-    width: 100vw; height: 100vh;
-  }
-
-  .map { position: absolute; inset: 0; }
+  #stage { position: relative; width: 100vw; height: 100vh; }
+  .map { position: absolute; inset: 0; background-color: black; }
 
   #divider {
     position: absolute; top: 0; bottom: 0; left: 50%;
-    width: 44px;
-    transform: translateX(-50%);
-    cursor: ew-resize; z-index: 20;
-    touch-action: none;
-    display: none;
+    width: 44px; transform: translateX(-50%);
+    cursor: ew-resize; z-index: 20; touch-action: none; display: none;
   }
   #divider-line {
-    position: absolute; top: 0; bottom: 0;
-    left: 50%; width: 2px;
-    background: rgba(255,255,255,0.85);
-    transform: translateX(-50%);
+    position: absolute; top: 0; bottom: 0; left: 50%; width: 2px;
+    background: rgba(255,255,255,0.85); transform: translateX(-50%);
     pointer-events: none;
   }
   #divider-pill {
     position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 40px; height: 40px;
-    background: #fff; border-radius: 50%;
+    width: 40px; height: 40px; background: #fff; border-radius: 50%;
     box-shadow: 0 0 0 5px rgba(0,0,0,.18), 0 2px 10px rgba(0,0,0,.5);
     display: flex; align-items: center; justify-content: center;
     pointer-events: none;
@@ -82,11 +63,9 @@
   #divider-pill svg { display: block; }
 
   #sbs-gutter {
-    display: none;
-    position: absolute; top: 0; bottom: 0; left: 50%;
+    display: none; position: absolute; top: 0; bottom: 0; left: 50%;
     width: 2px; transform: translateX(-50%);
-    background: rgba(255,255,255,.35);
-    z-index: 5; pointer-events: none;
+    background: rgba(255,255,255,.35); z-index: 5; pointer-events: none;
   }
 
   .label {
@@ -100,8 +79,7 @@
 
   #toggle {
     position: absolute; bottom: 16px; left: 50%;
-    transform: translateX(-50%);
-    z-index: 30; display: flex;
+    transform: translateX(-50%); z-index: 30; display: flex;
     background: rgba(0,0,0,.6); border-radius: 6px; overflow: hidden;
   }
   #toggle button {
@@ -134,9 +112,9 @@
 </div>
 
 <script>
-// ── COG protocol ──────────────────────────────────────────────────────────────
 maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
 
+// ── URL params ────────────────────────────────────────────────────────────────
 const _p = new URLSearchParams(window.location.search);
 
 const PRESETS = {
@@ -197,12 +175,23 @@ function buildStyle(val, type) {
   }
 }
 
-const SRC1   = _p.get('src1')   || './IMG_PHR1A_PMS_202603120816196-uint8-3857.cog.tif';
-const SRC2   = _p.get('src2')   || './Tyre-before-ESRI-50cm-3857.cog.tif';
+// Default sources:
+//   src1 — Tyre (Lebanon) before imagery, 50cm ESRI, EPSG:3857, hosted on heritagewatch.ai
+//   src2 — Google Hybrid basemap preset
+// Open-data COG examples in EPSG:3857 (for testing):
+//   https://maplibre.org/maplibre-gl-js/docs/assets/cog.tif  (Innsbruck aerial, 3857)
+// Note: Sentinel-2/Landsat public COGs on AWS are in UTM (not 3857) — reproject first with:
+//   gdalwarp -t_srs EPSG:3857 -of COG -co TILING_SCHEME=GoogleMapsCompatible input.tif out.tif
+const SRC1   = _p.get('src1')   || 'https://heritagewatch.ai/wp-content/uploads/2026/03/Tyre-before-ESRI-50cm-3857.cog_.tif';
+const SRC2   = _p.get('src2')   || 'hybrid-google';
 const TYPE1  = inferType(SRC1, _p.get('type1'));
 const TYPE2  = inferType(SRC2, _p.get('type2'));
 const LABEL1 = _p.get('label1') || 'Before';
 const LABEL2 = _p.get('label2') || 'After';
+const BOUNDS_PARAM   = _p.get('bounds')  || 'auto'; // 'auto' | 'none' | 'w,s,e,n' or '[w,s,e,n]'
+// padding: pixels inset from viewport edges when fitting bounds.
+// Single number or top,right,bottom,left  e.g. padding=40 or padding=60,40,60,40
+const PADDING_PARAM  = _p.get('padding') || '40';
 
 document.getElementById('label-before').textContent = LABEL1;
 document.getElementById('label-after').textContent  = LABEL2;
@@ -210,16 +199,84 @@ document.getElementById('label-after').textContent  = LABEL2;
 const STYLE_BEFORE = buildStyle(SRC1, TYPE1);
 const STYLE_AFTER  = buildStyle(SRC2, TYPE2);
 
+// ── Read COG extent via GeoTIFF.js ────────────────────────────────────────────
+// Reads just the COG header (range request) to get the bounding box in WGS84.
+// Returns [minLng, minLat, maxLng, maxLat], or null on failure.
+// Supports EPSG:3857 and EPSG:4326 only — alerts + returns null for other CRS.
+async function cogBboxWgs84(url, label) {
+  let tiff, img;
+  try {
+    tiff = await GeoTIFF.fromUrl(url, { allowFullFile: false });
+  } catch(e) {
+    console.error(`COG unreachable [${label}]: ${url}`, e);
+    return null;
+  }
+
+  try {
+    img = await tiff.getImage(0);
+  } catch(e) {
+    console.error(`COG header read failed [${label}]: ${url}`, e);
+    return null;
+  }
+
+  const bbox    = img.getBoundingBox(); // [minX, minY, maxX, maxY] in image CRS
+  const geoKeys = img.getGeoKeys() || {};
+  const epsg    = geoKeys.ProjectedCSTypeGeoKey || geoKeys.GeographicTypeGeoKey;
+
+  console.log(`COG [${label}] epsg=${epsg} bbox=`, bbox);
+
+  // EPSG:4326 — already in degrees
+  if (epsg === 4326) {
+    return [bbox[0], bbox[1], bbox[2], bbox[3]];
+  }
+
+  // EPSG:3857 — convert Mercator meters → WGS84 degrees
+  if (epsg === 3857 || epsg === 900913) {
+    const toWgs84 = (mx, my) => [
+      mx / 20037508.34 * 180,
+      Math.atan(Math.exp(my / 20037508.34 * Math.PI)) * 360 / Math.PI - 90,
+    ];
+    const [minLng, minLat] = toWgs84(bbox[0], bbox[1]);
+    const [maxLng, maxLat] = toWgs84(bbox[2], bbox[3]);
+    return [minLng, minLat, maxLng, maxLat];
+  }
+
+  // No EPSG tag — heuristic: if values look like degrees, treat as 4326
+  if (!epsg && Math.abs(bbox[0]) <= 180 && Math.abs(bbox[1]) <= 90) {
+    console.warn(`COG [${label}] has no CRS tag, treating as EPSG:4326`);
+    return [bbox[0], bbox[1], bbox[2], bbox[3]];
+  }
+
+  // Unsupported CRS
+  const msg = `COG [${label}] uses unsupported CRS (EPSG:${epsg || 'unknown'}).
+Only EPSG:3857 and EPSG:4326 are supported.
+Reproject with: gdalwarp -t_srs EPSG:3857 -of COG input.tif output.tif`;
+  console.error(msg, 'url:', url, 'bbox:', bbox);
+  window.alert(msg);
+  return null;
+}
+
 // ── Maps ──────────────────────────────────────────────────────────────────────
-// Init with black background so each panel shows only its own source.
-const BG_STYLE = { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#000' }}]};
-const MAP_OPTS = { center: [0,0], zoom: 1, maxZoom: 24, pixelRatio: 1, attributionControl: false, style: BG_STYLE };
+// Both maps start with a black background style.
+// We swap to the real style immediately after construction using setStyle.
+// We DON'T wait for 'load' — setStyle can be called at any time, even before
+// the map has fully initialised, and MapLibre will queue it correctly.
+// We listen for 'style.load' which fires once per setStyle call.
 
-const mapBefore = new maplibregl.Map({ container: 'map-before', ...MAP_OPTS });
-const mapAfter  = new maplibregl.Map({ container: 'map-after',  ...MAP_OPTS });
+const mapBefore = new maplibregl.Map({
+  container: 'map-before', center: [0,0], zoom: 1, maxZoom: 24,
+  pixelRatio: 1, attributionControl: false,
+  style: { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#000' }}]}
+});
+const mapAfter = new maplibregl.Map({
+  container: 'map-after', center: [0,0], zoom: 1, maxZoom: 24,
+  pixelRatio: 1, attributionControl: false,
+  style: { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#000' }}]}
+});
 
-mapBefore.once('load', () => mapBefore.setStyle(STYLE_BEFORE));
-mapAfter.once('load',  () => mapAfter.setStyle(STYLE_AFTER));
+// Error alerts
+mapBefore.on('error', e => { console.error('map-before error', e); window.alert('Error loading src1:\n' + (e.error?.message || e.message || JSON.stringify(e))); });
+mapAfter.on('error',  e => { console.error('map-after error',  e); window.alert('Error loading src2:\n' + (e.error?.message || e.message || JSON.stringify(e))); });
 
 // ── Sync ──────────────────────────────────────────────────────────────────────
 let syncing = false;
@@ -231,41 +288,77 @@ function sync(src, dst) {
 mapBefore.on('move', () => sync(mapBefore, mapAfter));
 mapAfter.on('move',  () => sync(mapAfter,  mapBefore));
 
-// ── Autozoom + bounds ─────────────────────────────────────────────────────────
-// Only COG sources expose .bounds on the MapLibre source object.
-// TMS/preset sources cover the whole world — ignore their bounds.
-// If at least one source is COG: union the COG bounds, fitBounds + setMaxBounds.
-// If no COG source: skip bounds, user navigates freely.
-let styleLoaded = 0;
-function onStyleReady(map) {
-  map.resize();
-  if (++styleLoaded < 2) return;
+// ── Bounds ────────────────────────────────────────────────────────────────────
+function parsePadding(str) {
+  const parts = String(str).split(',').map(Number).filter(isFinite);
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 4) return { top: parts[0], right: parts[1], bottom: parts[2], left: parts[3] };
+  return 40; // fallback
+}
+const PADDING = parsePadding(PADDING_PARAM);
 
-  const bB = TYPE1 === 'cog' ? mapBefore.getSource(Object.keys(STYLE_BEFORE.sources)[0])?.bounds : null;
-  const bA = TYPE2 === 'cog' ? mapAfter.getSource(Object.keys(STYLE_AFTER.sources)[0])?.bounds   : null;
+function applyBounds(llb) {
+  console.log('[bounds] fitBounds + setMaxBounds ->', llb.toArray(), 'padding=', PADDING);
+  [mapBefore, mapAfter].forEach(m => {
+    m.fitBounds(llb, { padding: PADDING, animate: false });
+    m.setMaxBounds(llb);
+  });
+}
 
-  console.log('cog bounds before:', bB);
-  console.log('cog bounds after: ', bA);
+async function computeAndApplyBounds() {
+  console.log('[bounds] computeAndApplyBounds, BOUNDS_PARAM=', BOUNDS_PARAM);
+
+  if (BOUNDS_PARAM === 'none') {
+    console.log('[bounds] none - skipping');
+    return;
+  }
+
+  if (BOUNDS_PARAM !== 'auto') {
+    const str = BOUNDS_PARAM.trim().replace(/^\[|\]$/g, ''); // strip optional brackets
+    const arr = str.split(',').map(Number);
+    console.log('[bounds] explicit parsed arr=', arr);
+    if (arr.length === 4 && arr.every(isFinite)) {
+      applyBounds(new maplibregl.LngLatBounds([arr[0], arr[1]], [arr[2], arr[3]]));
+      return;
+    }
+    console.warn('[bounds] explicit parse failed, falling back to auto. Raw:', BOUNDS_PARAM);
+  }
+
+  console.log('[bounds] auto - TYPE1=', TYPE1, 'TYPE2=', TYPE2);
+  const [bB, bA] = await Promise.all([
+    TYPE1 === 'cog' ? cogBboxWgs84(SRC1, 'src1') : Promise.resolve(null),
+    TYPE2 === 'cog' ? cogBboxWgs84(SRC2, 'src2') : Promise.resolve(null),
+  ]);
+  console.log('[bounds] src1 bbox:', bB, '| src2 bbox:', bA);
 
   const available = [bB, bA].filter(Boolean);
-  if (available.length === 0) return;
+  if (available.length === 0) { console.warn('[bounds] no COG bbox available'); return; }
 
   const union = available.reduce((acc, b) => [
     Math.min(acc[0], b[0]), Math.min(acc[1], b[1]),
     Math.max(acc[2], b[2]), Math.max(acc[3], b[3]),
   ]);
-  const unionBounds = new maplibregl.LngLatBounds([union[0], union[1]], [union[2], union[3]]);
-
-  [mapBefore, mapAfter].forEach(m => {
-    m.fitBounds(unionBounds, { padding: 32, animate: false });
-    m.setMaxBounds(unionBounds);
-  });
+  console.log('[bounds] union=', union);
+  applyBounds(new maplibregl.LngLatBounds([union[0], union[1]], [union[2], union[3]]));
 }
 
-// style.load fires twice per map (blank bg + real style) — skip the first
-let _beforeStyleSet = false, _afterStyleSet = false;
-mapBefore.on('style.load', () => { if (!_beforeStyleSet) { _beforeStyleSet = true; return; } onStyleReady(mapBefore); });
-mapAfter.on('style.load',  () => { if (!_afterStyleSet)  { _afterStyleSet  = true; return; } onStyleReady(mapAfter);  });
+// Wait for both maps to load their real styles, then apply bounds.
+// Use a counter — each map calls onRealStyleLoad once.
+let _readyCount = 0;
+function onRealStyleLoad(map) {
+  map.resize();
+  console.log('[bounds] real style loaded:', map.getContainer().id, '| total ready:', _readyCount + 1);
+  if (++_readyCount < 2) return;
+  computeAndApplyBounds();
+}
+
+// Set real styles now. 'style.load' fires once per setStyle.
+// We register the listener first, then call setStyle.
+mapBefore.once('style.load', () => onRealStyleLoad(mapBefore));
+mapBefore.setStyle(STYLE_BEFORE);
+
+mapAfter.once('style.load', () => onRealStyleLoad(mapAfter));
+mapAfter.setStyle(STYLE_AFTER);
 
 // ── Layout helpers ────────────────────────────────────────────────────────────
 const stage      = document.getElementById('stage');
