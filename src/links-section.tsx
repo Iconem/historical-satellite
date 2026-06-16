@@ -14,6 +14,13 @@ function LinksSection(props: { mapRef: any }) {
       {" "}
       Useful:{" "}
       <Link
+        href={`https://ge-timemachine.prod.heritagewatch.ai/`}
+        target={"_blank"}
+      >
+        Google Earth Time Machine Reversed
+      </Link>
+      {" | "}
+      <Link
         href={`/tools-apps/histogram-matching-js.html`}
         target={"_blank"}
       >
