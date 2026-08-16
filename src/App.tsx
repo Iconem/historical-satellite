@@ -313,6 +313,7 @@ function App() {
             background: "#001624",
             color: "white",
             fontSize: "14px",
+            fontFamily: "Roboto, Helvetica, Arial, sans-serif"
           }}
         >
           <span>
