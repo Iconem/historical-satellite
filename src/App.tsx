@@ -46,10 +46,11 @@ function App() {
     import.meta.env.VITE_PLANET_BASEMAP_API_KEY
   );
   
-  const [betaBannerDismissed, setBetaBannerDismissed] = useLocalStorage(
-    "ui_betaBannerDismissed",
-    false
-  );
+  // const [betaBannerDismissed, setBetaBannerDismissed] = useLocalStorage(
+  //   "ui_betaBannerDismissed",
+  //   false
+  // );
+  const [betaBannerDismissed, setBetaBannerDismissed] = useState(false)
   
   const [leftTimelineDate, setLeftTimelineDate] = useLocalStorage(
     "leftTimelineDate",
