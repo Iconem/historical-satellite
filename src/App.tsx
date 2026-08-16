@@ -23,6 +23,9 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 // TODO Avoid tile popping on setTiles of rasterTileSet imagery source
 // https://github.com/mapbox/mapbox-gl-js/issues/12707
 
+const BETA_APP_URL = "https://beta.historical-satellite.iconem.com/";
+const BETA_BANNER_HEIGHT = 40;
+
 // APP COMPONENT
 function App() {
   // Maps refs
@@ -42,7 +45,12 @@ function App() {
     "customPlanetApiKey",
     import.meta.env.VITE_PLANET_BASEMAP_API_KEY
   );
-
+  
+  const [betaBannerDismissed, setBetaBannerDismissed] = useLocalStorage(
+    "ui_betaBannerDismissed",
+    false
+  );
+  
   const [leftTimelineDate, setLeftTimelineDate] = useLocalStorage(
     "leftTimelineDate",
     subMonths(new Date(), 2),
@@ -292,6 +300,62 @@ function App() {
           }
         `}
       </style>
+      {!betaBannerDismissed && (
+        <div
+          style={{
+            position: "relative",
+            zIndex: 30,
+            height: `${BETA_BANNER_HEIGHT}px`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "12px",
+            background: "#001624",
+            color: "white",
+            fontSize: "14px",
+          }}
+        >
+          <span>
+            This app is being phased out in favor of a new version.
+          </span>
+          <a
+            href={BETA_APP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: "#7fd1ff",
+              fontWeight: 600,
+              textDecoration: "underline",
+            }}
+          >
+            Open the beta app
+          </a>
+          <button
+            onClick={() => setBetaBannerDismissed(true)}
+            aria-label="Dismiss"
+            style={{
+              position: "absolute",
+              right: "12px",
+              background: "none",
+              border: "none",
+              color: "white",
+              cursor: "pointer",
+              fontSize: "16px",
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: betaBannerDismissed
+            ? "100vh"
+            : `calc(100vh - ${BETA_BANNER_HEIGHT}px)`,
+        }}
+      >
       <ToggleButtonGroup
         style={{
           background: "#fffc", // "white",
@@ -339,7 +403,7 @@ function App() {
           zIndex: "20",
         }}
       ></div>
-      <div>
+      <div style={{ height: "100%" }}>
         <Split
           sizes={splitPanelSizesPercent}
           minSize={100}
@@ -351,7 +415,7 @@ function App() {
           direction="horizontal"
           cursor="col-resize"
           className="split"
-          style={{ height: "100vh", backgroundColor: "#001624" }}
+          style={{ height: "100%", backgroundColor: "#001624" }}
           onDragEnd={function (sizes: number[]) {
             setSplitPanelSizesPercent(sizes);
             resizeMaps();
@@ -363,14 +427,14 @@ function App() {
         >
           <div
             style={{
-              height: "100vh",
+              height: "100%",
               width: "100%",
               backgroundColor: "#001624",
             }}
           ></div>
           <div
             style={{
-              height: "100vh",
+              height: "100%",
               width: "100%",
               backgroundColor: "#00262F",
             }}
@@ -545,6 +609,7 @@ function App() {
             </canvas>
           )}
         </div>
+      </div>
       </div>
       <ControlPanelDrawer
         // Adding custom Planet API key input
