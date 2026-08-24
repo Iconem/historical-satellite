@@ -1,3 +1,17 @@
+> [!WARNING]
+> This app is being phased-out in favor of `iconem/terrain-viewer` ([repo](https://github.com/iconem/terrain-viewer)). See [beta.historical-satellite.iconem.com](https://beta.historical-satellite.iconem.com/) or [terrain-viewer.iconem.com/?appMode=historical](https://terrain-viewer.iconem.com/?appMode=historical)
+> 
+> Initially for terrain DTM viewing/export with terrain analysis and relief visualization etc, (geoarchaeology, geomorphometry etc)
+> 
+> In summer 2026 we added support for `appMode=historical`:
+> 
+> maplibre based, historical capabilities with single timeline, aggregated historical sources (esri, google earth), BYOD custom basemap sources (TMS, COG, WMS, NextGIS QMS etc), N-grid mode up to 4x2, 
+> nuqs for url params synced state, jotai for user preferences local-storage, slider pill y position for effect transparency, full UI-redesign, histogram color-matching to view A, source attribution, correct ESRI imagery date rather than release/mosaicking etc.
+> 
+> Closing related tickets, sunsetting this repo soon
+
+
+
 # historical-satellite
 
 - [historical-satellite.iconem.com](https://historical-satellite.iconem.com/)
